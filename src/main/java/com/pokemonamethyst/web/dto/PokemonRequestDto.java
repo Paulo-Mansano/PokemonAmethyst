@@ -1,9 +1,13 @@
 package com.pokemonamethyst.web.dto;
 
 import com.pokemonamethyst.domain.*;
+
 import jakarta.validation.constraints.Min;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
+import jakarta.validation.constraints.Size;
+
+import java.util.List;
 
 public class PokemonRequestDto {
 
@@ -31,6 +35,9 @@ public class PokemonRequestDto {
     private String itemSeguradoId;
     private Integer hpMaximo;
     private Integer staminaMaxima;
+
+    @Size(max = 8, message = "Máximo de 8 ataques")
+    private List<String> movimentoIds;
 
     public int getHpMaximoOrDefault() {
         return hpMaximo != null ? hpMaximo : 20;
@@ -76,4 +83,6 @@ public class PokemonRequestDto {
     public void setHpMaximo(Integer hpMaximo) { this.hpMaximo = hpMaximo; }
     public Integer getStaminaMaxima() { return staminaMaxima; }
     public void setStaminaMaxima(Integer staminaMaxima) { this.staminaMaxima = staminaMaxima; }
+    public List<String> getMovimentoIds() { return movimentoIds; }
+    public void setMovimentoIds(List<String> movimentoIds) { this.movimentoIds = movimentoIds; }
 }

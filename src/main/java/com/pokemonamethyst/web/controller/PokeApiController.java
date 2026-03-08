@@ -24,10 +24,12 @@ public class PokeApiController {
     @GetMapping("/pokemon")
     public ResponseEntity<List<PokeApiPokemonSummaryDto>> listar(
             @RequestParam(defaultValue = "20") int limit,
-            @RequestParam(defaultValue = "0") int offset) {
+            @RequestParam(defaultValue = "0") int offset,
+            @RequestParam(required = false) String nome,
+            @RequestParam(required = false) Integer pokedexId) {
         int safeLimit = Math.min(Math.max(1, limit), MAX_LIMIT);
         int safeOffset = Math.max(0, offset);
-        List<PokeApiPokemonSummaryDto> lista = pokeApiService.listar(safeLimit, safeOffset);
+        List<PokeApiPokemonSummaryDto> lista = pokeApiService.listarComFiltro(safeLimit, safeOffset, nome, pokedexId);
         return ResponseEntity.ok(lista);
     }
 

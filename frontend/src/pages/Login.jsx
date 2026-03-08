@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { login, registro } from '../api'
+import { login, registro, getMeuPerfil } from '../api'
 
 export default function Login({ onLogin }) {
   const navigate = useNavigate()
@@ -16,11 +16,13 @@ export default function Login({ onLogin }) {
     setErro('')
     setLoading(true)
     try {
-      const user = tab === 'login'
-        ? await login(nomeUsuario, senha)
-        : await registro(nomeUsuario, senha, mestre)
+      if (tab === 'registro') {
+        await registro(nomeUsuario, senha, mestre)
+      }
+      const user = await login(nomeUsuario, senha)
       onLogin(user)
-      navigate('/')
+      const perfil = await getMeuPerfil()
+      navigate('/', { state: perfil ? undefined : { semPerfil: true } })
     } catch (err) {
       setErro(err.message || 'Erro ao processar')
     } finally {

@@ -1,12 +1,16 @@
 package com.pokemonamethyst.service;
 
+import com.pokemonamethyst.domain.CategoriaMovimento;
+import com.pokemonamethyst.domain.Movimento;
 import com.pokemonamethyst.domain.Tipagem;
+import com.pokemonamethyst.repository.MovimentoRepository;
 import com.pokemonamethyst.web.dto.PokeApiPokemonDetailDto;
 import com.pokemonamethyst.web.dto.PokeApiPokemonSummaryDto;
 import org.springframework.stereotype.Service;
 import org.springframework.web.client.HttpClientErrorException;
 import org.springframework.web.client.RestTemplate;
 
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
@@ -16,6 +20,13 @@ public class PokeApiService {
 
     private static final String BASE_URL = "https://pokeapi.co/api/v2";
     private static final String SPRITE_BASE = "https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/%d.png";
+    private static final int IMPORTAR_MOVIMENTOS_LIMITE = 500;
+
+    private static final Map<String, CategoriaMovimento> DAMAGE_CLASS_MAP = Map.of(
+            "physical", CategoriaMovimento.FISICO,
+            "special", CategoriaMovimento.ESPECIAL,
+            "status", CategoriaMovimento.STATUS
+    );
 
     private static final Map<String, Tipagem> TYPE_MAP = Map.ofEntries(
             Map.entry("normal", Tipagem.NORMAL),
@@ -39,10 +50,14 @@ public class PokeApiService {
     );
 
     private final RestTemplate restTemplate;
+    private final MovimentoRepository movimentoRepository;
 
-    public PokeApiService(RestTemplate restTemplate) {
+    public PokeApiService(RestTemplate restTemplate, MovimentoRepository movimentoRepository) {
         this.restTemplate = restTemplate;
+        this.movimentoRepository = movimentoRepository;
     }
+
+    private static final int FETCH_SIZE_COM_FILTRO = 2000;
 
     public List<PokeApiPokemonSummaryDto> listar(int limit, int offset) {
         String url = BASE_URL + "/pokemon?limit=" + limit + "&offset=" + offset;
@@ -55,6 +70,36 @@ public class PokeApiService {
         return results.stream()
                 .map(this::toSummary)
                 .collect(Collectors.toList());
+    }
+
+    public List<PokeApiPokemonSummaryDto> listarComFiltro(int limit, int offset, String nome, Integer pokedexId) {
+        boolean temFiltro = (nome != null && !nome.isBlank()) || (pokedexId != null);
+        if (!temFiltro) {
+            return listar(limit, offset);
+        }
+        String url = BASE_URL + "/pokemon?limit=" + FETCH_SIZE_COM_FILTRO + "&offset=0";
+        Map<String, Object> response = restTemplate.getForObject(url, Map.class);
+        if (response == null || !response.containsKey("results")) {
+            return List.of();
+        }
+        @SuppressWarnings("unchecked")
+        List<Map<String, Object>> results = (List<Map<String, Object>>) response.get("results");
+        List<PokeApiPokemonSummaryDto> todos = results.stream()
+                .map(this::toSummary)
+                .filter(s -> matchesFilter(s, nome, pokedexId))
+                .collect(Collectors.toList());
+        int from = Math.min(offset, todos.size());
+        int to = Math.min(offset + limit, todos.size());
+        return new ArrayList<>(todos.subList(from, to));
+    }
+
+    private boolean matchesFilter(PokeApiPokemonSummaryDto s, String nome, Integer pokedexId) {
+        if (pokedexId != null && s.getId() == pokedexId) return true;
+        if (nome != null && !nome.isBlank() && s.getName() != null
+                && s.getName().toLowerCase().contains(nome.trim().toLowerCase())) {
+            return true;
+        }
+        return false;
     }
 
     public PokeApiPokemonDetailDto buscarPorIdOuNome(String idOuNome) {
@@ -133,5 +178,85 @@ public class PokeApiService {
             }
         }
         return Tipagem.NORMAL;
+    }
+
+    /**
+     * Importa movimentos da PokéAPI (apenas nome e tipagem, opcionalmente categoria).
+     * Retorna o número de movimentos criados.
+     */
+    public int importarMovimentos() {
+        String url = BASE_URL + "/move?limit=" + IMPORTAR_MOVIMENTOS_LIMITE + "&offset=0";
+        Map<String, Object> response = restTemplate.getForObject(url, Map.class);
+        if (response == null || !response.containsKey("results")) {
+            return 0;
+        }
+        @SuppressWarnings("unchecked")
+        List<Map<String, Object>> results = (List<Map<String, Object>>) response.get("results");
+        int criados = 0;
+        for (Map<String, Object> item : results) {
+            String urlStr = (String) item.get("url");
+            int id = extrairIdDaUrl(urlStr);
+            if (id <= 0) continue;
+            try {
+                Map<String, Object> detail = restTemplate.getForObject(BASE_URL + "/move/" + id, Map.class);
+                if (detail == null) continue;
+                String name = (String) detail.get("name");
+                if (name == null || name.isBlank()) continue;
+                String nomeExibicao = capitalizarNomeMove(name);
+                if (movimentoRepository.findByNomeIgnoreCase(nomeExibicao).isPresent()) continue;
+                Tipagem tipo = extrairTipoMove(detail);
+                CategoriaMovimento categoria = extrairCategoriaMove(detail);
+                Movimento m = new Movimento();
+                m.setNome(nomeExibicao);
+                m.setTipo(tipo);
+                m.setCategoria(categoria);
+                m.setCustoStamina(0);
+                m.setDadoDeDano(null);
+                m.setDescricaoEfeito(null);
+                movimentoRepository.save(m);
+                criados++;
+            } catch (Exception ignored) {
+                // ignora movimento que falhou (ex.: 404)
+            }
+        }
+        return criados;
+    }
+
+    private static String capitalizarNomeMove(String name) {
+        if (name == null || name.isEmpty()) return name;
+        StringBuilder sb = new StringBuilder();
+        boolean cap = true;
+        for (char c : name.toCharArray()) {
+            if (c == '-' || c == ' ') {
+                sb.append(c);
+                cap = true;
+            } else if (cap) {
+                sb.append(Character.toUpperCase(c));
+                cap = false;
+            } else {
+                sb.append(Character.toLowerCase(c));
+            }
+        }
+        return sb.toString();
+    }
+
+    @SuppressWarnings("unchecked")
+    private Tipagem extrairTipoMove(Map<String, Object> detail) {
+        Object typeObj = detail.get("type");
+        if (typeObj instanceof Map) {
+            String name = (String) ((Map<String, Object>) typeObj).get("name");
+            if (name != null && TYPE_MAP.containsKey(name)) return TYPE_MAP.get(name);
+        }
+        return Tipagem.NORMAL;
+    }
+
+    @SuppressWarnings("unchecked")
+    private CategoriaMovimento extrairCategoriaMove(Map<String, Object> detail) {
+        Object dc = detail.get("damage_class");
+        if (dc instanceof Map) {
+            String name = (String) ((Map<String, Object>) dc).get("name");
+            if (name != null && DAMAGE_CLASS_MAP.containsKey(name)) return DAMAGE_CLASS_MAP.get(name);
+        }
+        return CategoriaMovimento.STATUS;
     }
 }

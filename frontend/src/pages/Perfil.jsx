@@ -1,9 +1,11 @@
 import { useState, useEffect } from 'react'
+import { useLocation } from 'react-router-dom'
 import { getMeuPerfil, salvarPerfil } from '../api'
 
 const CLASSES = ['CIVIL', 'TREINADOR', 'COMPETIDOR', 'CACADOR', 'MEDICO', 'PESQUISADOR']
 
 export default function Perfil() {
+  const location = useLocation()
   const [perfil, setPerfil] = useState(null)
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
@@ -74,9 +76,16 @@ export default function Perfil() {
   if (loading) return <div className="container">Carregando perfil...</div>
   if (erro && !perfil) return <div className="container"><p style={{ color: 'var(--danger)' }}>{erro}</p></div>
 
+  const avisoSemPerfil = location.state?.semPerfil && !perfil
+
   return (
     <div className="container">
       <h1 style={{ marginBottom: '1rem' }}>Ficha do Jogador</h1>
+      {avisoSemPerfil && (
+        <p style={{ padding: '0.75rem 1rem', background: 'var(--border)', borderRadius: 8, marginBottom: '1rem', color: 'var(--text-muted)' }}>
+          Crie sua ficha para acessar Pokémon e Mochila.
+        </p>
+      )}
       <form onSubmit={handleSubmit} className="card">
         <div className="form-group">
           <label>Nome do personagem</label>

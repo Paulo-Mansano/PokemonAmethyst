@@ -50,6 +50,9 @@ export async function getMeuPerfil() {
   const res = await request('/perfis/meu');
   if (!res.ok) {
     if (res.status === 404) return null;
+    if (res.status === 401 || res.status === 403) {
+      throw new Error('Sessão inválida ou expirada. Faça login novamente.');
+    }
     throw new Error('Erro ao carregar perfil');
   }
   return res.json();
@@ -67,9 +70,14 @@ export async function salvarPerfil(body) {
   return res.json();
 }
 
+const MSG_SEM_PERFIL = 'Crie seu perfil na Ficha primeiro.';
+
 export async function getPokemons() {
   const res = await request('/perfis/meu/pokemons');
-  if (!res.ok) throw new Error('Erro ao carregar Pokémon');
+  if (!res.ok) {
+    if (res.status === 404) throw new Error(MSG_SEM_PERFIL);
+    throw new Error('Erro ao carregar Pokémon');
+  }
   return res.json();
 }
 
@@ -79,6 +87,7 @@ export async function criarPokemon(body) {
     body: JSON.stringify(body),
   });
   if (!res.ok) {
+    if (res.status === 404) throw new Error(MSG_SEM_PERFIL);
     const data = await res.json().catch(() => ({}));
     throw new Error(data.mensagem || 'Erro ao criar Pokémon');
   }
@@ -161,10 +170,19 @@ export async function getItens() {
   return res.json();
 }
 
-export async function getPokeApiList(limit = 20, offset = 0) {
-  const res = await request(`/pokeapi/pokemon?limit=${limit}&offset=${offset}`);
-  if (!res.ok) throw new Error('Erro ao carregar catálogo da PokéAPI');
+export async function getMovimentos() {
+  const res = await request('/movimentos');
+  if (!res.ok) throw new Error('Erro ao carregar movimentos');
   return res.json();
+}
+
+export async function getPokeApiList(limit = 20, offset = 0, nome = '', pokedexId = null) {
+  const params = new URLSearchParams({ limit: String(limit), offset: String(offset) })
+  if (nome && nome.trim()) params.set('nome', nome.trim())
+  if (pokedexId != null && pokedexId !== '') params.set('pokedexId', String(pokedexId))
+  const res = await request(`/pokeapi/pokemon?${params.toString()}`)
+  if (!res.ok) throw new Error('Erro ao carregar catálogo da PokéAPI')
+  return res.json()
 }
 
 export async function getPokeApiPokemon(idOuNome) {

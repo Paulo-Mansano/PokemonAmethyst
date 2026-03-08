@@ -16,16 +16,19 @@ import java.util.List;
 public class PokemonService {
 
     private static final int MAX_POKEMONS_NO_TIME = 6;
+    private static final int MAX_MOVIMENTOS_POR_POKEMON = 8;
 
     private final PokemonRepository pokemonRepository;
     private final PerfilJogadorRepository perfilRepository;
     private final ItemRepository itemRepository;
+    private final com.pokemonamethyst.repository.MovimentoRepository movimentoRepository;
 
     public PokemonService(PokemonRepository pokemonRepository, PerfilJogadorRepository perfilRepository,
-                          ItemRepository itemRepository) {
+                          ItemRepository itemRepository, com.pokemonamethyst.repository.MovimentoRepository movimentoRepository) {
         this.pokemonRepository = pokemonRepository;
         this.perfilRepository = perfilRepository;
         this.itemRepository = itemRepository;
+        this.movimentoRepository = movimentoRepository;
     }
 
     public List<Pokemon> listarPorPerfil(String perfilId) {
@@ -48,9 +51,13 @@ public class PokemonService {
     @Transactional
     public Pokemon criar(String perfilId, int pokedexId, String especie, Tipagem tipoPrimario,
                          String apelido, Tipagem tipoSecundario, Genero genero, Pokebola pokebolaCaptura,
-                         int hpMaximo, int staminaMaxima, String imagemUrl) {
+                         int hpMaximo, int staminaMaxima, String imagemUrl, List<String> movimentoIds) {
         PerfilJogador perfil = perfilRepository.findById(perfilId)
                 .orElseThrow(() -> new RecursoNaoEncontradoException("Perfil não encontrado."));
+
+        if (movimentoIds != null && movimentoIds.size() > MAX_MOVIMENTOS_POR_POKEMON) {
+            throw new RegraNegocioException("Máximo de " + MAX_MOVIMENTOS_POR_POKEMON + " ataques por Pokémon.");
+        }
 
         Pokemon pokemon = new Pokemon();
         pokemon.setPerfil(perfil);
@@ -71,6 +78,16 @@ public class PokemonService {
         pokemon.setStaminaAtual(staminaMaxima);
         pokemon.setNivel(1);
         pokemon.setXpAtual(0);
+
+        if (movimentoIds != null && !movimentoIds.isEmpty()) {
+            List<Movimento> movimentos = new ArrayList<>();
+            for (String id : movimentoIds) {
+                Movimento m = movimentoRepository.findById(id)
+                        .orElseThrow(() -> new RecursoNaoEncontradoException("Movimento não encontrado: " + id));
+                movimentos.add(m);
+            }
+            pokemon.setMovimentosConhecidos(movimentos);
+        }
 
         Pokemon salvo = pokemonRepository.save(pokemon);
         perfil.getPokemons().add(salvo);

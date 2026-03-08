@@ -12,6 +12,7 @@ public class PerfilJogadorService {
 
     private static final int PESO_MAXIMO_MOCHILA_PADRAO = 50;
     private static final int HP_STAMINA_INICIAL = 10;
+    private static final String PERFIL_NOME_PADRAO = "Treinador";
 
     private final PerfilJogadorRepository perfilRepository;
     private final UsuarioRepository usuarioRepository;
@@ -31,9 +32,18 @@ public class PerfilJogadorService {
                 .orElseThrow(() -> new RecursoNaoEncontradoException("Perfil do jogador não encontrado."));
     }
 
+    /**
+     * Retorna o perfil do jogador, criando um com valores padrão se ainda não existir (lazy).
+     */
+    @Transactional
     public PerfilJogador buscarMeuPerfil(String usuarioId) {
         return perfilRepository.findByUsuarioIdWithMochila(usuarioId)
-                .orElseThrow(() -> new RecursoNaoEncontradoException("Perfil do jogador não encontrado. Crie um perfil primeiro."));
+                .orElseGet(() -> {
+                    criarOuAtualizar(usuarioId, PERFIL_NOME_PADRAO, ClasseJogador.TREINADOR,
+                            null, null, null, null, null, null, null, null, null);
+                    return perfilRepository.findByUsuarioIdWithMochila(usuarioId)
+                            .orElseThrow(() -> new RecursoNaoEncontradoException("Perfil do jogador não encontrado."));
+                });
     }
 
     @Transactional

@@ -12,6 +12,7 @@ import jakarta.validation.Valid;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
+import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
@@ -34,6 +35,7 @@ public class PokemonController {
     }
 
     @GetMapping
+    @Transactional(readOnly = true)
     public ResponseEntity<List<PokemonResponseDto>> listar(@AuthenticationPrincipal UsuarioPrincipal principal) {
         String perfilId = perfilId(principal);
         List<Pokemon> lista = pokemonService.listarPorPerfil(perfilId);
@@ -41,6 +43,7 @@ public class PokemonController {
     }
 
     @PostMapping
+    @Transactional
     public ResponseEntity<PokemonResponseDto> criar(
             @AuthenticationPrincipal UsuarioPrincipal principal,
             @Valid @RequestBody PokemonRequestDto dto) {
@@ -56,12 +59,14 @@ public class PokemonController {
                 dto.getPokebolaCaptura(),
                 dto.getHpMaximoOrDefault(),
                 dto.getStaminaMaximaOrDefault(),
-                dto.getImagemUrl()
+                dto.getImagemUrl(),
+                dto.getMovimentoIds()
         );
         return ResponseEntity.status(HttpStatus.CREATED).body(PokemonResponseDto.from(pokemon));
     }
 
     @GetMapping("/{id}")
+    @Transactional(readOnly = true)
     public ResponseEntity<PokemonResponseDto> buscar(
             @AuthenticationPrincipal UsuarioPrincipal principal,
             @PathVariable String id) {
@@ -71,6 +76,7 @@ public class PokemonController {
     }
 
     @PutMapping("/{id}")
+    @Transactional
     public ResponseEntity<PokemonResponseDto> atualizar(
             @AuthenticationPrincipal UsuarioPrincipal principal,
             @PathVariable String id,
@@ -90,6 +96,7 @@ public class PokemonController {
     }
 
     @PutMapping("/{id}/time")
+    @Transactional
     public ResponseEntity<PokemonResponseDto> colocarNoTime(
             @AuthenticationPrincipal UsuarioPrincipal principal,
             @PathVariable String id,
@@ -102,6 +109,7 @@ public class PokemonController {
     }
 
     @DeleteMapping("/{id}/time")
+    @Transactional
     public ResponseEntity<PokemonResponseDto> removerDoTime(
             @AuthenticationPrincipal UsuarioPrincipal principal,
             @PathVariable String id) {

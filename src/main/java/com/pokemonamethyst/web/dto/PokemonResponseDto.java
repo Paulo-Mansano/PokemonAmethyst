@@ -1,8 +1,10 @@
 package com.pokemonamethyst.web.dto;
 
+import com.pokemonamethyst.domain.Movimento;
 import com.pokemonamethyst.domain.Pokemon;
 
 import java.util.List;
+import java.util.stream.Collectors;
 
 public class PokemonResponseDto {
 
@@ -39,6 +41,7 @@ public class PokemonResponseDto {
     private int tecnica;
     private int respeito;
     private List<String> statusAtuais;
+    private List<MovimentoResponseDto> movimentosConhecidos;
 
     public PokemonResponseDto() {}
     public PokemonResponseDto(String id, Integer ordemTime, int pokedexId, String especie, String apelido, String imagemUrl, String notas, String genero, boolean shiny, String tipoPrimario, String tipoSecundario, String personalidade, String especializacao, String berryFavorita, int nivelDeVinculo, int nivel, int xpAtual, String pokebolaCaptura, String itemSeguradoId, int hpMaximo, int hpAtual, int hpTemporario, int staminaMaxima, int staminaAtual, int staminaTemporaria, int ataque, int ataqueEspecial, int defesa, int defesaEspecial, int speed, int tecnica, int respeito, List<String> statusAtuais) {
@@ -79,21 +82,23 @@ public class PokemonResponseDto {
 
     public static PokemonResponseDto from(Pokemon p) {
         if (p == null) return null;
-        return new PokemonResponseDto(
+        String especie = p.getEspecie();
+        if (especie == null) especie = "";
+        PokemonResponseDto dto = new PokemonResponseDto(
                 p.getId(),
                 p.getOrdemTime(),
                 p.getPokedexId(),
-                p.getEspecie(),
-                p.getApelido(),
-                p.getImagemUrl(),
-                p.getNotas(),
+                especie,
+                p.getApelido() != null ? p.getApelido() : null,
+                p.getImagemUrl() != null ? p.getImagemUrl() : null,
+                p.getNotas() != null ? p.getNotas() : null,
                 p.getGenero() != null ? p.getGenero().name() : null,
                 p.isShiny(),
                 p.getTipoPrimario() != null ? p.getTipoPrimario().name() : null,
                 p.getTipoSecundario() != null ? p.getTipoSecundario().name() : null,
                 p.getPersonalidade() != null ? p.getPersonalidade().name() : null,
                 p.getEspecializacao() != null ? p.getEspecializacao().name() : null,
-                p.getBerryFavorita(),
+                p.getBerryFavorita() != null ? p.getBerryFavorita() : null,
                 p.getNivelDeVinculo(),
                 p.getNivel(),
                 p.getXpAtual(),
@@ -114,6 +119,12 @@ public class PokemonResponseDto {
                 p.getRespeito(),
                 p.getStatusAtuais() != null ? p.getStatusAtuais().stream().map(Enum::name).toList() : List.of()
         );
+        if (p.getMovimentosConhecidos() != null && !p.getMovimentosConhecidos().isEmpty()) {
+            dto.setMovimentosConhecidos(p.getMovimentosConhecidos().stream()
+                    .map(MovimentoResponseDto::from)
+                    .collect(Collectors.toList()));
+        }
+        return dto;
     }
 
     public String getId() { return id; }
@@ -182,4 +193,6 @@ public class PokemonResponseDto {
     public void setRespeito(int respeito) { this.respeito = respeito; }
     public List<String> getStatusAtuais() { return statusAtuais; }
     public void setStatusAtuais(List<String> statusAtuais) { this.statusAtuais = statusAtuais; }
+    public List<MovimentoResponseDto> getMovimentosConhecidos() { return movimentosConhecidos; }
+    public void setMovimentosConhecidos(List<MovimentoResponseDto> movimentosConhecidos) { this.movimentosConhecidos = movimentosConhecidos; }
 }

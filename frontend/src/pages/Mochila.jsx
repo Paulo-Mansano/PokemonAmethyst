@@ -1,7 +1,9 @@
 import { useState, useEffect } from 'react'
-import { getMochila, getItens, adicionarItemMochila, removerItemMochila } from '../api'
+import { Link } from 'react-router-dom'
+import { getMeuPerfil, getMochila, getItens, adicionarItemMochila, removerItemMochila } from '../api'
 
 export default function Mochila() {
+  const [perfil, setPerfil] = useState(null)
   const [mochila, setMochila] = useState(null)
   const [itens, setItens] = useState([])
   const [loading, setLoading] = useState(true)
@@ -11,11 +13,19 @@ export default function Mochila() {
   const [adding, setAdding] = useState(false)
 
   const load = () => {
-    Promise.all([getMochila(), getItens()])
-      .then(([m, list]) => {
-        setMochila(m)
-        setItens(list)
-        if (list.length > 0 && !addItemId) setAddItemId(list[0]?.id ?? '')
+    getMeuPerfil()
+      .then((p) => {
+        setPerfil(p)
+        if (!p) return
+        return Promise.all([getMochila(), getItens()])
+      })
+      .then((result) => {
+        if (result) {
+          const [m, list] = result
+          setMochila(m)
+          setItens(list)
+          if (list.length > 0 && !addItemId) setAddItemId(list[0]?.id ?? '')
+        }
       })
       .catch(() => setErro('Erro ao carregar'))
       .finally(() => setLoading(false))
@@ -48,6 +58,20 @@ export default function Mochila() {
   }
 
   if (loading) return <div className="container">Carregando mochila...</div>
+
+  if (!perfil) {
+    return (
+      <div className="container">
+        <div className="card" style={{ textAlign: 'center', padding: '2rem' }}>
+          <h2 style={{ marginTop: 0 }}>Ficha do treinador necessária</h2>
+          <p style={{ color: 'var(--text-muted)', marginBottom: '1.5rem' }}>
+            Crie sua ficha do treinador na aba Ficha para acessar a mochila.
+          </p>
+          <Link to="/" className="btn btn-primary">Ir para Ficha</Link>
+        </div>
+      </div>
+    )
+  }
 
   return (
     <div className="container">

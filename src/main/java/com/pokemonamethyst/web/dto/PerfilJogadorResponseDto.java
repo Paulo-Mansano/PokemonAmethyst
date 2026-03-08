@@ -44,10 +44,15 @@ public class PerfilJogadorResponseDto {
 
     public static PerfilJogadorResponseDto from(PerfilJogador p, List<com.pokemonamethyst.domain.Pokemon> time, List<com.pokemonamethyst.domain.Pokemon> box) {
         if (p == null) return null;
+        String nome = p.getNomePersonagem();
+        if (nome == null) nome = "";
+        String classe = p.getClasse() != null ? p.getClasse().name() : "TREINADOR";
+        AtributosDto atr = AtributosDto.from(p.getAtributos());
+        if (atr == null) atr = new AtributosDto();
         return new PerfilJogadorResponseDto(
                 p.getId(),
-                p.getNomePersonagem(),
-                p.getClasse().name(),
+                nome,
+                classe,
                 p.getPokedolares(),
                 p.getNivel(),
                 p.getXpAtual(),
@@ -57,7 +62,7 @@ public class PerfilJogadorResponseDto {
                 p.getStaminaMaxima(),
                 p.getStaminaAtual(),
                 p.getHabilidade(),
-                AtributosDto.from(p.getAtributos()),
+                atr,
                 time != null ? time.stream().map(PokemonResponseDto::from).collect(Collectors.toList()) : List.of(),
                 box != null ? box.stream().map(PokemonResponseDto::from).collect(Collectors.toList()) : List.of()
         );

@@ -8,6 +8,6 @@ import java.util.Optional;
 
 public interface MochilaRepository extends JpaRepository<Mochila, String> {
 
-    @Query("SELECT m FROM Mochila m LEFT JOIN FETCH m.conteudos c LEFT JOIN FETCH c.item WHERE m.id = :id")
+    @Query("SELECT DISTINCT m FROM Mochila m LEFT JOIN FETCH m.conteudos c LEFT JOIN FETCH c.item WHERE m.id = :id")
     Optional<Mochila> findByIdWithConteudos(String id);
 }

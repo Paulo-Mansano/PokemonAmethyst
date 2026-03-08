@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react'
-import { getMeuPerfil, criarPokemon, colocarNoTime, removerDoTime, excluirPokemon, getPokeApiList, getPokeApiPokemon } from '../api'
+import { Link } from 'react-router-dom'
+import { getMeuPerfil, criarPokemon, colocarNoTime, removerDoTime, excluirPokemon, getPokeApiList, getPokeApiPokemon, getMovimentos } from '../api'
 
 const PAGE_SIZE = 20
 function capitalize(str) {
@@ -26,11 +27,14 @@ export default function PokemonList() {
     pokebolaCaptura: 'POKEBALL',
     hpMaximo: 20,
     staminaMaxima: 10,
+    movimentoIds: [],
   })
+  const [listaMovimentos, setListaMovimentos] = useState([])
   const [catalogoLista, setCatalogoLista] = useState([])
   const [catalogoLoading, setCatalogoLoading] = useState(false)
   const [catalogoOffset, setCatalogoOffset] = useState(0)
   const [catalogoErro, setCatalogoErro] = useState('')
+  const [catalogoBusca, setCatalogoBusca] = useState('')
 
   const load = () => {
     getMeuPerfil()
@@ -40,6 +44,10 @@ export default function PokemonList() {
   }
 
   useEffect(() => load(), [])
+
+  useEffect(() => {
+    if (modal === 'novo') carregarMovimentos()
+  }, [modal])
 
   const handleColocarNoTime = async (id, ordem) => {
     try {
@@ -70,10 +78,14 @@ export default function PokemonList() {
     }
   }
 
-  const loadCatalogo = (offset = 0) => {
+  const loadCatalogo = (offset = 0, busca = '') => {
     setCatalogoErro('')
     setCatalogoLoading(true)
-    getPokeApiList(PAGE_SIZE, offset)
+    const trimmed = (busca || catalogoBusca || '').trim()
+    const isNum = /^\d+$/.test(trimmed)
+    const nome = !isNum && trimmed ? trimmed : ''
+    const pokedexId = isNum && trimmed ? parseInt(trimmed, 10) : null
+    getPokeApiList(PAGE_SIZE, offset, nome, pokedexId)
       .then(setCatalogoLista)
       .catch((err) => setCatalogoErro(err.message || 'Erro ao carregar catálogo'))
       .finally(() => setCatalogoLoading(false))
@@ -82,7 +94,13 @@ export default function PokemonList() {
   const handleAbrirCatalogo = () => {
     setModal('catalogo')
     setCatalogoOffset(0)
-    loadCatalogo(0)
+    setCatalogoBusca('')
+    loadCatalogo(0, '')
+  }
+
+  const handleBuscarCatalogo = () => {
+    setCatalogoOffset(0)
+    loadCatalogo(0, catalogoBusca)
   }
 
   const handleSelecionarDaApi = async (id) => {
@@ -103,6 +121,20 @@ export default function PokemonList() {
     }
   }
 
+  const carregarMovimentos = () => {
+    getMovimentos().then(setListaMovimentos).catch(() => setListaMovimentos([]))
+  }
+
+  const toggleMovimento = (id) => {
+    setForm((f) => {
+      const ids = f.movimentoIds || []
+      const idx = ids.indexOf(id)
+      if (idx >= 0) return { ...f, movimentoIds: ids.filter((x) => x !== id) }
+      if (ids.length >= 8) return f
+      return { ...f, movimentoIds: [...ids, id] }
+    })
+  }
+
   const handleCriar = async (e) => {
     e.preventDefault()
     setErro('')
@@ -111,10 +143,11 @@ export default function PokemonList() {
         ...form,
         tipoSecundario: form.tipoSecundario || null,
         imagemUrl: form.imagemUrl || null,
+        movimentoIds: form.movimentoIds?.length ? form.movimentoIds : null,
       })
       load()
       setModal(null)
-      setForm({ pokedexId: 1, especie: '', tipoPrimario: 'NORMAL', tipoSecundario: '', apelido: '', imagemUrl: '', genero: 'SEM_GENERO', pokebolaCaptura: 'POKEBALL', hpMaximo: 20, staminaMaxima: 10 })
+      setForm({ pokedexId: 1, especie: '', tipoPrimario: 'NORMAL', tipoSecundario: '', apelido: '', imagemUrl: '', genero: 'SEM_GENERO', pokebolaCaptura: 'POKEBALL', hpMaximo: 20, staminaMaxima: 10, movimentoIds: [] })
     } catch (err) {
       setErro(err.message)
     }
@@ -124,6 +157,20 @@ export default function PokemonList() {
   const naBox = perfil?.box ?? []
 
   if (loading) return <div className="container">Carregando...</div>
+
+  if (!perfil) {
+    return (
+      <div className="container">
+        <div className="card" style={{ textAlign: 'center', padding: '2rem' }}>
+          <h2 style={{ marginTop: 0 }}>Ficha do treinador necessária</h2>
+          <p style={{ color: 'var(--text-muted)', marginBottom: '1.5rem' }}>
+            Crie sua ficha do treinador na aba Ficha para gerenciar seus Pokémon.
+          </p>
+          <Link to="/" className="btn btn-primary">Ir para Ficha</Link>
+        </div>
+      </div>
+    )
+  }
 
   return (
     <div className="container">
@@ -189,39 +236,63 @@ export default function PokemonList() {
         <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.7)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 10, padding: '1rem' }}>
           <div className="card" style={{ maxWidth: 560, width: '100%', maxHeight: '90vh', overflow: 'auto' }}>
             <h3 style={{ marginTop: 0 }}>Catálogo PokéAPI</h3>
-            <p style={{ color: 'var(--text-muted)', fontSize: '0.9rem', marginBottom: '1rem' }}>Clique em um Pokémon para preencher o formulário de novo Pokémon.</p>
+            <p style={{ color: 'var(--text-muted)', fontSize: '0.9rem', marginBottom: '0.75rem' }}>Busque por nome ou número da Pokédex. Clique em um Pokémon para preencher o formulário.</p>
+            <div style={{ display: 'flex', gap: '0.5rem', marginBottom: '1rem', flexWrap: 'wrap' }}>
+              <input
+                type="text"
+                placeholder="Nome ou número da Pokédex"
+                value={catalogoBusca}
+                onChange={(e) => setCatalogoBusca(e.target.value)}
+                onKeyDown={(e) => e.key === 'Enter' && (e.preventDefault(), handleBuscarCatalogo())}
+                style={{ flex: 1, minWidth: 160 }}
+              />
+              <button type="button" className="btn btn-primary" onClick={handleBuscarCatalogo} disabled={catalogoLoading}>
+                Buscar
+              </button>
+              {!catalogoBusca.trim() && (
+                <button type="button" className="btn btn-secondary" onClick={() => loadCatalogo(0, '')} disabled={catalogoLoading}>
+                  Listar
+                </button>
+              )}
+            </div>
             {catalogoErro && <p style={{ color: 'var(--danger)', fontSize: '0.9rem', marginBottom: '0.5rem' }}>{catalogoErro}</p>}
             {catalogoLoading ? (
               <p>Carregando...</p>
             ) : (
               <>
-                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(100px, 1fr))', gap: '0.75rem', marginBottom: '1rem' }}>
+                <ul style={{ listStyle: 'none', padding: 0, margin: 0, marginBottom: '1rem' }}>
                   {catalogoLista.map((p) => (
-                    <button
-                      type="button"
-                      key={p.id}
-                      onClick={() => handleSelecionarDaApi(p.id)}
-                      style={{
-                        display: 'flex',
-                        flexDirection: 'column',
-                        alignItems: 'center',
-                        padding: '0.5rem',
-                        border: '1px solid var(--border)',
-                        borderRadius: 8,
-                        background: 'var(--bg)',
-                        cursor: 'pointer',
-                      }}
-                    >
-                      <img src={p.imageUrl} alt={p.name} style={{ width: 64, height: 64, objectFit: 'contain' }} />
-                      <span style={{ fontSize: '0.75rem', marginTop: '0.25rem', textAlign: 'center' }}>{capitalize(p.name)}</span>
-                    </button>
+                    <li key={p.id}>
+                      <button
+                        type="button"
+                        onClick={() => handleSelecionarDaApi(p.id)}
+                        style={{
+                          display: 'flex',
+                          alignItems: 'center',
+                          gap: '0.75rem',
+                          width: '100%',
+                          padding: '0.5rem 0.5rem',
+                          border: '1px solid var(--border)',
+                          borderRadius: 8,
+                          background: 'var(--bg)',
+                          cursor: 'pointer',
+                          marginBottom: '0.5rem',
+                          textAlign: 'left',
+                        }}
+                      >
+                        <span style={{ minWidth: 28, color: 'var(--text-muted)', fontSize: '0.85rem' }}>#{p.id}</span>
+                        <img src={p.imageUrl} alt={p.name} style={{ width: 48, height: 48, objectFit: 'contain' }} />
+                        <span>{capitalize(p.name)}</span>
+                      </button>
+                    </li>
                   ))}
-                </div>
+                </ul>
+                {catalogoLista.length === 0 && !catalogoLoading && <p style={{ color: 'var(--text-muted)' }}>Nenhum resultado. Use a busca ou liste todos.</p>}
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '0.5rem' }}>
-                  <button type="button" className="btn btn-secondary" disabled={catalogoOffset === 0} onClick={() => { const o = Math.max(0, catalogoOffset - PAGE_SIZE); setCatalogoOffset(o); loadCatalogo(o); }}>
+                  <button type="button" className="btn btn-secondary" disabled={catalogoOffset === 0} onClick={() => { const o = Math.max(0, catalogoOffset - PAGE_SIZE); setCatalogoOffset(o); loadCatalogo(o, catalogoBusca); }}>
                     Anterior
                   </button>
-                  <button type="button" className="btn btn-secondary" disabled={catalogoLista.length < PAGE_SIZE} onClick={() => { const o = catalogoOffset + PAGE_SIZE; setCatalogoOffset(o); loadCatalogo(o); }}>
+                  <button type="button" className="btn btn-secondary" disabled={catalogoLista.length < PAGE_SIZE} onClick={() => { const o = catalogoOffset + PAGE_SIZE; setCatalogoOffset(o); loadCatalogo(o, catalogoBusca); }}>
                     Próxima
                   </button>
                   <button type="button" className="btn btn-primary" onClick={() => { setModal(null); setCatalogoErro(''); }}>
@@ -236,7 +307,7 @@ export default function PokemonList() {
 
       {modal === 'novo' && (
         <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.7)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 10, padding: '1rem' }}>
-          <div className="card" style={{ maxWidth: 420, width: '100%' }}>
+          <div className="card" style={{ maxWidth: 420, width: '100%', maxHeight: '90vh', overflow: 'auto' }}>
             <h3 style={{ marginTop: 0 }}>Novo Pokémon</h3>
             <form onSubmit={handleCriar}>
               <div className="form-group">
@@ -292,6 +363,24 @@ export default function PokemonList() {
                 <div className="form-group">
                   <label>Stamina máxima</label>
                   <input type="number" min={1} value={form.staminaMaxima} onChange={(e) => setForm((f) => ({ ...f, staminaMaxima: parseInt(e.target.value, 10) || 10 }))} />
+                </div>
+              </div>
+              <div className="form-group">
+                <label>Ataques (máx. 8)</label>
+                <p style={{ color: 'var(--text-muted)', fontSize: '0.85rem', marginBottom: '0.5rem' }}>{(form.movimentoIds || []).length}/8 selecionados</p>
+                <div style={{ maxHeight: 140, overflowY: 'auto', border: '1px solid var(--border)', borderRadius: 6, padding: '0.5rem' }}>
+                  {listaMovimentos.length === 0 && <span style={{ fontSize: '0.9rem', color: 'var(--text-muted)' }}>Carregando...</span>}
+                  {listaMovimentos.map((m) => (
+                    <label key={m.id} style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', cursor: 'pointer', marginBottom: '0.25rem' }}>
+                      <input
+                        type="checkbox"
+                        checked={(form.movimentoIds || []).includes(m.id)}
+                        onChange={() => toggleMovimento(m.id)}
+                        disabled={(form.movimentoIds || []).length >= 8 && !(form.movimentoIds || []).includes(m.id)}
+                      />
+                      <span style={{ fontSize: '0.9rem' }}>{m.nome} ({m.tipo})</span>
+                    </label>
+                  ))}
                 </div>
               </div>
               {erro && <p style={{ color: 'var(--danger)', fontSize: '0.9rem' }}>{erro}</p>}

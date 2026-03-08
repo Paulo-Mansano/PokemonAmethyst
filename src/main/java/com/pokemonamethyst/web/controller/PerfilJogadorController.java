@@ -8,8 +8,10 @@ import com.pokemonamethyst.service.PokemonService;
 import com.pokemonamethyst.web.dto.PerfilJogadorRequestDto;
 import com.pokemonamethyst.web.dto.PerfilJogadorResponseDto;
 import jakarta.validation.Valid;
+import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
+import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
@@ -27,7 +29,11 @@ public class PerfilJogadorController {
     }
 
     @GetMapping("/meu")
+    @Transactional(readOnly = true)
     public ResponseEntity<PerfilJogadorResponseDto> meuPerfil(@AuthenticationPrincipal UsuarioPrincipal principal) {
+        if (principal == null) {
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED).build();
+        }
         PerfilJogador perfil = perfilService.buscarMeuPerfil(principal.getId());
         List<com.pokemonamethyst.domain.Pokemon> time = pokemonService.listarTimePrincipal(perfil.getId());
         List<com.pokemonamethyst.domain.Pokemon> box = pokemonService.listarBox(perfil.getId());
