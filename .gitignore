@@ -1,0 +1,25 @@
+# Variáveis de ambiente (nunca commitar senhas)
+.env
+.env.local
+.env.*.local
+
+# Java / Maven
+target/
+*.jar
+*.war
+*.class
+.idea/
+*.iml
+.settings/
+.project
+.classpath
+
+# Node / Frontend
+frontend/node_modules/
+frontend/dist/
+npm-debug.log*
+.yarn-integrity
+
+# OS
+.DS_Store
+Thumbs.db
