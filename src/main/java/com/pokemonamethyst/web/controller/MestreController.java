@@ -6,6 +6,7 @@ import com.pokemonamethyst.service.PokeApiService;
 import com.pokemonamethyst.service.PokemonService;
 import com.pokemonamethyst.web.dto.PerfilJogadorResponseDto;
 import org.springframework.http.ResponseEntity;
+import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
@@ -35,6 +36,7 @@ public class MestreController {
     }
 
     @GetMapping("/jogadores")
+    @Transactional(readOnly = true)
     public ResponseEntity<List<PerfilJogadorResponseDto>> listarJogadores() {
         List<PerfilJogador> perfis = perfilRepository.findAll();
         List<PerfilJogadorResponseDto> dtos = perfis.stream()

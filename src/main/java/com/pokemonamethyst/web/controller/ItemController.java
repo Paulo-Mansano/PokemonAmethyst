@@ -4,6 +4,7 @@ import com.pokemonamethyst.domain.Item;
 import com.pokemonamethyst.service.CatalogoService;
 import com.pokemonamethyst.web.dto.ItemResponseDto;
 import org.springframework.http.ResponseEntity;
+import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
@@ -19,12 +20,14 @@ public class ItemController {
     }
 
     @GetMapping
+    @Transactional(readOnly = true)
     public ResponseEntity<List<ItemResponseDto>> listar() {
         List<Item> lista = catalogoService.listarItens();
         return ResponseEntity.ok(lista.stream().map(ItemResponseDto::from).toList());
     }
 
     @GetMapping("/{id}")
+    @Transactional(readOnly = true)
     public ResponseEntity<ItemResponseDto> buscar(@PathVariable String id) {
         Item i = catalogoService.buscarItem(id);
         return ResponseEntity.ok(ItemResponseDto.from(i));

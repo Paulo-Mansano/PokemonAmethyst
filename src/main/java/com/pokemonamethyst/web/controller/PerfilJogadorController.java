@@ -41,6 +41,7 @@ public class PerfilJogadorController {
     }
 
     @PutMapping("/meu")
+    @Transactional
     public ResponseEntity<PerfilJogadorResponseDto> criarOuAtualizar(
             @AuthenticationPrincipal UsuarioPrincipal principal,
             @Valid @RequestBody PerfilJogadorRequestDto dto) {
@@ -65,6 +66,7 @@ public class PerfilJogadorController {
     }
 
     @GetMapping("/{id}")
+    @Transactional(readOnly = true)
     public ResponseEntity<PerfilJogadorResponseDto> buscarPorId(
             @AuthenticationPrincipal UsuarioPrincipal principal,
             @PathVariable String id) {

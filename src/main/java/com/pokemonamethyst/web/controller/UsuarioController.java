@@ -8,6 +8,7 @@ import com.pokemonamethyst.web.dto.UsuarioResponseDto;
 import jakarta.validation.Valid;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
+import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.Map;
@@ -23,12 +24,14 @@ public class UsuarioController {
     }
 
     @GetMapping("/eu")
+    @Transactional(readOnly = true)
     public ResponseEntity<UsuarioResponseDto> eu(@AuthenticationPrincipal UsuarioPrincipal principal) {
         Usuario usuario = usuarioService.buscarPorId(principal.getId());
         return ResponseEntity.ok(UsuarioResponseDto.from(usuario));
     }
 
     @PatchMapping("/eu")
+    @Transactional
     public ResponseEntity<UsuarioResponseDto> atualizarNomeUsuario(
             @AuthenticationPrincipal UsuarioPrincipal principal,
             @RequestBody Map<String, String> body) {

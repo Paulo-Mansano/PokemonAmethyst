@@ -9,6 +9,7 @@ import com.pokemonamethyst.web.dto.MochilaResponseDto;
 import jakarta.validation.Valid;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
+import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.bind.annotation.*;
 
 @RestController
@@ -24,6 +25,7 @@ public class MochilaController {
     }
 
     @GetMapping
+    @Transactional(readOnly = true)
     public ResponseEntity<MochilaResponseDto> buscar(@AuthenticationPrincipal UsuarioPrincipal principal) {
         String perfilId = perfilService.buscarMeuPerfil(principal.getId()).getId();
         Mochila mochila = mochilaService.buscarPorPerfil(perfilId);
@@ -31,6 +33,7 @@ public class MochilaController {
     }
 
     @PutMapping("/itens")
+    @Transactional
     public ResponseEntity<MochilaResponseDto> adicionarItem(
             @AuthenticationPrincipal UsuarioPrincipal principal,
             @Valid @RequestBody MochilaItemRequestDto dto) {
@@ -40,6 +43,7 @@ public class MochilaController {
     }
 
     @DeleteMapping("/itens/{itemId}")
+    @Transactional
     public ResponseEntity<MochilaResponseDto> removerItem(
             @AuthenticationPrincipal UsuarioPrincipal principal,
             @PathVariable String itemId,

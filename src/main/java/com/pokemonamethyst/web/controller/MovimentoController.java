@@ -4,6 +4,7 @@ import com.pokemonamethyst.domain.Movimento;
 import com.pokemonamethyst.service.CatalogoService;
 import com.pokemonamethyst.web.dto.MovimentoResponseDto;
 import org.springframework.http.ResponseEntity;
+import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
@@ -19,12 +20,14 @@ public class MovimentoController {
     }
 
     @GetMapping
+    @Transactional(readOnly = true)
     public ResponseEntity<List<MovimentoResponseDto>> listar() {
         List<Movimento> lista = catalogoService.listarMovimentos();
         return ResponseEntity.ok(lista.stream().map(MovimentoResponseDto::from).toList());
     }
 
     @GetMapping("/{id}")
+    @Transactional(readOnly = true)
     public ResponseEntity<MovimentoResponseDto> buscar(@PathVariable String id) {
         Movimento m = catalogoService.buscarMovimento(id);
         return ResponseEntity.ok(MovimentoResponseDto.from(m));
