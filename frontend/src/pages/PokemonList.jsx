@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react'
 import { Link } from 'react-router-dom'
-import { getMeuPerfil, criarPokemon, colocarNoTime, removerDoTime, excluirPokemon, getPokeApiList, getPokeApiPokemon, getMovimentos } from '../api'
+import { getMeuPerfil, criarPokemonVazio, getPokemon, atualizarPokemon, colocarNoTime, removerDoTime, excluirPokemon, getPokeApiList, getPokeApiPokemon, getMovimentos } from '../api'
 
 const PAGE_SIZE = 20
 function capitalize(str) {
@@ -16,6 +16,8 @@ export default function PokemonList() {
   const [loading, setLoading] = useState(true)
   const [erro, setErro] = useState('')
   const [modal, setModal] = useState(null)
+  const [editingPokemonId, setEditingPokemonId] = useState(null)
+  const [formLoading, setFormLoading] = useState(false)
   const [form, setForm] = useState({
     pokedexId: 1,
     especie: '',
@@ -46,8 +48,25 @@ export default function PokemonList() {
   useEffect(() => load(), [])
 
   useEffect(() => {
-    if (modal === 'novo') carregarMovimentos()
+    if (modal === 'editar') carregarMovimentos()
   }, [modal])
+
+  const setFormFromPokemon = (p) => {
+    if (!p) return
+    setForm({
+      pokedexId: p.pokedexId ?? 0,
+      especie: p.especie ?? '',
+      tipoPrimario: p.tipoPrimario ?? 'NORMAL',
+      tipoSecundario: p.tipoSecundario || '',
+      apelido: p.apelido || '',
+      imagemUrl: p.imagemUrl || '',
+      genero: p.genero || 'SEM_GENERO',
+      pokebolaCaptura: p.pokebolaCaptura || 'POKEBALL',
+      hpMaximo: p.hpMaximo ?? 20,
+      staminaMaxima: p.staminaMaxima ?? 10,
+      movimentoIds: (p.movimentosConhecidos || []).map((m) => m.id),
+    })
+  }
 
   const handleColocarNoTime = async (id, ordem) => {
     try {
@@ -98,6 +117,38 @@ export default function PokemonList() {
     loadCatalogo(0, '')
   }
 
+  const handleNovoPokemon = async () => {
+    setErro('')
+    try {
+      const p = await criarPokemonVazio()
+      load()
+      setEditingPokemonId(p.id)
+      setFormLoading(true)
+      getPokemon(p.id)
+        .then((full) => {
+          setFormFromPokemon(full)
+          setModal('editar')
+        })
+        .catch((err) => setErro(err.message))
+        .finally(() => setFormLoading(false))
+    } catch (err) {
+      setErro(err.message)
+    }
+  }
+
+  const handleEditar = (id) => {
+    setEditingPokemonId(id)
+    setFormLoading(true)
+    setErro('')
+    getPokemon(id)
+      .then((full) => {
+        setFormFromPokemon(full)
+        setModal('editar')
+      })
+      .catch((err) => setErro(err.message))
+      .finally(() => setFormLoading(false))
+  }
+
   const handleBuscarCatalogo = () => {
     setCatalogoOffset(0)
     loadCatalogo(0, catalogoBusca)
@@ -115,7 +166,7 @@ export default function PokemonList() {
         tipoSecundario: detail.tipoSecundario || '',
         imagemUrl: detail.imageUrl || '',
       }))
-      setModal('novo')
+      setModal('editar')
     } catch (err) {
       setCatalogoErro(err.message)
     }
@@ -135,19 +186,23 @@ export default function PokemonList() {
     })
   }
 
-  const handleCriar = async (e) => {
+  const handleSalvarEdicao = async (e) => {
     e.preventDefault()
+    if (!editingPokemonId) return
     setErro('')
     try {
-      await criarPokemon({
-        ...form,
+      await atualizarPokemon(editingPokemonId, {
+        especie: form.especie || undefined,
+        tipoPrimario: form.tipoPrimario || undefined,
         tipoSecundario: form.tipoSecundario || null,
+        pokedexId: form.pokedexId ?? 0,
+        apelido: form.apelido || null,
         imagemUrl: form.imagemUrl || null,
-        movimentoIds: form.movimentoIds?.length ? form.movimentoIds : null,
+        movimentoIds: form.movimentoIds?.length ? form.movimentoIds : [],
       })
       load()
       setModal(null)
-      setForm({ pokedexId: 1, especie: '', tipoPrimario: 'NORMAL', tipoSecundario: '', apelido: '', imagemUrl: '', genero: 'SEM_GENERO', pokebolaCaptura: 'POKEBALL', hpMaximo: 20, staminaMaxima: 10, movimentoIds: [] })
+      setEditingPokemonId(null)
     } catch (err) {
       setErro(err.message)
     }
@@ -176,14 +231,9 @@ export default function PokemonList() {
     <div className="container">
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem', flexWrap: 'wrap', gap: '0.5rem' }}>
         <h1 style={{ margin: 0 }}>Pokémon</h1>
-        <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap' }}>
-          <button type="button" className="btn btn-primary" onClick={() => setModal('novo')}>
-            Novo Pokémon
-          </button>
-          <button type="button" className="btn btn-secondary" onClick={handleAbrirCatalogo}>
-            Buscar na PokéAPI
-          </button>
-        </div>
+        <button type="button" className="btn btn-primary" onClick={handleNovoPokemon} disabled={formLoading}>
+          {formLoading ? 'Criando...' : 'Novo Pokémon'}
+        </button>
       </div>
       {erro && <p style={{ color: 'var(--danger)', marginBottom: '1rem' }}>{erro}</p>}
 
@@ -192,14 +242,29 @@ export default function PokemonList() {
         {timePrincipal.length === 0 ? (
           <p style={{ color: 'var(--text-muted)' }}>Nenhum Pokémon no time. Coloque da box abaixo.</p>
         ) : (
-          <div className="grid-2">
+          <div className="pokemon-cards">
             {timePrincipal.map((p) => (
-              <div key={p.id} style={{ border: '1px solid var(--border)', borderRadius: 8, padding: '1rem' }}>
-                <strong>{p.apelido || p.especie}</strong> — Nv. {p.nivel} ({p.tipoPrimario}{p.tipoSecundario ? ` / ${p.tipoSecundario}` : ''})
-                <div style={{ marginTop: '0.5rem' }}>
-                  <button type="button" className="btn btn-secondary" style={{ fontSize: '0.85rem' }} onClick={() => handleRemoverDoTime(p.id)}>
-                    Enviar para box
-                  </button>
+              <div key={p.id} className="pokemon-card">
+                <div className="pokemon-card-image">
+                  {p.imagemUrl ? (
+                    <img src={p.imagemUrl} alt={p.especie || 'Pokémon'} />
+                  ) : (
+                    <span className="pokemon-card-placeholder">?</span>
+                  )}
+                </div>
+                <div className="pokemon-card-info">
+                  <div className="pokemon-card-header">
+                    <strong>{p.especie || '???'}</strong>
+                    <span className="pokemon-card-pokedex">#{p.pokedexId}</span>
+                  </div>
+                  <p className="pokemon-card-apelido">{p.apelido || p.especie || '???'}</p>
+                  <p className="pokemon-card-nivel">Nv. {p.nivel}</p>
+                  <div className="pokemon-card-actions">
+                    <button type="button" className="btn btn-primary" style={{ fontSize: '0.85rem' }} onClick={() => handleEditar(p.id)}>Editar</button>
+                    <button type="button" className="btn btn-secondary" style={{ fontSize: '0.85rem' }} onClick={() => handleRemoverDoTime(p.id)}>
+                      Enviar para box
+                    </button>
+                  </div>
                 </div>
               </div>
             ))}
@@ -212,19 +277,34 @@ export default function PokemonList() {
         {naBox.length === 0 ? (
           <p style={{ color: 'var(--text-muted)' }}>Nenhum Pokémon na box.</p>
         ) : (
-          <div className="grid-2">
+          <div className="pokemon-cards pokemon-cards-box">
             {naBox.map((p) => (
-              <div key={p.id} style={{ border: '1px solid var(--border)', borderRadius: 8, padding: '1rem' }}>
-                <strong>{p.apelido || p.especie}</strong> — Nv. {p.nivel}
-                <div style={{ marginTop: '0.5rem', display: 'flex', gap: '0.5rem', flexWrap: 'wrap' }}>
-                  {timePrincipal.length < 6 && (
-                    <button type="button" className="btn btn-primary" style={{ fontSize: '0.85rem' }} onClick={() => handleColocarNoTime(p.id, timePrincipal.length + 1)}>
-                      Colocar no time
-                    </button>
+              <div key={p.id} className="pokemon-card">
+                <div className="pokemon-card-image">
+                  {p.imagemUrl ? (
+                    <img src={p.imagemUrl} alt={p.especie || 'Pokémon'} />
+                  ) : (
+                    <span className="pokemon-card-placeholder">?</span>
                   )}
-                  <button type="button" className="btn btn-danger" style={{ fontSize: '0.85rem' }} onClick={() => handleExcluir(p.id)}>
-                    Excluir
-                  </button>
+                </div>
+                <div className="pokemon-card-info">
+                  <div className="pokemon-card-header">
+                    <strong>{p.especie || '???'}</strong>
+                    <span className="pokemon-card-pokedex">#{p.pokedexId}</span>
+                  </div>
+                  <p className="pokemon-card-apelido">{p.apelido || p.especie || '???'}</p>
+                  <p className="pokemon-card-nivel">Nv. {p.nivel}</p>
+                  <div className="pokemon-card-actions">
+                    <button type="button" className="btn btn-primary" style={{ fontSize: '0.85rem' }} onClick={() => handleEditar(p.id)}>Editar</button>
+                    {timePrincipal.length < 6 && (
+                      <button type="button" className="btn btn-secondary" style={{ fontSize: '0.85rem' }} onClick={() => handleColocarNoTime(p.id, timePrincipal.length + 1)}>
+                        Colocar no time
+                      </button>
+                    )}
+                    <button type="button" className="btn btn-danger" style={{ fontSize: '0.85rem' }} onClick={() => handleExcluir(p.id)}>
+                      Excluir
+                    </button>
+                  </div>
                 </div>
               </div>
             ))}
@@ -236,7 +316,7 @@ export default function PokemonList() {
         <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.7)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 10, padding: '1rem' }}>
           <div className="card" style={{ maxWidth: 560, width: '100%', maxHeight: '90vh', overflow: 'auto' }}>
             <h3 style={{ marginTop: 0 }}>Catálogo PokéAPI</h3>
-            <p style={{ color: 'var(--text-muted)', fontSize: '0.9rem', marginBottom: '0.75rem' }}>Busque por nome ou número da Pokédex. Clique em um Pokémon para preencher o formulário.</p>
+            <p style={{ color: 'var(--text-muted)', fontSize: '0.9rem', marginBottom: '0.75rem' }}>Busque por nome ou número da Pokédex. Clique em um para preencher o formulário de edição.</p>
             <div style={{ display: 'flex', gap: '0.5rem', marginBottom: '1rem', flexWrap: 'wrap' }}>
               <input
                 type="text"
@@ -295,7 +375,7 @@ export default function PokemonList() {
                   <button type="button" className="btn btn-secondary" disabled={catalogoLista.length < PAGE_SIZE} onClick={() => { const o = catalogoOffset + PAGE_SIZE; setCatalogoOffset(o); loadCatalogo(o, catalogoBusca); }}>
                     Próxima
                   </button>
-                  <button type="button" className="btn btn-primary" onClick={() => { setModal(null); setCatalogoErro(''); }}>
+                  <button type="button" className="btn btn-primary" onClick={() => { setModal(editingPokemonId ? 'editar' : null); setCatalogoErro(''); }}>
                     Fechar
                   </button>
                 </div>
@@ -305,14 +385,19 @@ export default function PokemonList() {
         </div>
       )}
 
-      {modal === 'novo' && (
+      {modal === 'editar' && (
         <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.7)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 10, padding: '1rem' }}>
           <div className="card" style={{ maxWidth: 420, width: '100%', maxHeight: '90vh', overflow: 'auto' }}>
-            <h3 style={{ marginTop: 0 }}>Novo Pokémon</h3>
-            <form onSubmit={handleCriar}>
+            <h3 style={{ marginTop: 0 }}>Editar Pokémon</h3>
+            <div style={{ display: 'flex', gap: '0.5rem', marginBottom: '1rem' }}>
+              <button type="button" className="btn btn-secondary" onClick={handleAbrirCatalogo}>
+                Buscar na PokéAPI
+              </button>
+            </div>
+            <form onSubmit={handleSalvarEdicao}>
               <div className="form-group">
-                <label>Pokedex ID</label>
-                <input type="number" min={1} value={form.pokedexId} onChange={(e) => setForm((f) => ({ ...f, pokedexId: parseInt(e.target.value, 10) || 1 }))} />
+                <label>Pokedex ID (0 = custom)</label>
+                <input type="number" min={0} value={form.pokedexId} onChange={(e) => setForm((f) => ({ ...f, pokedexId: parseInt(e.target.value, 10) || 0 }))} />
               </div>
               <div className="form-group">
                 <label>Espécie *</label>
@@ -385,8 +470,8 @@ export default function PokemonList() {
               </div>
               {erro && <p style={{ color: 'var(--danger)', fontSize: '0.9rem' }}>{erro}</p>}
               <div style={{ display: 'flex', gap: '0.5rem', marginTop: '1rem' }}>
-                <button type="submit" className="btn btn-primary">Criar</button>
-                <button type="button" className="btn btn-secondary" onClick={() => { setModal(null); setErro(''); }}>Cancelar</button>
+                <button type="submit" className="btn btn-primary">Salvar</button>
+                <button type="button" className="btn btn-secondary" onClick={() => { setModal(null); setEditingPokemonId(null); setErro(''); }}>Cancelar</button>
               </div>
             </form>
           </div>

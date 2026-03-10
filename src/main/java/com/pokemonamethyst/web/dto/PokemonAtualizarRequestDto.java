@@ -2,16 +2,21 @@ package com.pokemonamethyst.web.dto;
 
 import com.pokemonamethyst.domain.*;
 
+import jakarta.validation.constraints.Size;
+
 import java.util.List;
 
 public class PokemonAtualizarRequestDto {
 
+    private String especie;
+    private Tipagem tipoPrimario;
+    private Tipagem tipoSecundario;
+    private Integer pokedexId;
     private String apelido;
     private String imagemUrl;
     private String notas;
     private Genero genero;
     private Boolean shiny;
-    private Tipagem tipoSecundario;
     private Personalidade personalidade;
     private Especializacao especializacao;
     private String berryFavorita;
@@ -33,6 +38,19 @@ public class PokemonAtualizarRequestDto {
     private Integer respeito;
     private List<CondicaoStatus> statusAtuais;
 
+    @Size(max = 8, message = "Máximo de 8 ataques")
+    private List<String> movimentoIds;
+
+    public String getEspecie() { return especie; }
+    public void setEspecie(String especie) { this.especie = especie; }
+    public Tipagem getTipoPrimario() { return tipoPrimario; }
+    public void setTipoPrimario(Tipagem tipoPrimario) { this.tipoPrimario = tipoPrimario; }
+    public Tipagem getTipoSecundario() { return tipoSecundario; }
+    public void setTipoSecundario(Tipagem tipoSecundario) { this.tipoSecundario = tipoSecundario; }
+    public Integer getPokedexId() { return pokedexId; }
+    public void setPokedexId(Integer pokedexId) { this.pokedexId = pokedexId; }
+    public List<String> getMovimentoIds() { return movimentoIds; }
+    public void setMovimentoIds(List<String> movimentoIds) { this.movimentoIds = movimentoIds; }
     public String getApelido() { return apelido; }
     public void setApelido(String apelido) { this.apelido = apelido; }
     public String getImagemUrl() { return imagemUrl; }
@@ -43,8 +61,6 @@ public class PokemonAtualizarRequestDto {
     public void setGenero(Genero genero) { this.genero = genero; }
     public Boolean getShiny() { return shiny; }
     public void setShiny(Boolean shiny) { this.shiny = shiny; }
-    public Tipagem getTipoSecundario() { return tipoSecundario; }
-    public void setTipoSecundario(Tipagem tipoSecundario) { this.tipoSecundario = tipoSecundario; }
     public Personalidade getPersonalidade() { return personalidade; }
     public void setPersonalidade(Personalidade personalidade) { this.personalidade = personalidade; }
     public Especializacao getEspecializacao() { return especializacao; }

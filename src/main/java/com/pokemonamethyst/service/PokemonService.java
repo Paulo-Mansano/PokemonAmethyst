@@ -48,8 +48,41 @@ public class PokemonService {
                 .orElseThrow(() -> new RecursoNaoEncontradoException("Pokémon não encontrado."));
     }
 
+    /**
+     * Cria um Pokémon vazio (espécie "???", tipo NORMAL, pokedexId 0) e coloca no time se houver vaga, senão na box.
+     */
     @Transactional
-    public Pokemon criar(String perfilId, int pokedexId, String especie, Tipagem tipoPrimario,
+    public Pokemon criarVazio(String perfilId) {
+        PerfilJogador perfil = perfilRepository.findById(perfilId)
+                .orElseThrow(() -> new RecursoNaoEncontradoException("Perfil não encontrado."));
+        int noTime = pokemonRepository.countTimePrincipalByPerfilId(perfilId);
+        Pokemon pokemon = new Pokemon();
+        pokemon.setPerfil(perfil);
+        pokemon.setPokedexId(0);
+        pokemon.setEspecie("???");
+        pokemon.setTipoPrimario(Tipagem.NORMAL);
+        pokemon.setTipoSecundario(null);
+        pokemon.setGenero(Genero.SEM_GENERO);
+        pokemon.setPokebolaCaptura(Pokebola.POKEBALL);
+        pokemon.setHpMaximo(20);
+        pokemon.setHpAtual(20);
+        pokemon.setStaminaMaxima(10);
+        pokemon.setStaminaAtual(10);
+        pokemon.setNivel(1);
+        pokemon.setXpAtual(0);
+        if (noTime < MAX_POKEMONS_NO_TIME) {
+            pokemon.setOrdemTime(noTime + 1);
+        } else {
+            pokemon.setOrdemTime(null);
+        }
+        Pokemon salvo = pokemonRepository.save(pokemon);
+        perfil.getPokemons().add(salvo);
+        perfilRepository.save(perfil);
+        return salvo;
+    }
+
+    @Transactional
+    public Pokemon criar(String perfilId, Integer pokedexId, String especie, Tipagem tipoPrimario,
                          String apelido, Tipagem tipoSecundario, Genero genero, Pokebola pokebolaCaptura,
                          int hpMaximo, int staminaMaxima, String imagemUrl, List<String> movimentoIds) {
         PerfilJogador perfil = perfilRepository.findById(perfilId)
@@ -59,10 +92,11 @@ public class PokemonService {
             throw new RegraNegocioException("Máximo de " + MAX_MOVIMENTOS_POR_POKEMON + " ataques por Pokémon.");
         }
 
+        int pokedexIdVal = (pokedexId != null && pokedexId >= 0) ? pokedexId : 0;
         Pokemon pokemon = new Pokemon();
         pokemon.setPerfil(perfil);
         pokemon.setOrdemTime(null);
-        pokemon.setPokedexId(pokedexId);
+        pokemon.setPokedexId(pokedexIdVal);
         pokemon.setEspecie(especie);
         pokemon.setTipoPrimario(tipoPrimario);
         pokemon.setTipoSecundario(tipoSecundario);
@@ -96,20 +130,25 @@ public class PokemonService {
     }
 
     @Transactional
-    public Pokemon atualizar(String pokemonId, String perfilId, String apelido, String imagemUrl, String notas,
-                            Genero genero, Boolean isShiny, Tipagem tipoSecundario, Personalidade personalidade,
+    public Pokemon atualizar(String pokemonId, String perfilId, String especie, Tipagem tipoPrimario, Tipagem tipoSecundario,
+                            Integer pokedexId, String apelido, String imagemUrl, String notas,
+                            Genero genero, Boolean isShiny, Personalidade personalidade,
                             Especializacao especializacao, String berryFavorita, Integer nivelDeVinculo,
                             Integer nivel, Integer xpAtual, Pokebola pokebolaCaptura, String itemSeguradoId,
                             Integer hpAtual, Integer hpTemporario, Integer staminaAtual, Integer staminaTemporaria,
                             Integer ataque, Integer ataqueEspecial, Integer defesa, Integer defesaEspecial,
-                            Integer speed, Integer tecnica, Integer respeito, List<CondicaoStatus> statusAtuais) {
+                            Integer speed, Integer tecnica, Integer respeito, List<CondicaoStatus> statusAtuais,
+                            List<String> movimentoIds) {
         Pokemon pokemon = buscarPorIdEPerfil(pokemonId, perfilId);
+        if (especie != null && !especie.isBlank()) pokemon.setEspecie(especie);
+        if (tipoPrimario != null) pokemon.setTipoPrimario(tipoPrimario);
+        if (tipoSecundario != null) pokemon.setTipoSecundario(tipoSecundario);
+        if (pokedexId != null && pokedexId >= 0) pokemon.setPokedexId(pokedexId);
         if (apelido != null) pokemon.setApelido(apelido);
         if (imagemUrl != null) pokemon.setImagemUrl(imagemUrl);
         if (notas != null) pokemon.setNotas(notas);
         if (genero != null) pokemon.setGenero(genero);
         if (isShiny != null) pokemon.setShiny(isShiny);
-        if (tipoSecundario != null) pokemon.setTipoSecundario(tipoSecundario);
         if (personalidade != null) pokemon.setPersonalidade(personalidade);
         if (especializacao != null) pokemon.setEspecializacao(especializacao);
         if (berryFavorita != null) pokemon.setBerryFavorita(berryFavorita);
@@ -137,6 +176,19 @@ public class PokemonService {
         if (tecnica != null) pokemon.setTecnica(tecnica);
         if (respeito != null) pokemon.setRespeito(respeito);
         if (statusAtuais != null) pokemon.setStatusAtuais(statusAtuais);
+        if (movimentoIds != null) {
+            if (movimentoIds.size() > MAX_MOVIMENTOS_POR_POKEMON) {
+                throw new RegraNegocioException("Máximo de " + MAX_MOVIMENTOS_POR_POKEMON + " ataques por Pokémon.");
+            }
+            List<Movimento> movimentos = new ArrayList<>();
+            for (String id : movimentoIds) {
+                Movimento m = movimentoRepository.findById(id)
+                        .orElseThrow(() -> new RecursoNaoEncontradoException("Movimento não encontrado: " + id));
+                movimentos.add(m);
+            }
+            pokemon.getMovimentosConhecidos().clear();
+            pokemon.getMovimentosConhecidos().addAll(movimentos);
+        }
         return pokemonRepository.save(pokemon);
     }
 

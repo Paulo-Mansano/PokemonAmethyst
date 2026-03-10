@@ -20,7 +20,7 @@ public class Movimento {
     private Tipagem tipo;
 
     @Enumerated(EnumType.STRING)
-    @Column(nullable = false)
+    @Column(nullable = true)
     private CategoriaMovimento categoria;
 
     private int custoStamina;

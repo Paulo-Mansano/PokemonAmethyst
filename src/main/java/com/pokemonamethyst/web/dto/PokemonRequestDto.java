@@ -11,7 +11,7 @@ import java.util.List;
 
 public class PokemonRequestDto {
 
-    @NotNull @Min(1)
+    @Min(0)
     private Integer pokedexId;
 
     @NotBlank(message = "Espécie é obrigatória")

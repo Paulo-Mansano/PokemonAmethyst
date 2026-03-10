@@ -42,6 +42,14 @@ public class PokemonController {
         return ResponseEntity.ok(lista.stream().map(PokemonResponseDto::from).toList());
     }
 
+    @PostMapping("/vazio")
+    @Transactional
+    public ResponseEntity<PokemonResponseDto> criarVazio(@AuthenticationPrincipal UsuarioPrincipal principal) {
+        String perfilId = perfilId(principal);
+        Pokemon pokemon = pokemonService.criarVazio(perfilId);
+        return ResponseEntity.status(HttpStatus.CREATED).body(PokemonResponseDto.from(pokemon));
+    }
+
     @PostMapping
     @Transactional
     public ResponseEntity<PokemonResponseDto> criar(
@@ -84,13 +92,15 @@ public class PokemonController {
         String perfilId = perfilId(principal);
         Pokemon pokemon = pokemonService.atualizar(
                 id, perfilId,
+                dto.getEspecie(), dto.getTipoPrimario(), dto.getTipoSecundario(), dto.getPokedexId(),
                 dto.getApelido(), dto.getImagemUrl(), dto.getNotas(),
-                dto.getGenero(), dto.getShiny(), dto.getTipoSecundario(), dto.getPersonalidade(),
+                dto.getGenero(), dto.getShiny(), dto.getPersonalidade(),
                 dto.getEspecializacao(), dto.getBerryFavorita(), dto.getNivelDeVinculo(),
                 dto.getNivel(), dto.getXpAtual(), dto.getPokebolaCaptura(), dto.getItemSeguradoId(),
                 dto.getHpAtual(), dto.getHpTemporario(), dto.getStaminaAtual(), dto.getStaminaTemporaria(),
                 dto.getAtaque(), dto.getAtaqueEspecial(), dto.getDefesa(), dto.getDefesaEspecial(),
-                dto.getSpeed(), dto.getTecnica(), dto.getRespeito(), dto.getStatusAtuais()
+                dto.getSpeed(), dto.getTecnica(), dto.getRespeito(), dto.getStatusAtuais(),
+                dto.getMovimentoIds()
         );
         return ResponseEntity.ok(PokemonResponseDto.from(pokemon));
     }

@@ -257,6 +257,6 @@ public class PokeApiService {
             String name = (String) ((Map<String, Object>) dc).get("name");
             if (name != null && DAMAGE_CLASS_MAP.containsKey(name)) return DAMAGE_CLASS_MAP.get(name);
         }
-        return CategoriaMovimento.STATUS;
+        return null;
     }
 }

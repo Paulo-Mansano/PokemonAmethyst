@@ -81,6 +81,16 @@ export async function getPokemons() {
   return res.json();
 }
 
+export async function criarPokemonVazio() {
+  const res = await request('/perfis/meu/pokemons/vazio', { method: 'POST' });
+  if (!res.ok) {
+    if (res.status === 404) throw new Error(MSG_SEM_PERFIL);
+    const data = await res.json().catch(() => ({}));
+    throw new Error(data.mensagem || 'Erro ao criar Pokémon');
+  }
+  return res.json();
+}
+
 export async function criarPokemon(body) {
   const res = await request('/perfis/meu/pokemons', {
     method: 'POST',
@@ -90,6 +100,15 @@ export async function criarPokemon(body) {
     if (res.status === 404) throw new Error(MSG_SEM_PERFIL);
     const data = await res.json().catch(() => ({}));
     throw new Error(data.mensagem || 'Erro ao criar Pokémon');
+  }
+  return res.json();
+}
+
+export async function getPokemon(id) {
+  const res = await request(`/perfis/meu/pokemons/${id}`);
+  if (!res.ok) {
+    if (res.status === 404) throw new Error(MSG_SEM_PERFIL);
+    throw new Error('Erro ao carregar Pokémon');
   }
   return res.json();
 }
