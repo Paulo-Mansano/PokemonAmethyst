@@ -1,29 +1,32 @@
 package com.pokemonamethyst.web.dto;
 
-import com.pokemonamethyst.domain.Item;
+public class PokeApiItemBuscaResponseDto {
 
-public class ItemResponseDto {
-
-    private String id;
+    private int pokeapiId;
     private String nome;
     private String nomeEn;
     private String descricao;
     private double peso;
     private int preco;
-    private String imagemUrl;
+    private boolean jaCadastrado;
+    private String itemId;
 
-    public ItemResponseDto() {}
-    public ItemResponseDto(String id, String nome, String nomeEn, String descricao, double peso, int preco, String imagemUrl) {
-        this.id = id;
+    public PokeApiItemBuscaResponseDto() {}
+
+    public PokeApiItemBuscaResponseDto(int pokeapiId, String nome, String nomeEn, String descricao,
+                                       double peso, int preco, boolean jaCadastrado, String itemId) {
+        this.pokeapiId = pokeapiId;
         this.nome = nome;
         this.nomeEn = nomeEn;
         this.descricao = descricao;
         this.peso = peso;
         this.preco = preco;
-        this.imagemUrl = imagemUrl;
+        this.jaCadastrado = jaCadastrado;
+        this.itemId = itemId;
     }
-    public String getId() { return id; }
-    public void setId(String id) { this.id = id; }
+
+    public int getPokeapiId() { return pokeapiId; }
+    public void setPokeapiId(int pokeapiId) { this.pokeapiId = pokeapiId; }
     public String getNome() { return nome; }
     public void setNome(String nome) { this.nome = nome; }
     public String getNomeEn() { return nomeEn; }
@@ -34,11 +37,8 @@ public class ItemResponseDto {
     public void setPeso(double peso) { this.peso = peso; }
     public int getPreco() { return preco; }
     public void setPreco(int preco) { this.preco = preco; }
-    public String getImagemUrl() { return imagemUrl; }
-    public void setImagemUrl(String imagemUrl) { this.imagemUrl = imagemUrl; }
-
-    public static ItemResponseDto from(Item i) {
-        if (i == null) return null;
-        return new ItemResponseDto(i.getId(), i.getNome(), i.getNomeEn(), i.getDescricao(), i.getPeso(), i.getPreco(), i.getImagemUrl());
-    }
+    public boolean isJaCadastrado() { return jaCadastrado; }
+    public void setJaCadastrado(boolean jaCadastrado) { this.jaCadastrado = jaCadastrado; }
+    public String getItemId() { return itemId; }
+    public void setItemId(String itemId) { this.itemId = itemId; }
 }

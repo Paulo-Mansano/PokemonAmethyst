@@ -195,6 +195,62 @@ export async function getMovimentos() {
   return res.json();
 }
 
+export async function listarItensPokeApi(q) {
+  if (!q || !String(q).trim()) return []
+  const params = new URLSearchParams({ q: String(q).trim() })
+  const res = await request(`/mestre/pokeapi/itens/listar?${params.toString()}`)
+  if (!res.ok) {
+    const data = await res.json().catch(() => ({}))
+    throw new Error(data.mensagem || 'Erro ao buscar itens na PokéAPI')
+  }
+  return res.json()
+}
+
+export async function importarItemPokeApi(idOuNome) {
+  const res = await request('/mestre/pokeapi/importar-item', {
+    method: 'POST',
+    body: JSON.stringify({ idOuNome: String(idOuNome).trim() }),
+  });
+  if (!res.ok) {
+    const data = await res.json().catch(() => ({}));
+    throw new Error(data.mensagem || 'Erro ao importar item da PokéAPI');
+  }
+  return res.json();
+}
+
+export async function criarItem(body) {
+  const res = await request('/mestre/itens', {
+    method: 'POST',
+    body: JSON.stringify(body),
+  });
+  if (!res.ok) {
+    const data = await res.json().catch(() => ({}));
+    throw new Error(data.mensagem || 'Erro ao criar item');
+  }
+  return res.json();
+}
+
+export async function atualizarItem(id, body) {
+  const res = await request(`/mestre/itens/${encodeURIComponent(id)}`, {
+    method: 'PUT',
+    body: JSON.stringify(body),
+  });
+  if (!res.ok) {
+    const data = await res.json().catch(() => ({}));
+    throw new Error(data.mensagem || 'Erro ao atualizar item');
+  }
+  return res.json();
+}
+
+export async function atualizarImagensItens() {
+  const res = await request('/mestre/pokeapi/atualizar-imagens-itens', { method: 'POST' });
+  if (!res.ok) {
+    const data = await res.json().catch(() => ({}));
+    throw new Error(data.mensagem || 'Erro ao atualizar imagens');
+  }
+  return res.json();
+}
+
 export async function getPokeApiList(limit = 20, offset = 0, nome = '', pokedexId = null) {
   const params = new URLSearchParams({ limit: String(limit), offset: String(offset) })
   if (nome && nome.trim()) params.set('nome', nome.trim())

@@ -112,16 +112,46 @@ export default function Mochila() {
         {!mochila?.itens?.length ? (
           <p style={{ color: 'var(--text-muted)' }}>Nenhum item. Adicione itens pelo formulário acima (é necessário ter itens no catálogo).</p>
         ) : (
-          <ul style={{ listStyle: 'none', padding: 0, margin: 0 }}>
-            {mochila.itens.map((mi) => (
-              <li key={mi.itemId} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '0.5rem 0', borderBottom: '1px solid var(--border)' }}>
-                <span><strong>{mi.itemNome}</strong> × {mi.quantidade} ({(mi.pesoUnitario * mi.quantidade).toFixed(1)} kg)</span>
-                <button type="button" className="btn btn-secondary" style={{ fontSize: '0.85rem' }} onClick={() => handleRemover(mi.itemId, 1)}>
-                  Remover 1
-                </button>
-              </li>
-            ))}
-          </ul>
+          <div style={{ overflowX: 'auto' }}>
+            <table className="table">
+              <thead>
+                <tr>
+                  <th style={{ width: 56 }}></th>
+                  <th>Nome (PT)</th>
+                  <th>Nome (EN)</th>
+                  <th>Descrição</th>
+                  <th>Peso</th>
+                  <th>Preço</th>
+                  <th>Qtd</th>
+                  <th style={{ width: 90 }}></th>
+                </tr>
+              </thead>
+              <tbody>
+                {mochila.itens.map((mi) => (
+                  <tr key={mi.itemId}>
+                    <td>
+                      {mi.imagemUrl ? (
+                        <img src={mi.imagemUrl} alt="" style={{ width: 40, height: 40, objectFit: 'contain' }} />
+                      ) : (
+                        <span style={{ width: 40, height: 40, display: 'inline-block', background: 'var(--border)', borderRadius: 4 }} title="Sem imagem" />
+                      )}
+                    </td>
+                    <td>{mi.itemNome}</td>
+                    <td>{mi.itemNomeEn || '—'}</td>
+                    <td style={{ maxWidth: 400 }}>{mi.descricao || '—'}</td>
+                    <td>{mi.pesoUnitario}</td>
+                    <td>{mi.preco}</td>
+                    <td>{mi.quantidade}</td>
+                    <td>
+                      <button type="button" className="btn btn-secondary" style={{ fontSize: '0.85rem' }} onClick={() => handleRemover(mi.itemId, 1)}>
+                        Remover 1
+                      </button>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
         )}
       </div>
     </div>

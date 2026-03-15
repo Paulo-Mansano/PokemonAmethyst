@@ -28,6 +28,11 @@ export default function Layout({ user, onLogout }) {
           <NavLink to="/mochila" style={({ isActive }) => ({ color: isActive ? 'var(--accent)' : 'var(--text)', fontWeight: isActive ? 700 : 400 })}>
             Mochila
           </NavLink>
+          {user?.mestre && (
+            <NavLink to="/itens" style={({ isActive }) => ({ color: isActive ? 'var(--accent)' : 'var(--text)', fontWeight: isActive ? 700 : 400 })}>
+              Itens
+            </NavLink>
+          )}
         </nav>
         <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
           <span style={{ color: 'var(--text-muted)', fontSize: '0.9rem' }}>Treinador: {user?.nomeUsuario}</span>

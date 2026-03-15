@@ -5,6 +5,7 @@ import Login from './pages/Login'
 import Perfil from './pages/Perfil'
 import PokemonList from './pages/PokemonList'
 import Mochila from './pages/Mochila'
+import ItensCatalogo from './pages/ItensCatalogo'
 import { getUsuario } from './api'
 
 export default function App() {
@@ -33,6 +34,7 @@ export default function App() {
         <Route index element={<Perfil user={user} />} />
         <Route path="pokemons" element={<PokemonList />} />
         <Route path="mochila" element={<Mochila />} />
+        <Route path="itens" element={<ItensCatalogo />} />
       </Route>
       <Route path="*" element={<Navigate to={user ? '/' : '/login'} replace />} />
     </Routes>

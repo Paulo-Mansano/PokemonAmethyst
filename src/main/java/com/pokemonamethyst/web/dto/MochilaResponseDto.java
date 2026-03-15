@@ -16,24 +16,41 @@ public class MochilaResponseDto {
     public static class MochilaItemDto {
         private String itemId;
         private String itemNome;
-        private int quantidade;
+        private String itemNomeEn;
+        private String descricao;
         private double pesoUnitario;
+        private int preco;
+        private String imagemUrl;
+        private int quantidade;
 
         public MochilaItemDto() {}
-        public MochilaItemDto(String itemId, String itemNome, int quantidade, double pesoUnitario) {
+        public MochilaItemDto(String itemId, String itemNome, String itemNomeEn, String descricao,
+                              double pesoUnitario, int preco, String imagemUrl, int quantidade) {
             this.itemId = itemId;
             this.itemNome = itemNome;
-            this.quantidade = quantidade;
+            this.itemNomeEn = itemNomeEn;
+            this.descricao = descricao;
             this.pesoUnitario = pesoUnitario;
+            this.preco = preco;
+            this.imagemUrl = imagemUrl;
+            this.quantidade = quantidade;
         }
         public String getItemId() { return itemId; }
         public void setItemId(String itemId) { this.itemId = itemId; }
         public String getItemNome() { return itemNome; }
         public void setItemNome(String itemNome) { this.itemNome = itemNome; }
-        public int getQuantidade() { return quantidade; }
-        public void setQuantidade(int quantidade) { this.quantidade = quantidade; }
+        public String getItemNomeEn() { return itemNomeEn; }
+        public void setItemNomeEn(String itemNomeEn) { this.itemNomeEn = itemNomeEn; }
+        public String getDescricao() { return descricao; }
+        public void setDescricao(String descricao) { this.descricao = descricao; }
         public double getPesoUnitario() { return pesoUnitario; }
         public void setPesoUnitario(double pesoUnitario) { this.pesoUnitario = pesoUnitario; }
+        public int getPreco() { return preco; }
+        public void setPreco(int preco) { this.preco = preco; }
+        public String getImagemUrl() { return imagemUrl; }
+        public void setImagemUrl(String imagemUrl) { this.imagemUrl = imagemUrl; }
+        public int getQuantidade() { return quantidade; }
+        public void setQuantidade(int quantidade) { this.quantidade = quantidade; }
     }
 
     public MochilaResponseDto() {}
@@ -61,8 +78,12 @@ public class MochilaResponseDto {
                 .map(mi -> new MochilaItemDto(
                         mi.getItem().getId(),
                         mi.getItem().getNome(),
-                        mi.getQuantidade(),
-                        mi.getItem().getPeso()
+                        mi.getItem().getNomeEn(),
+                        mi.getItem().getDescricao(),
+                        mi.getItem().getPeso(),
+                        mi.getItem().getPreco(),
+                        mi.getItem().getImagemUrl(),
+                        mi.getQuantidade()
                 ))
                 .collect(Collectors.toList());
         return new MochilaResponseDto(m.getId(), m.getPesoMaximo(), pesoAtual, itens);

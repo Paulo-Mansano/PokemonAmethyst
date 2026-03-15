@@ -58,16 +58,14 @@ public class MochilaService {
         MochilaItem existente = mochilaItemRepository.findByMochilaIdAndItemId(mochila.getId(), itemId).orElse(null);
         if (existente != null) {
             existente.setQuantidade(existente.getQuantidade() + quantidade);
-            mochilaItemRepository.save(existente);
         } else {
             MochilaItem novo = new MochilaItem();
             novo.setMochila(mochila);
             novo.setItem(item);
             novo.setQuantidade(quantidade);
-            mochilaItemRepository.save(novo);
             mochila.getConteudos().add(novo);
         }
-        return mochilaRepository.findByIdWithConteudos(mochila.getId()).orElse(mochila);
+        return mochila;
     }
 
     @Transactional
@@ -84,9 +82,6 @@ public class MochilaService {
         mi.setQuantidade(mi.getQuantidade() - quantidade);
         if (mi.getQuantidade() == 0) {
             mochila.getConteudos().remove(mi);
-            mochilaItemRepository.delete(mi);
-        } else {
-            mochilaItemRepository.save(mi);
         }
         return mochilaRepository.findByIdWithConteudos(mochila.getId()).orElse(mochila);
     }

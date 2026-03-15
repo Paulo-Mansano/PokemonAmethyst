@@ -1,15 +1,25 @@
 package com.pokemonamethyst.web.controller;
 
+import com.pokemonamethyst.domain.Item;
 import com.pokemonamethyst.domain.PerfilJogador;
 import com.pokemonamethyst.repository.PerfilJogadorRepository;
+import com.pokemonamethyst.service.CatalogoService;
 import com.pokemonamethyst.service.PokeApiService;
 import com.pokemonamethyst.service.PokemonService;
+import com.pokemonamethyst.web.dto.ItemAtualizarRequestDto;
+import com.pokemonamethyst.web.dto.ItemResponseDto;
 import com.pokemonamethyst.web.dto.PerfilJogadorResponseDto;
+import com.pokemonamethyst.web.dto.PokeApiItemBuscaResponseDto;
+import com.pokemonamethyst.web.dto.PokeApiItemResumoDto;
 import org.springframework.http.ResponseEntity;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.PutMapping;
+import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
 import java.util.List;
@@ -22,17 +32,89 @@ public class MestreController {
     private final PerfilJogadorRepository perfilRepository;
     private final PokemonService pokemonService;
     private final PokeApiService pokeApiService;
+    private final CatalogoService catalogoService;
 
-    public MestreController(PerfilJogadorRepository perfilRepository, PokemonService pokemonService, PokeApiService pokeApiService) {
+    public MestreController(PerfilJogadorRepository perfilRepository, PokemonService pokemonService,
+                            PokeApiService pokeApiService, CatalogoService catalogoService) {
         this.perfilRepository = perfilRepository;
         this.pokemonService = pokemonService;
         this.pokeApiService = pokeApiService;
+        this.catalogoService = catalogoService;
     }
 
     @PostMapping("/pokeapi/importar-movimentos")
     public ResponseEntity<Map<String, Integer>> importarMovimentos() {
         int importados = pokeApiService.importarMovimentos();
         return ResponseEntity.ok(Map.of("importados", importados));
+    }
+
+    @PostMapping("/pokeapi/importar-itens")
+    public ResponseEntity<Map<String, Integer>> importarItens() {
+        int importados = pokeApiService.importarItens();
+        return ResponseEntity.ok(Map.of("importados", importados));
+    }
+
+    @GetMapping("/pokeapi/itens/listar")
+    public ResponseEntity<List<PokeApiItemResumoDto>> listarItensPokeApi(@RequestParam("q") String q) {
+        List<PokeApiItemResumoDto> lista = pokeApiService.listarItensPokeApiPorNome(q);
+        return ResponseEntity.ok(lista);
+    }
+
+    @GetMapping("/pokeapi/itens/buscar")
+    public ResponseEntity<PokeApiItemBuscaResponseDto> buscarItemPokeApi(
+            @RequestParam("idOuNome") String idOuNome) {
+        PokeApiItemBuscaResponseDto resultado = pokeApiService.buscarItemPokeApi(idOuNome);
+        return ResponseEntity.ok(resultado);
+    }
+
+    @PostMapping("/pokeapi/importar-item")
+    @Transactional
+    public ResponseEntity<ItemResponseDto> importarItemPokeApi(
+            @RequestBody Map<String, String> body) {
+        String idOuNome = body != null ? body.get("idOuNome") : null;
+        if (idOuNome == null || idOuNome.isBlank()) {
+            return ResponseEntity.badRequest().build();
+        }
+        Item item = pokeApiService.importarItemPorIdOuNome(idOuNome);
+        return ResponseEntity.ok(ItemResponseDto.from(item));
+    }
+
+    @PostMapping("/itens")
+    @Transactional
+    public ResponseEntity<ItemResponseDto> criarItem(@RequestBody ItemAtualizarRequestDto dto) {
+        Item item = catalogoService.criarItem(
+                dto.getNome(),
+                dto.getNomeEn(),
+                dto.getDescricao(),
+                dto.getPeso(),
+                dto.getPreco(),
+                dto.getImagemUrl()
+        );
+        return ResponseEntity.ok(ItemResponseDto.from(item));
+    }
+
+    @PutMapping("/itens/{id}")
+    @Transactional
+    public ResponseEntity<ItemResponseDto> atualizarItem(
+            @PathVariable String id,
+            @RequestBody ItemAtualizarRequestDto dto) {
+        Item item = catalogoService.atualizarItem(
+                id,
+                dto.getNome(),
+                dto.getNomeEn(),
+                dto.getDescricao(),
+                dto.getPeso(),
+                dto.getPreco(),
+                dto.getImagemUrl()
+        );
+        return ResponseEntity.ok(ItemResponseDto.from(item));
+    }
+
+    @PostMapping("/pokeapi/atualizar-imagens-itens")
+    @Transactional
+    public ResponseEntity<Map<String, Integer>> atualizarImagensItens() {
+        int atualizados = pokeApiService.atualizarImagensItensImportados();
+        return ResponseEntity.ok(Map.of("atualizados", atualizados));
     }
 
     @GetMapping("/jogadores")

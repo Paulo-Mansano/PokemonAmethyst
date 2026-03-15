@@ -1,0 +1,2 @@
+ALTER TABLE item
+    ADD COLUMN nome_en VARCHAR(255);

@@ -1,0 +1,2 @@
+ALTER TABLE item
+    ADD COLUMN imagem_url VARCHAR(512);

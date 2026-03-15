@@ -8,6 +8,7 @@ import com.pokemonamethyst.repository.HabilidadeRepository;
 import com.pokemonamethyst.repository.ItemRepository;
 import com.pokemonamethyst.repository.MovimentoRepository;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
 
@@ -50,5 +51,32 @@ public class CatalogoService {
     public Item buscarItem(String id) {
         return itemRepository.findById(id)
                 .orElseThrow(() -> new RecursoNaoEncontradoException("Item não encontrado."));
+    }
+
+    @Transactional
+    public Item criarItem(String nome, String nomeEn, String descricao, Double peso, Integer preco, String imagemUrl) {
+        if (nome == null || nome.isBlank()) {
+            throw new IllegalArgumentException("Nome do item é obrigatório.");
+        }
+        Item item = new Item();
+        item.setNome(nome.trim());
+        item.setNomeEn(nomeEn != null && !nomeEn.isBlank() ? nomeEn.trim() : null);
+        item.setDescricao(descricao != null && !descricao.isBlank() ? descricao.trim() : null);
+        item.setPeso(peso != null ? peso : 0);
+        item.setPreco(preco != null ? preco : 0);
+        item.setImagemUrl(imagemUrl != null && !imagemUrl.isBlank() ? imagemUrl.trim() : null);
+        return itemRepository.save(item);
+    }
+
+    @Transactional
+    public Item atualizarItem(String id, String nome, String nomeEn, String descricao, Double peso, Integer preco, String imagemUrl) {
+        Item item = buscarItem(id);
+        if (nome != null && !nome.isBlank()) item.setNome(nome);
+        if (nomeEn != null) item.setNomeEn(nomeEn.isBlank() ? null : nomeEn);
+        if (descricao != null) item.setDescricao(descricao);
+        if (peso != null) item.setPeso(peso);
+        if (preco != null) item.setPreco(preco);
+        if (imagemUrl != null) item.setImagemUrl(imagemUrl.isBlank() ? null : imagemUrl);
+        return itemRepository.save(item);
     }
 }

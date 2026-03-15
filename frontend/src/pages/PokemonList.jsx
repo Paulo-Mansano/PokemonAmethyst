@@ -37,6 +37,7 @@ export default function PokemonList() {
   const [catalogoOffset, setCatalogoOffset] = useState(0)
   const [catalogoErro, setCatalogoErro] = useState('')
   const [catalogoBusca, setCatalogoBusca] = useState('')
+  const [savingPokemon, setSavingPokemon] = useState(false)
 
   const load = () => {
     getMeuPerfil()
@@ -190,6 +191,7 @@ export default function PokemonList() {
     e.preventDefault()
     if (!editingPokemonId) return
     setErro('')
+    setSavingPokemon(true)
     try {
       await atualizarPokemon(editingPokemonId, {
         especie: form.especie || undefined,
@@ -200,11 +202,13 @@ export default function PokemonList() {
         imagemUrl: form.imagemUrl || null,
         movimentoIds: form.movimentoIds?.length ? form.movimentoIds : [],
       })
-      load()
+      await load()
       setModal(null)
       setEditingPokemonId(null)
     } catch (err) {
       setErro(err.message)
+    } finally {
+      setSavingPokemon(false)
     }
   }
 
@@ -470,7 +474,9 @@ export default function PokemonList() {
               </div>
               {erro && <p style={{ color: 'var(--danger)', fontSize: '0.9rem' }}>{erro}</p>}
               <div style={{ display: 'flex', gap: '0.5rem', marginTop: '1rem' }}>
-                <button type="submit" className="btn btn-primary">Salvar</button>
+                <button type="submit" className="btn btn-primary" disabled={savingPokemon}>
+                  {savingPokemon ? 'Salvando...' : 'Salvar'}
+                </button>
                 <button type="button" className="btn btn-secondary" onClick={() => { setModal(null); setEditingPokemonId(null); setErro(''); }}>Cancelar</button>
               </div>
             </form>
