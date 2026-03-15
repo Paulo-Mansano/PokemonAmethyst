@@ -47,7 +47,7 @@ public class SecurityConfig {
                 .securityContext(sec -> sec.securityContextRepository(securityContextRepository))
                 .authorizeHttpRequests(auth -> auth
                         .requestMatchers("/api/auth/**").permitAll()
-                        .requestMatchers(HttpMethod.GET, "/api/movimentos", "/api/habilidades", "/api/itens").permitAll()
+                        .requestMatchers(HttpMethod.GET, "/api/movimentos", "/api/habilidades", "/api/itens", "/api/personalidades").permitAll()
                         .requestMatchers("/api/mestre/**").hasAuthority("ROLE_MESTRE")
                         .requestMatchers("/api/**").authenticated()
                         .anyRequest().permitAll()

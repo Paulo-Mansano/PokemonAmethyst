@@ -31,6 +31,12 @@ public class Movimento {
     @Column(name = "descricao_efeito", columnDefinition = "TEXT")
     private String descricaoEfeito;
 
+    @Column(name = "pokeapi_id", unique = true)
+    private Integer pokeapiId;
+
+    @Column(name = "nome_en")
+    private String nomeEn;
+
     public String getId() { return id; }
     public void setId(String id) { this.id = id; }
     public String getNome() { return nome; }
@@ -45,4 +51,8 @@ public class Movimento {
     public void setDadoDeDano(String dadoDeDano) { this.dadoDeDano = dadoDeDano; }
     public String getDescricaoEfeito() { return descricaoEfeito; }
     public void setDescricaoEfeito(String descricaoEfeito) { this.descricaoEfeito = descricaoEfeito; }
+    public Integer getPokeapiId() { return pokeapiId; }
+    public void setPokeapiId(Integer pokeapiId) { this.pokeapiId = pokeapiId; }
+    public String getNomeEn() { return nomeEn; }
+    public void setNomeEn(String nomeEn) { this.nomeEn = nomeEn; }
 }

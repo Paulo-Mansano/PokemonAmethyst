@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react'
 import { Link } from 'react-router-dom'
-import { getMeuPerfil, criarPokemonVazio, getPokemon, atualizarPokemon, colocarNoTime, removerDoTime, excluirPokemon, getPokeApiList, getPokeApiPokemon, getMovimentos } from '../api'
+import { getMeuPerfil, criarPokemonVazio, getPokemon, atualizarPokemon, colocarNoTime, removerDoTime, excluirPokemon, getPokeApiList, getPokeApiPokemon, getMovimentos, getPersonalidades } from '../api'
 
 const PAGE_SIZE = 20
 function capitalize(str) {
@@ -26,12 +26,14 @@ export default function PokemonList() {
     apelido: '',
     imagemUrl: '',
     genero: 'SEM_GENERO',
+    personalidadeId: '',
     pokebolaCaptura: 'POKEBALL',
     hpMaximo: 20,
     staminaMaxima: 10,
     movimentoIds: [],
   })
   const [listaMovimentos, setListaMovimentos] = useState([])
+  const [listaPersonalidades, setListaPersonalidades] = useState([])
   const [catalogoLista, setCatalogoLista] = useState([])
   const [catalogoLoading, setCatalogoLoading] = useState(false)
   const [catalogoOffset, setCatalogoOffset] = useState(0)
@@ -49,7 +51,10 @@ export default function PokemonList() {
   useEffect(() => load(), [])
 
   useEffect(() => {
-    if (modal === 'editar') carregarMovimentos()
+    if (modal === 'editar') {
+      carregarMovimentos()
+      getPersonalidades().then(setListaPersonalidades).catch(() => setListaPersonalidades([]))
+    }
   }, [modal])
 
   const setFormFromPokemon = (p) => {
@@ -62,6 +67,7 @@ export default function PokemonList() {
       apelido: p.apelido || '',
       imagemUrl: p.imagemUrl || '',
       genero: p.genero || 'SEM_GENERO',
+      personalidadeId: p.personalidadeId || '',
       pokebolaCaptura: p.pokebolaCaptura || 'POKEBALL',
       hpMaximo: p.hpMaximo ?? 20,
       staminaMaxima: p.staminaMaxima ?? 10,
@@ -200,6 +206,7 @@ export default function PokemonList() {
         pokedexId: form.pokedexId ?? 0,
         apelido: form.apelido || null,
         imagemUrl: form.imagemUrl || null,
+        personalidadeId: form.personalidadeId || null,
         movimentoIds: form.movimentoIds?.length ? form.movimentoIds : [],
       })
       await load()
@@ -436,6 +443,15 @@ export default function PokemonList() {
                   <option value="MACHO">Macho</option>
                   <option value="FEMEA">Fêmea</option>
                   <option value="SEM_GENERO">Sem gênero</option>
+                </select>
+              </div>
+              <div className="form-group">
+                <label>Personalidade</label>
+                <select value={form.personalidadeId} onChange={(e) => setForm((f) => ({ ...f, personalidadeId: e.target.value }))}>
+                  <option value="">—</option>
+                  {listaPersonalidades.map((p) => (
+                    <option key={p.id} value={p.id}>{p.nome}</option>
+                  ))}
                 </select>
               </div>
               <div className="form-group">

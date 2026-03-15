@@ -68,7 +68,8 @@ public class PokemonController {
                 dto.getHpMaximoOrDefault(),
                 dto.getStaminaMaximaOrDefault(),
                 dto.getImagemUrl(),
-                dto.getMovimentoIds()
+                dto.getMovimentoIds(),
+                dto.getPersonalidadeId()
         );
         return ResponseEntity.status(HttpStatus.CREATED).body(PokemonResponseDto.from(pokemon));
     }
@@ -94,7 +95,7 @@ public class PokemonController {
                 id, perfilId,
                 dto.getEspecie(), dto.getTipoPrimario(), dto.getTipoSecundario(), dto.getPokedexId(),
                 dto.getApelido(), dto.getImagemUrl(), dto.getNotas(),
-                dto.getGenero(), dto.getShiny(), dto.getPersonalidade(),
+                dto.getGenero(), dto.getShiny(), dto.getPersonalidadeId(),
                 dto.getEspecializacao(), dto.getBerryFavorita(), dto.getNivelDeVinculo(),
                 dto.getNivel(), dto.getXpAtual(), dto.getPokebolaCaptura(), dto.getItemSeguradoId(),
                 dto.getHpAtual(), dto.getHpTemporario(), dto.getStaminaAtual(), dto.getStaminaTemporaria(),

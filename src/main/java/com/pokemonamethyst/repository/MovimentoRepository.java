@@ -11,4 +11,6 @@ public interface MovimentoRepository extends JpaRepository<Movimento, String> {
     List<Movimento> findAllByOrderByNome();
 
     Optional<Movimento> findByNomeIgnoreCase(String nome);
+
+    Optional<Movimento> findByPokeapiId(Integer pokeapiId);
 }

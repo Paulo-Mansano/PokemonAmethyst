@@ -6,6 +6,7 @@ public class MovimentoResponseDto {
 
     private String id;
     private String nome;
+    private String nomeEn;
     private String tipo;
     private String categoria;
     private int custoStamina;
@@ -13,9 +14,10 @@ public class MovimentoResponseDto {
     private String descricaoEfeito;
 
     public MovimentoResponseDto() {}
-    public MovimentoResponseDto(String id, String nome, String tipo, String categoria, int custoStamina, String dadoDeDano, String descricaoEfeito) {
+    public MovimentoResponseDto(String id, String nome, String nomeEn, String tipo, String categoria, int custoStamina, String dadoDeDano, String descricaoEfeito) {
         this.id = id;
         this.nome = nome;
+        this.nomeEn = nomeEn;
         this.tipo = tipo;
         this.categoria = categoria;
         this.custoStamina = custoStamina;
@@ -37,11 +39,15 @@ public class MovimentoResponseDto {
     public String getDescricaoEfeito() { return descricaoEfeito; }
     public void setDescricaoEfeito(String descricaoEfeito) { this.descricaoEfeito = descricaoEfeito; }
 
+    public String getNomeEn() { return nomeEn; }
+    public void setNomeEn(String nomeEn) { this.nomeEn = nomeEn; }
+
     public static MovimentoResponseDto from(Movimento m) {
         if (m == null) return null;
         return new MovimentoResponseDto(
                 m.getId(),
                 m.getNome(),
+                m.getNomeEn(),
                 m.getTipo() != null ? m.getTipo().name() : null,
                 m.getCategoria() != null ? m.getCategoria().name() : null,
                 m.getCustoStamina(),

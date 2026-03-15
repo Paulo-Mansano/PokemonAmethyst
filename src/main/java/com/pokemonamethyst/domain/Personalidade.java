@@ -1,14 +1,25 @@
 package com.pokemonamethyst.domain;
 
-public enum Personalidade {
-    OUSADO,
-    MODESTO,
-    TIMIDO,
-    CALMO,
-    SERIO,
-    ALEGRE,
-    BRAVO,
-    RELAXADO,
-    IMPACIENTE,
-    DOCIL
+import jakarta.persistence.Column;
+import jakarta.persistence.Entity;
+import jakarta.persistence.Id;
+import jakarta.persistence.Table;
+
+import java.util.UUID;
+
+@Entity
+@Table(name = "personalidade")
+public class Personalidade {
+
+    @Id
+    @Column(name = "id", updatable = false, nullable = false)
+    private String id = UUID.randomUUID().toString();
+
+    @Column(nullable = false)
+    private String nome;
+
+    public String getId() { return id; }
+    public void setId(String id) { this.id = id; }
+    public String getNome() { return nome; }
+    public void setNome(String nome) { this.nome = nome; }
 }

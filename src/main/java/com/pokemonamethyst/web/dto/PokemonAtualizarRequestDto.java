@@ -17,7 +17,7 @@ public class PokemonAtualizarRequestDto {
     private String notas;
     private Genero genero;
     private Boolean shiny;
-    private Personalidade personalidade;
+    private String personalidadeId;
     private Especializacao especializacao;
     private String berryFavorita;
     private Integer nivelDeVinculo;
@@ -61,8 +61,8 @@ public class PokemonAtualizarRequestDto {
     public void setGenero(Genero genero) { this.genero = genero; }
     public Boolean getShiny() { return shiny; }
     public void setShiny(Boolean shiny) { this.shiny = shiny; }
-    public Personalidade getPersonalidade() { return personalidade; }
-    public void setPersonalidade(Personalidade personalidade) { this.personalidade = personalidade; }
+    public String getPersonalidadeId() { return personalidadeId; }
+    public void setPersonalidadeId(String personalidadeId) { this.personalidadeId = personalidadeId; }
     public Especializacao getEspecializacao() { return especializacao; }
     public void setEspecializacao(Especializacao especializacao) { this.especializacao = especializacao; }
     public String getBerryFavorita() { return berryFavorita; }

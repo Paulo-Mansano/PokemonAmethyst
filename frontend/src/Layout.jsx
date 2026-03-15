@@ -29,9 +29,20 @@ export default function Layout({ user, onLogout }) {
             Mochila
           </NavLink>
           {user?.mestre && (
-            <NavLink to="/itens" style={({ isActive }) => ({ color: isActive ? 'var(--accent)' : 'var(--text)', fontWeight: isActive ? 700 : 400 })}>
-              Itens
-            </NavLink>
+            <>
+              <NavLink to="/itens" style={({ isActive }) => ({ color: isActive ? 'var(--accent)' : 'var(--text)', fontWeight: isActive ? 700 : 400 })}>
+                Itens
+              </NavLink>
+              <NavLink to="/habilidades" style={({ isActive }) => ({ color: isActive ? 'var(--accent)' : 'var(--text)', fontWeight: isActive ? 700 : 400 })}>
+                Habilidades
+              </NavLink>
+              <NavLink to="/movimentos" style={({ isActive }) => ({ color: isActive ? 'var(--accent)' : 'var(--text)', fontWeight: isActive ? 700 : 400 })}>
+                Ataques/Movimentos
+              </NavLink>
+              <NavLink to="/personalidades" style={({ isActive }) => ({ color: isActive ? 'var(--accent)' : 'var(--text)', fontWeight: isActive ? 700 : 400 })}>
+                Personalidade
+              </NavLink>
+            </>
           )}
         </nav>
         <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>

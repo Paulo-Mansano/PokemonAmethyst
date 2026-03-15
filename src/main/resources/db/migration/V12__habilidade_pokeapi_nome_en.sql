@@ -1,0 +1,2 @@
+ALTER TABLE habilidade ADD COLUMN pokeapi_id INTEGER UNIQUE;
+ALTER TABLE habilidade ADD COLUMN nome_en VARCHAR(255);

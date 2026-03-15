@@ -195,6 +195,108 @@ export async function getMovimentos() {
   return res.json();
 }
 
+export async function getHabilidades() {
+  const res = await request('/habilidades');
+  if (!res.ok) throw new Error('Erro ao carregar habilidades');
+  return res.json();
+}
+
+export async function importarHabilidadesPokeApi() {
+  const res = await request('/mestre/pokeapi/importar-habilidades', { method: 'POST' });
+  if (!res.ok) {
+    const data = await res.json().catch(() => ({}));
+    throw new Error(data.mensagem || 'Erro ao importar habilidades');
+  }
+  return res.json();
+}
+
+export async function criarHabilidade(body) {
+  const res = await request('/mestre/habilidades', {
+    method: 'POST',
+    body: JSON.stringify(body),
+  });
+  if (!res.ok) {
+    const data = await res.json().catch(() => ({}));
+    throw new Error(data.mensagem || 'Erro ao criar habilidade');
+  }
+  return res.json();
+}
+
+export async function atualizarHabilidade(id, body) {
+  const res = await request(`/mestre/habilidades/${encodeURIComponent(id)}`, {
+    method: 'PUT',
+    body: JSON.stringify(body),
+  });
+  if (!res.ok) {
+    const data = await res.json().catch(() => ({}));
+    throw new Error(data.mensagem || 'Erro ao atualizar habilidade');
+  }
+  return res.json();
+}
+
+export async function importarMovimentosPokeApi() {
+  const res = await request('/mestre/pokeapi/importar-movimentos', { method: 'POST' });
+  if (!res.ok) {
+    const data = await res.json().catch(() => ({}));
+    throw new Error(data.mensagem || 'Erro ao importar movimentos');
+  }
+  return res.json();
+}
+
+export async function criarMovimento(body) {
+  const res = await request('/mestre/movimentos', {
+    method: 'POST',
+    body: JSON.stringify(body),
+  });
+  if (!res.ok) {
+    const data = await res.json().catch(() => ({}));
+    throw new Error(data.mensagem || 'Erro ao criar movimento');
+  }
+  return res.json();
+}
+
+export async function atualizarMovimento(id, body) {
+  const res = await request(`/mestre/movimentos/${encodeURIComponent(id)}`, {
+    method: 'PUT',
+    body: JSON.stringify(body),
+  });
+  if (!res.ok) {
+    const data = await res.json().catch(() => ({}));
+    throw new Error(data.mensagem || 'Erro ao atualizar movimento');
+  }
+  return res.json();
+}
+
+export async function getPersonalidades() {
+  const res = await request('/personalidades');
+  if (!res.ok) throw new Error('Erro ao carregar personalidades');
+  return res.json();
+}
+
+export async function criarPersonalidade(body) {
+  const res = await request('/mestre/personalidades', {
+    method: 'POST',
+    body: JSON.stringify(body),
+  });
+  if (!res.ok) {
+    const data = await res.json().catch(() => ({}));
+    throw new Error(data.mensagem || 'Erro ao criar personalidade');
+  }
+  return res.json();
+}
+
+export async function atualizarPersonalidade(id, body) {
+  const res = await request(`/mestre/personalidades/${encodeURIComponent(id)}`, {
+    method: 'PUT',
+    body: JSON.stringify(body),
+  });
+  if (!res.ok) {
+    const data = await res.json().catch(() => ({}));
+    throw new Error(data.mensagem || 'Erro ao atualizar personalidade');
+  }
+  return res.json();
+}
+
 export async function listarItensPokeApi(q) {
   if (!q || !String(q).trim()) return []
   const params = new URLSearchParams({ q: String(q).trim() })

@@ -20,6 +20,7 @@ public class PokemonResponseDto {
     private String tipoPrimario;
     private String tipoSecundario;
     private String personalidade;
+    private String personalidadeId;
     private String especializacao;
     private String berryFavorita;
     private int nivelDeVinculo;
@@ -96,7 +97,7 @@ public class PokemonResponseDto {
                 p.isShiny(),
                 p.getTipoPrimario() != null ? p.getTipoPrimario().name() : null,
                 p.getTipoSecundario() != null ? p.getTipoSecundario().name() : null,
-                p.getPersonalidade() != null ? p.getPersonalidade().name() : null,
+                p.getPersonalidade() != null ? p.getPersonalidade().getNome() : null,
                 p.getEspecializacao() != null ? p.getEspecializacao().name() : null,
                 p.getBerryFavorita() != null ? p.getBerryFavorita() : null,
                 p.getNivelDeVinculo(),
@@ -119,6 +120,7 @@ public class PokemonResponseDto {
                 p.getRespeito(),
                 p.getStatusAtuais() != null ? p.getStatusAtuais().stream().map(Enum::name).toList() : List.of()
         );
+        dto.setPersonalidadeId(p.getPersonalidade() != null ? p.getPersonalidade().getId() : null);
         if (p.getMovimentosConhecidos() != null && !p.getMovimentosConhecidos().isEmpty()) {
             dto.setMovimentosConhecidos(p.getMovimentosConhecidos().stream()
                     .map(MovimentoResponseDto::from)
@@ -151,6 +153,8 @@ public class PokemonResponseDto {
     public void setTipoSecundario(String tipoSecundario) { this.tipoSecundario = tipoSecundario; }
     public String getPersonalidade() { return personalidade; }
     public void setPersonalidade(String personalidade) { this.personalidade = personalidade; }
+    public String getPersonalidadeId() { return personalidadeId; }
+    public void setPersonalidadeId(String personalidadeId) { this.personalidadeId = personalidadeId; }
     public String getEspecializacao() { return especializacao; }
     public void setEspecializacao(String especializacao) { this.especializacao = especializacao; }
     public String getBerryFavorita() { return berryFavorita; }

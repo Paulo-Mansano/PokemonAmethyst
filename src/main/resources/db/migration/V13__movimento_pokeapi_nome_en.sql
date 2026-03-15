@@ -1,0 +1,2 @@
+ALTER TABLE movimento ADD COLUMN pokeapi_id INTEGER UNIQUE;
+ALTER TABLE movimento ADD COLUMN nome_en VARCHAR(255);

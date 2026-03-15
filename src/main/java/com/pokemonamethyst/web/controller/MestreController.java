@@ -1,14 +1,23 @@
 package com.pokemonamethyst.web.controller;
 
+import com.pokemonamethyst.domain.Habilidade;
 import com.pokemonamethyst.domain.Item;
+import com.pokemonamethyst.domain.Movimento;
 import com.pokemonamethyst.domain.PerfilJogador;
+import com.pokemonamethyst.domain.Personalidade;
 import com.pokemonamethyst.repository.PerfilJogadorRepository;
 import com.pokemonamethyst.service.CatalogoService;
 import com.pokemonamethyst.service.PokeApiService;
 import com.pokemonamethyst.service.PokemonService;
+import com.pokemonamethyst.web.dto.HabilidadeAtualizarRequestDto;
+import com.pokemonamethyst.web.dto.HabilidadeResponseDto;
 import com.pokemonamethyst.web.dto.ItemAtualizarRequestDto;
 import com.pokemonamethyst.web.dto.ItemResponseDto;
+import com.pokemonamethyst.web.dto.MovimentoAtualizarRequestDto;
+import com.pokemonamethyst.web.dto.MovimentoResponseDto;
 import com.pokemonamethyst.web.dto.PerfilJogadorResponseDto;
+import com.pokemonamethyst.web.dto.PersonalidadeRequestDto;
+import com.pokemonamethyst.web.dto.PersonalidadeResponseDto;
 import com.pokemonamethyst.web.dto.PokeApiItemBuscaResponseDto;
 import com.pokemonamethyst.web.dto.PokeApiItemResumoDto;
 import org.springframework.http.ResponseEntity;
@@ -45,6 +54,12 @@ public class MestreController {
     @PostMapping("/pokeapi/importar-movimentos")
     public ResponseEntity<Map<String, Integer>> importarMovimentos() {
         int importados = pokeApiService.importarMovimentos();
+        return ResponseEntity.ok(Map.of("importados", importados));
+    }
+
+    @PostMapping("/pokeapi/importar-habilidades")
+    public ResponseEntity<Map<String, Integer>> importarHabilidades() {
+        int importados = pokeApiService.importarHabilidades();
         return ResponseEntity.ok(Map.of("importados", importados));
     }
 
@@ -115,6 +130,80 @@ public class MestreController {
     public ResponseEntity<Map<String, Integer>> atualizarImagensItens() {
         int atualizados = pokeApiService.atualizarImagensItensImportados();
         return ResponseEntity.ok(Map.of("atualizados", atualizados));
+    }
+
+    @PostMapping("/habilidades")
+    @Transactional
+    public ResponseEntity<HabilidadeResponseDto> criarHabilidade(@RequestBody HabilidadeAtualizarRequestDto dto) {
+        Habilidade h = catalogoService.criarHabilidade(
+                dto.getNome(),
+                dto.getNomeEn(),
+                dto.getDescricao()
+        );
+        return ResponseEntity.ok(HabilidadeResponseDto.from(h));
+    }
+
+    @PutMapping("/habilidades/{id}")
+    @Transactional
+    public ResponseEntity<HabilidadeResponseDto> atualizarHabilidade(
+            @PathVariable String id,
+            @RequestBody HabilidadeAtualizarRequestDto dto) {
+        Habilidade h = catalogoService.atualizarHabilidade(
+                id,
+                dto.getNome(),
+                dto.getNomeEn(),
+                dto.getDescricao()
+        );
+        return ResponseEntity.ok(HabilidadeResponseDto.from(h));
+    }
+
+    @PostMapping("/movimentos")
+    @Transactional
+    public ResponseEntity<MovimentoResponseDto> criarMovimento(@RequestBody MovimentoAtualizarRequestDto dto) {
+        Movimento m = catalogoService.criarMovimento(
+                dto.getNome(),
+                dto.getNomeEn(),
+                dto.getTipo(),
+                dto.getCategoria(),
+                dto.getCustoStamina(),
+                dto.getDadoDeDano(),
+                dto.getDescricaoEfeito()
+        );
+        return ResponseEntity.ok(MovimentoResponseDto.from(m));
+    }
+
+    @PutMapping("/movimentos/{id}")
+    @Transactional
+    public ResponseEntity<MovimentoResponseDto> atualizarMovimento(
+            @PathVariable String id,
+            @RequestBody MovimentoAtualizarRequestDto dto) {
+        Movimento m = catalogoService.atualizarMovimento(
+                id,
+                dto.getNome(),
+                dto.getNomeEn(),
+                dto.getTipo(),
+                dto.getCategoria(),
+                dto.getCustoStamina(),
+                dto.getDadoDeDano(),
+                dto.getDescricaoEfeito()
+        );
+        return ResponseEntity.ok(MovimentoResponseDto.from(m));
+    }
+
+    @PostMapping("/personalidades")
+    @Transactional
+    public ResponseEntity<PersonalidadeResponseDto> criarPersonalidade(@RequestBody PersonalidadeRequestDto dto) {
+        Personalidade p = catalogoService.criarPersonalidade(dto.getNome());
+        return ResponseEntity.ok(PersonalidadeResponseDto.from(p));
+    }
+
+    @PutMapping("/personalidades/{id}")
+    @Transactional
+    public ResponseEntity<PersonalidadeResponseDto> atualizarPersonalidade(
+            @PathVariable String id,
+            @RequestBody PersonalidadeRequestDto dto) {
+        Personalidade p = catalogoService.atualizarPersonalidade(id, dto.getNome());
+        return ResponseEntity.ok(PersonalidadeResponseDto.from(p));
     }
 
     @GetMapping("/jogadores")

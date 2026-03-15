@@ -1,9 +1,11 @@
 package com.pokemonamethyst.service;
 
 import com.pokemonamethyst.domain.CategoriaMovimento;
+import com.pokemonamethyst.domain.Habilidade;
 import com.pokemonamethyst.domain.Movimento;
 import com.pokemonamethyst.domain.Item;
 import com.pokemonamethyst.domain.Tipagem;
+import com.pokemonamethyst.repository.HabilidadeRepository;
 import com.pokemonamethyst.repository.MovimentoRepository;
 import com.pokemonamethyst.repository.ItemRepository;
 import com.pokemonamethyst.exception.RecursoNaoEncontradoException;
@@ -28,7 +30,8 @@ public class PokeApiService {
 
     private static final String BASE_URL = "https://pokeapi.co/api/v2";
     private static final String SPRITE_BASE = "https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/%d.png";
-    private static final int IMPORTAR_MOVIMENTOS_LIMITE = 500;
+    private static final int IMPORTAR_MOVIMENTOS_LIMITE = 2500;
+    private static final int IMPORTAR_HABILIDADES_LIMITE = 500;
 
     private static final Map<String, CategoriaMovimento> DAMAGE_CLASS_MAP = Map.of(
             "physical", CategoriaMovimento.FISICO,
@@ -60,11 +63,14 @@ public class PokeApiService {
     private final RestTemplate restTemplate;
     private final MovimentoRepository movimentoRepository;
     private final ItemRepository itemRepository;
+    private final HabilidadeRepository habilidadeRepository;
 
-    public PokeApiService(RestTemplate restTemplate, MovimentoRepository movimentoRepository, ItemRepository itemRepository) {
+    public PokeApiService(RestTemplate restTemplate, MovimentoRepository movimentoRepository, ItemRepository itemRepository,
+                          HabilidadeRepository habilidadeRepository) {
         this.restTemplate = restTemplate;
         this.movimentoRepository = movimentoRepository;
         this.itemRepository = itemRepository;
+        this.habilidadeRepository = habilidadeRepository;
     }
 
     private static final int FETCH_SIZE_COM_FILTRO = 2000;
@@ -191,45 +197,254 @@ public class PokeApiService {
     }
 
     /**
-     * Importa movimentos da PokéAPI (apenas nome e tipagem, opcionalmente categoria).
-     * Retorna o número de movimentos criados.
+     * Importa movimentos da PokéAPI com nomes e descrição em PT/EN (prioriza PT).
+     * Usa pokeapi_id para idempotência.
      */
+    @SuppressWarnings("unchecked")
     public int importarMovimentos() {
-        String url = BASE_URL + "/move?limit=" + IMPORTAR_MOVIMENTOS_LIMITE + "&offset=0";
-        Map<String, Object> response = restTemplate.getForObject(url, Map.class);
-        if (response == null || !response.containsKey("results")) {
-            return 0;
+        int total = 0;
+        int offset = 0;
+        int limit = 500;
+        while (true) {
+            String url = BASE_URL + "/move?limit=" + limit + "&offset=" + offset;
+            Map<String, Object> response = restTemplate.getForObject(url, Map.class);
+            if (response == null || !response.containsKey("results")) break;
+            List<Map<String, Object>> results = (List<Map<String, Object>>) response.get("results");
+            if (results.isEmpty()) break;
+            for (Map<String, Object> item : results) {
+                String urlStr = (String) item.get("url");
+                int id = extrairIdDaUrl(urlStr);
+                if (id <= 0) continue;
+                try {
+                    Map<String, Object> detail = restTemplate.getForObject(BASE_URL + "/move/" + id, Map.class);
+                    if (detail == null) continue;
+                    String nomePt = extrairNomeMovePt(detail);
+                    String nomeEn = extrairNomeMoveEn(detail);
+                    String nomeFinal = nomePt != null && !nomePt.isBlank() ? nomePt : (nomeEn != null ? capitalizarNomeMove(nomeEn) : null);
+                    if (nomeFinal == null || nomeFinal.isBlank()) {
+                        Object raw = detail.get("name");
+                        nomeFinal = raw instanceof String ? capitalizarNomeMove((String) raw) : "";
+                    }
+                    if (nomeFinal.isBlank()) continue;
+                    String descricao = extrairDescricaoMovePt(detail);
+                    if (descricao == null || descricao.isBlank()) descricao = extrairDescricaoMoveEn(detail);
+                    Tipagem tipo = extrairTipoMove(detail);
+                    CategoriaMovimento categoria = extrairCategoriaMove(detail);
+                    Movimento m = movimentoRepository.findByPokeapiId(id).orElse(null);
+                    if (m == null) m = new Movimento();
+                    m.setPokeapiId(id);
+                    m.setNome(nomeFinal);
+                    m.setNomeEn(nomeEn != null && !nomeEn.isBlank() ? capitalizarNomeMove(nomeEn) : null);
+                    m.setTipo(tipo != null ? tipo : Tipagem.NORMAL);
+                    m.setCategoria(categoria);
+                    m.setCustoStamina(m.getCustoStamina());
+                    if (descricao != null && !descricao.isBlank()) m.setDescricaoEfeito(descricao);
+                    movimentoRepository.save(m);
+                    total++;
+                } catch (Exception ignored) {
+                }
+            }
+            if (results.size() < limit) break;
+            offset += limit;
         }
-        @SuppressWarnings("unchecked")
+        return total;
+    }
+
+    @SuppressWarnings("unchecked")
+    private String extrairNomeMovePt(Map<String, Object> detail) {
+        List<Map<String, Object>> names = (List<Map<String, Object>>) detail.get("names");
+        if (names == null) return null;
+        for (Map<String, Object> n : names) {
+            Object lang = n.get("language");
+            if (lang instanceof Map && "pt-br".equalsIgnoreCase((String) ((Map<?, ?>) lang).get("name"))) {
+                String v = (String) n.get("name");
+                if (v != null && !v.isBlank()) return v;
+            }
+        }
+        return null;
+    }
+
+    @SuppressWarnings("unchecked")
+    private String extrairNomeMoveEn(Map<String, Object> detail) {
+        List<Map<String, Object>> names = (List<Map<String, Object>>) detail.get("names");
+        if (names == null) return null;
+        for (Map<String, Object> n : names) {
+            Object lang = n.get("language");
+            if (lang instanceof Map && "en".equalsIgnoreCase((String) ((Map<?, ?>) lang).get("name"))) {
+                String v = (String) n.get("name");
+                if (v != null && !v.isBlank()) return v;
+            }
+        }
+        return (String) detail.get("name");
+    }
+
+    @SuppressWarnings("unchecked")
+    private String extrairDescricaoMovePt(Map<String, Object> detail) {
+        List<Map<String, Object>> entries = (List<Map<String, Object>>) detail.get("effect_entries");
+        if (entries != null) {
+            for (Map<String, Object> e : entries) {
+                Object lang = e.get("language");
+                if (lang instanceof Map && "pt-br".equalsIgnoreCase((String) ((Map<?, ?>) lang).get("name"))) {
+                    String v = (String) e.get("effect");
+                    if (v != null && !v.isBlank()) return v.replace('\n', ' ').trim();
+                }
+            }
+        }
+        List<Map<String, Object>> flavor = (List<Map<String, Object>>) detail.get("flavor_text_entries");
+        if (flavor != null) {
+            for (Map<String, Object> f : flavor) {
+                Object lang = f.get("language");
+                if (lang instanceof Map && "pt-br".equalsIgnoreCase((String) ((Map<?, ?>) lang).get("name"))) {
+                    String v = (String) f.get("flavor_text");
+                    if (v != null && !v.isBlank()) return v.replace('\n', ' ').replace('\f', ' ').trim();
+                }
+            }
+        }
+        return null;
+    }
+
+    @SuppressWarnings("unchecked")
+    private String extrairDescricaoMoveEn(Map<String, Object> detail) {
+        List<Map<String, Object>> entries = (List<Map<String, Object>>) detail.get("effect_entries");
+        if (entries != null) {
+            for (Map<String, Object> e : entries) {
+                Object lang = e.get("language");
+                if (lang instanceof Map && "en".equalsIgnoreCase((String) ((Map<?, ?>) lang).get("name"))) {
+                    String v = (String) e.get("effect");
+                    if (v != null && !v.isBlank()) return v.replace('\n', ' ').trim();
+                }
+            }
+        }
+        List<Map<String, Object>> flavor = (List<Map<String, Object>>) detail.get("flavor_text_entries");
+        if (flavor != null) {
+            for (Map<String, Object> f : flavor) {
+                Object lang = f.get("language");
+                if (lang instanceof Map && "en".equalsIgnoreCase((String) ((Map<?, ?>) lang).get("name"))) {
+                    String v = (String) f.get("flavor_text");
+                    if (v != null && !v.isBlank()) return v.replace('\n', ' ').replace('\f', ' ').trim();
+                }
+            }
+        }
+        return null;
+    }
+
+    /**
+     * Importa habilidades da PokéAPI com nomes em PT e EN e descrição (PT preferida, senão EN).
+     */
+    @SuppressWarnings("unchecked")
+    public int importarHabilidades() {
+        String url = BASE_URL + "/ability?limit=" + IMPORTAR_HABILIDADES_LIMITE + "&offset=0";
+        Map<String, Object> response = restTemplate.getForObject(url, Map.class);
+        if (response == null || !response.containsKey("results")) return 0;
         List<Map<String, Object>> results = (List<Map<String, Object>>) response.get("results");
-        int criados = 0;
+        int total = 0;
         for (Map<String, Object> item : results) {
             String urlStr = (String) item.get("url");
             int id = extrairIdDaUrl(urlStr);
             if (id <= 0) continue;
             try {
-                Map<String, Object> detail = restTemplate.getForObject(BASE_URL + "/move/" + id, Map.class);
+                Map<String, Object> detail = restTemplate.getForObject(BASE_URL + "/ability/" + id, Map.class);
                 if (detail == null) continue;
-                String name = (String) detail.get("name");
-                if (name == null || name.isBlank()) continue;
-                String nomeExibicao = capitalizarNomeMove(name);
-                if (movimentoRepository.findByNomeIgnoreCase(nomeExibicao).isPresent()) continue;
-                Tipagem tipo = extrairTipoMove(detail);
-                CategoriaMovimento categoria = extrairCategoriaMove(detail);
-                Movimento m = new Movimento();
-                m.setNome(nomeExibicao);
-                m.setTipo(tipo);
-                m.setCategoria(categoria);
-                m.setCustoStamina(0);
-                m.setDadoDeDano(null);
-                m.setDescricaoEfeito(null);
-                movimentoRepository.save(m);
-                criados++;
+                String nomePt = extrairNomeHabilidadePt(detail);
+                String nomeEn = extrairNomeHabilidadeEn(detail);
+                String nomeFinal = nomePt != null && !nomePt.isBlank() ? nomePt : (nomeEn != null ? capitalizarNomeMove(nomeEn) : null);
+                if (nomeFinal == null || nomeFinal.isBlank()) {
+                    Object raw = detail.get("name");
+                    nomeFinal = raw instanceof String ? capitalizarNomeMove((String) raw) : "";
+                }
+                if (nomeFinal.isBlank()) continue;
+                String descricao = extrairDescricaoHabilidadePt(detail);
+                if (descricao == null || descricao.isBlank()) descricao = extrairDescricaoHabilidadeEn(detail);
+                Habilidade h = habilidadeRepository.findByPokeapiId(id).orElse(null);
+                if (h == null) h = new Habilidade();
+                h.setPokeapiId(id);
+                h.setNome(nomeFinal);
+                h.setNomeEn(nomeEn != null && !nomeEn.isBlank() ? capitalizarNomeMove(nomeEn) : null);
+                if (descricao != null && !descricao.isBlank()) h.setDescricao(descricao);
+                habilidadeRepository.save(h);
+                total++;
             } catch (Exception ignored) {
-                // ignora movimento que falhou (ex.: 404)
             }
         }
-        return criados;
+        return total;
+    }
+
+    @SuppressWarnings("unchecked")
+    private String extrairNomeHabilidadePt(Map<String, Object> detail) {
+        List<Map<String, Object>> names = (List<Map<String, Object>>) detail.get("names");
+        if (names == null) return null;
+        for (Map<String, Object> n : names) {
+            Object lang = n.get("language");
+            if (lang instanceof Map && "pt-br".equalsIgnoreCase((String) ((Map<?, ?>) lang).get("name"))) {
+                String v = (String) n.get("name");
+                if (v != null && !v.isBlank()) return v;
+            }
+        }
+        return null;
+    }
+
+    @SuppressWarnings("unchecked")
+    private String extrairNomeHabilidadeEn(Map<String, Object> detail) {
+        List<Map<String, Object>> names = (List<Map<String, Object>>) detail.get("names");
+        if (names == null) return null;
+        for (Map<String, Object> n : names) {
+            Object lang = n.get("language");
+            if (lang instanceof Map && "en".equalsIgnoreCase((String) ((Map<?, ?>) lang).get("name"))) {
+                String v = (String) n.get("name");
+                if (v != null && !v.isBlank()) return v;
+            }
+        }
+        return (String) detail.get("name");
+    }
+
+    @SuppressWarnings("unchecked")
+    private String extrairDescricaoHabilidadePt(Map<String, Object> detail) {
+        List<Map<String, Object>> entries = (List<Map<String, Object>>) detail.get("effect_entries");
+        if (entries != null) {
+            for (Map<String, Object> e : entries) {
+                Object lang = e.get("language");
+                if (lang instanceof Map && "pt-br".equalsIgnoreCase((String) ((Map<?, ?>) lang).get("name"))) {
+                    String v = (String) e.get("effect");
+                    if (v != null && !v.isBlank()) return v.replace('\n', ' ').trim();
+                }
+            }
+        }
+        List<Map<String, Object>> flavor = (List<Map<String, Object>>) detail.get("flavor_text_entries");
+        if (flavor != null) {
+            for (Map<String, Object> f : flavor) {
+                Object lang = f.get("language");
+                if (lang instanceof Map && "pt-br".equalsIgnoreCase((String) ((Map<?, ?>) lang).get("name"))) {
+                    String v = (String) f.get("flavor_text");
+                    if (v != null && !v.isBlank()) return v.replace('\n', ' ').replace('\f', ' ').trim();
+                }
+            }
+        }
+        return null;
+    }
+
+    @SuppressWarnings("unchecked")
+    private String extrairDescricaoHabilidadeEn(Map<String, Object> detail) {
+        List<Map<String, Object>> entries = (List<Map<String, Object>>) detail.get("effect_entries");
+        if (entries != null) {
+            for (Map<String, Object> e : entries) {
+                Object lang = e.get("language");
+                if (lang instanceof Map && "en".equalsIgnoreCase((String) ((Map<?, ?>) lang).get("name"))) {
+                    String v = (String) e.get("effect");
+                    if (v != null && !v.isBlank()) return v.replace('\n', ' ').trim();
+                }
+            }
+        }
+        List<Map<String, Object>> flavor = (List<Map<String, Object>>) detail.get("flavor_text_entries");
+        if (flavor != null) {
+            for (Map<String, Object> f : flavor) {
+                Object lang = f.get("language");
+                if (lang instanceof Map && "en".equalsIgnoreCase((String) ((Map<?, ?>) lang).get("name"))) {
+                    String v = (String) f.get("flavor_text");
+                    if (v != null && !v.isBlank()) return v.replace('\n', ' ').replace('\f', ' ').trim();
+                }
+            }
+        }
+        return null;
     }
 
     /**

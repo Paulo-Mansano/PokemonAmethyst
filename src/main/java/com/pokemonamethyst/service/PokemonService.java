@@ -4,6 +4,7 @@ import com.pokemonamethyst.domain.*;
 import com.pokemonamethyst.exception.RecursoNaoEncontradoException;
 import com.pokemonamethyst.exception.RegraNegocioException;
 import com.pokemonamethyst.repository.ItemRepository;
+import com.pokemonamethyst.repository.PersonalidadeRepository;
 import com.pokemonamethyst.repository.PokemonRepository;
 import com.pokemonamethyst.repository.PerfilJogadorRepository;
 import org.springframework.stereotype.Service;
@@ -22,13 +23,16 @@ public class PokemonService {
     private final PerfilJogadorRepository perfilRepository;
     private final ItemRepository itemRepository;
     private final com.pokemonamethyst.repository.MovimentoRepository movimentoRepository;
+    private final PersonalidadeRepository personalidadeRepository;
 
     public PokemonService(PokemonRepository pokemonRepository, PerfilJogadorRepository perfilRepository,
-                          ItemRepository itemRepository, com.pokemonamethyst.repository.MovimentoRepository movimentoRepository) {
+                          ItemRepository itemRepository, com.pokemonamethyst.repository.MovimentoRepository movimentoRepository,
+                          PersonalidadeRepository personalidadeRepository) {
         this.pokemonRepository = pokemonRepository;
         this.perfilRepository = perfilRepository;
         this.itemRepository = itemRepository;
         this.movimentoRepository = movimentoRepository;
+        this.personalidadeRepository = personalidadeRepository;
     }
 
     public List<Pokemon> listarPorPerfil(String perfilId) {
@@ -84,7 +88,8 @@ public class PokemonService {
     @Transactional
     public Pokemon criar(String perfilId, Integer pokedexId, String especie, Tipagem tipoPrimario,
                          String apelido, Tipagem tipoSecundario, Genero genero, Pokebola pokebolaCaptura,
-                         int hpMaximo, int staminaMaxima, String imagemUrl, List<String> movimentoIds) {
+                         int hpMaximo, int staminaMaxima, String imagemUrl, List<String> movimentoIds,
+                         String personalidadeId) {
         PerfilJogador perfil = perfilRepository.findById(perfilId)
                 .orElseThrow(() -> new RecursoNaoEncontradoException("Perfil não encontrado."));
 
@@ -112,6 +117,9 @@ public class PokemonService {
         pokemon.setStaminaAtual(staminaMaxima);
         pokemon.setNivel(1);
         pokemon.setXpAtual(0);
+        if (personalidadeId != null && !personalidadeId.isBlank()) {
+            personalidadeRepository.findById(personalidadeId).ifPresent(pokemon::setPersonalidade);
+        }
 
         if (movimentoIds != null && !movimentoIds.isEmpty()) {
             List<Movimento> movimentos = new ArrayList<>();
@@ -132,7 +140,7 @@ public class PokemonService {
     @Transactional
     public Pokemon atualizar(String pokemonId, String perfilId, String especie, Tipagem tipoPrimario, Tipagem tipoSecundario,
                             Integer pokedexId, String apelido, String imagemUrl, String notas,
-                            Genero genero, Boolean isShiny, Personalidade personalidade,
+                            Genero genero, Boolean isShiny, String personalidadeId,
                             Especializacao especializacao, String berryFavorita, Integer nivelDeVinculo,
                             Integer nivel, Integer xpAtual, Pokebola pokebolaCaptura, String itemSeguradoId,
                             Integer hpAtual, Integer hpTemporario, Integer staminaAtual, Integer staminaTemporaria,
@@ -149,7 +157,14 @@ public class PokemonService {
         if (notas != null) pokemon.setNotas(notas);
         if (genero != null) pokemon.setGenero(genero);
         if (isShiny != null) pokemon.setShiny(isShiny);
-        if (personalidade != null) pokemon.setPersonalidade(personalidade);
+        if (personalidadeId != null) {
+            if (personalidadeId.isBlank()) {
+                pokemon.setPersonalidade(null);
+            } else {
+                Personalidade personalidade = personalidadeRepository.findById(personalidadeId).orElse(null);
+                pokemon.setPersonalidade(personalidade);
+            }
+        }
         if (especializacao != null) pokemon.setEspecializacao(especializacao);
         if (berryFavorita != null) pokemon.setBerryFavorita(berryFavorita);
         if (nivelDeVinculo != null) pokemon.setNivelDeVinculo(nivelDeVinculo);

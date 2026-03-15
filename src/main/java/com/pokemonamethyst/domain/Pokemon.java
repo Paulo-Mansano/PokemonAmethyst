@@ -50,7 +50,8 @@ public class Pokemon {
     @Column(name = "tipo_secundario")
     private Tipagem tipoSecundario;
 
-    @Enumerated(EnumType.STRING)
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "personalidade_id")
     private Personalidade personalidade;
 
     @Enumerated(EnumType.STRING)

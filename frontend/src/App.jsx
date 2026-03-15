@@ -6,6 +6,9 @@ import Perfil from './pages/Perfil'
 import PokemonList from './pages/PokemonList'
 import Mochila from './pages/Mochila'
 import ItensCatalogo from './pages/ItensCatalogo'
+import HabilidadesCatalogo from './pages/HabilidadesCatalogo'
+import MovimentosCatalogo from './pages/MovimentosCatalogo'
+import PersonalidadesCatalogo from './pages/PersonalidadesCatalogo'
 import { getUsuario } from './api'
 
 export default function App() {
@@ -35,6 +38,9 @@ export default function App() {
         <Route path="pokemons" element={<PokemonList />} />
         <Route path="mochila" element={<Mochila />} />
         <Route path="itens" element={<ItensCatalogo />} />
+        <Route path="habilidades" element={<HabilidadesCatalogo />} />
+        <Route path="movimentos" element={<MovimentosCatalogo />} />
+        <Route path="personalidades" element={<PersonalidadesCatalogo />} />
       </Route>
       <Route path="*" element={<Navigate to={user ? '/' : '/login'} replace />} />
     </Routes>
