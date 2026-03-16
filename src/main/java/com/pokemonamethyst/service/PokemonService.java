@@ -69,9 +69,7 @@ public class PokemonService {
         pokemon.setGenero(Genero.SEM_GENERO);
         pokemon.setPokebolaCaptura(Pokebola.POKEBALL);
         pokemon.setHpMaximo(20);
-        pokemon.setHpAtual(20);
         pokemon.setStaminaMaxima(10);
-        pokemon.setStaminaAtual(10);
         pokemon.setNivel(1);
         pokemon.setXpAtual(0);
         if (noTime < MAX_POKEMONS_NO_TIME) {
@@ -112,9 +110,7 @@ public class PokemonService {
             pokemon.setImagemUrl(imagemUrl);
         }
         pokemon.setHpMaximo(hpMaximo);
-        pokemon.setHpAtual(hpMaximo);
         pokemon.setStaminaMaxima(staminaMaxima);
-        pokemon.setStaminaAtual(staminaMaxima);
         pokemon.setNivel(1);
         pokemon.setXpAtual(0);
         if (personalidadeId != null && !personalidadeId.isBlank()) {
@@ -143,7 +139,6 @@ public class PokemonService {
                             Genero genero, Boolean isShiny, String personalidadeId,
                             Especializacao especializacao, String berryFavorita, Integer nivelDeVinculo,
                             Integer nivel, Integer xpAtual, Pokebola pokebolaCaptura, String itemSeguradoId,
-                            Integer hpAtual, Integer hpTemporario, Integer staminaAtual, Integer staminaTemporaria,
                             Integer ataque, Integer ataqueEspecial, Integer defesa, Integer defesaEspecial,
                             Integer speed, Integer tecnica, Integer respeito, List<CondicaoStatus> statusAtuais,
                             List<String> movimentoIds) {
@@ -179,10 +174,6 @@ public class PokemonService {
                 pokemon.setItemSegurado(item);
             }
         }
-        if (hpAtual != null) pokemon.setHpAtual(hpAtual);
-        if (hpTemporario != null) pokemon.setHpTemporario(hpTemporario);
-        if (staminaAtual != null) pokemon.setStaminaAtual(staminaAtual);
-        if (staminaTemporaria != null) pokemon.setStaminaTemporaria(staminaTemporaria);
         if (ataque != null) pokemon.setAtaque(ataque);
         if (ataqueEspecial != null) pokemon.setAtaqueEspecial(ataqueEspecial);
         if (defesa != null) pokemon.setDefesa(defesa);

@@ -29,11 +29,7 @@ public class PokemonResponseDto {
     private String pokebolaCaptura;
     private String itemSeguradoId;
     private int hpMaximo;
-    private int hpAtual;
-    private int hpTemporario;
     private int staminaMaxima;
-    private int staminaAtual;
-    private int staminaTemporaria;
     private int ataque;
     private int ataqueEspecial;
     private int defesa;
@@ -45,7 +41,7 @@ public class PokemonResponseDto {
     private List<MovimentoResponseDto> movimentosConhecidos;
 
     public PokemonResponseDto() {}
-    public PokemonResponseDto(String id, Integer ordemTime, int pokedexId, String especie, String apelido, String imagemUrl, String notas, String genero, boolean shiny, String tipoPrimario, String tipoSecundario, String personalidade, String especializacao, String berryFavorita, int nivelDeVinculo, int nivel, int xpAtual, String pokebolaCaptura, String itemSeguradoId, int hpMaximo, int hpAtual, int hpTemporario, int staminaMaxima, int staminaAtual, int staminaTemporaria, int ataque, int ataqueEspecial, int defesa, int defesaEspecial, int speed, int tecnica, int respeito, List<String> statusAtuais) {
+    public PokemonResponseDto(String id, Integer ordemTime, int pokedexId, String especie, String apelido, String imagemUrl, String notas, String genero, boolean shiny, String tipoPrimario, String tipoSecundario, String personalidade, String especializacao, String berryFavorita, int nivelDeVinculo, int nivel, int xpAtual, String pokebolaCaptura, String itemSeguradoId, int hpMaximo, int staminaMaxima, int ataque, int ataqueEspecial, int defesa, int defesaEspecial, int speed, int tecnica, int respeito, List<String> statusAtuais) {
         this.id = id;
         this.ordemTime = ordemTime;
         this.pokedexId = pokedexId;
@@ -66,11 +62,7 @@ public class PokemonResponseDto {
         this.pokebolaCaptura = pokebolaCaptura;
         this.itemSeguradoId = itemSeguradoId;
         this.hpMaximo = hpMaximo;
-        this.hpAtual = hpAtual;
-        this.hpTemporario = hpTemporario;
         this.staminaMaxima = staminaMaxima;
-        this.staminaAtual = staminaAtual;
-        this.staminaTemporaria = staminaTemporaria;
         this.ataque = ataque;
         this.ataqueEspecial = ataqueEspecial;
         this.defesa = defesa;
@@ -106,11 +98,7 @@ public class PokemonResponseDto {
                 p.getPokebolaCaptura() != null ? p.getPokebolaCaptura().name() : null,
                 p.getItemSegurado() != null ? p.getItemSegurado().getId() : null,
                 p.getHpMaximo(),
-                p.getHpAtual(),
-                p.getHpTemporario(),
                 p.getStaminaMaxima(),
-                p.getStaminaAtual(),
-                p.getStaminaTemporaria(),
                 p.getAtaque(),
                 p.getAtaqueEspecial(),
                 p.getDefesa(),
@@ -171,16 +159,8 @@ public class PokemonResponseDto {
     public void setItemSeguradoId(String itemSeguradoId) { this.itemSeguradoId = itemSeguradoId; }
     public int getHpMaximo() { return hpMaximo; }
     public void setHpMaximo(int hpMaximo) { this.hpMaximo = hpMaximo; }
-    public int getHpAtual() { return hpAtual; }
-    public void setHpAtual(int hpAtual) { this.hpAtual = hpAtual; }
-    public int getHpTemporario() { return hpTemporario; }
-    public void setHpTemporario(int hpTemporario) { this.hpTemporario = hpTemporario; }
     public int getStaminaMaxima() { return staminaMaxima; }
     public void setStaminaMaxima(int staminaMaxima) { this.staminaMaxima = staminaMaxima; }
-    public int getStaminaAtual() { return staminaAtual; }
-    public void setStaminaAtual(int staminaAtual) { this.staminaAtual = staminaAtual; }
-    public int getStaminaTemporaria() { return staminaTemporaria; }
-    public void setStaminaTemporaria(int staminaTemporaria) { this.staminaTemporaria = staminaTemporaria; }
     public int getAtaque() { return ataque; }
     public void setAtaque(int ataque) { this.ataque = ataque; }
     public int getAtaqueEspecial() { return ataqueEspecial; }

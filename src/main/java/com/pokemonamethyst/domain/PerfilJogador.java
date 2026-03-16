@@ -37,14 +37,8 @@ public class PerfilJogador {
     @Column(name = "hp_maximo", nullable = false)
     private int hpMaximo;
 
-    @Column(name = "hp_atual", nullable = false)
-    private int hpAtual;
-
     @Column(name = "stamina_maxima", nullable = false)
     private int staminaMaxima;
-
-    @Column(name = "stamina_atual", nullable = false)
-    private int staminaAtual;
 
     @Column(nullable = false)
     private int habilidade = 0;
@@ -86,12 +80,8 @@ public class PerfilJogador {
     public void setXpAtual(int xpAtual) { this.xpAtual = xpAtual; }
     public int getHpMaximo() { return hpMaximo; }
     public void setHpMaximo(int hpMaximo) { this.hpMaximo = hpMaximo; }
-    public int getHpAtual() { return hpAtual; }
-    public void setHpAtual(int hpAtual) { this.hpAtual = hpAtual; }
     public int getStaminaMaxima() { return staminaMaxima; }
     public void setStaminaMaxima(int staminaMaxima) { this.staminaMaxima = staminaMaxima; }
-    public int getStaminaAtual() { return staminaAtual; }
-    public void setStaminaAtual(int staminaAtual) { this.staminaAtual = staminaAtual; }
     public int getHabilidade() { return habilidade; }
     public void setHabilidade(int habilidade) { this.habilidade = habilidade; }
     public Atributos getAtributos() { return atributos; }

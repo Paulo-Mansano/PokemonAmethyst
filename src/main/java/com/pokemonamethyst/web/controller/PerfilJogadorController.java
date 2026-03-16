@@ -54,9 +54,7 @@ public class PerfilJogadorController {
                 dto.getNivel(),
                 dto.getXpAtual(),
                 dto.getHpMaximo(),
-                dto.getHpAtual(),
                 dto.getStaminaMaxima(),
-                dto.getStaminaAtual(),
                 dto.getHabilidade(),
                 atr
         );

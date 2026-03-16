@@ -34,11 +34,7 @@ function editStateFromPokemon(p) {
     pokebolaCaptura: p.pokebolaCaptura || 'POKEBALL',
     itemSeguradoId: p.itemSeguradoId || '',
     hpMaximo: p.hpMaximo ?? 20,
-    hpAtual: p.hpAtual ?? 20,
-    hpTemporario: p.hpTemporario ?? 0,
     staminaMaxima: p.staminaMaxima ?? 10,
-    staminaAtual: p.staminaAtual ?? 10,
-    staminaTemporaria: p.staminaTemporaria ?? 0,
     ataque: p.ataque ?? 0,
     ataqueEspecial: p.ataqueEspecial ?? 0,
     defesa: p.defesa ?? 0,
@@ -102,124 +98,361 @@ function ExpandedForm({
     })
   }
 
+  const hpPercent = 100
+  const staminaPercent = 100
+
   return (
-    <form onSubmit={onSalvar} className="pokemon-expanded-form">
-      <div className="pokemon-expanded-form-actions-top">
-        <button type="button" className="btn btn-secondary" onClick={onAbrirCatalogo}>Buscar na PokéAPI</button>
+    <form onSubmit={onSalvar} className="pokemon-expanded-form pokemon-expanded-form--modern">
+      <div className="pokemon-expanded-header">
+        <div className="pokemon-expanded-header-main">
+          <div className="pokemon-expanded-avatar">
+            {expandedEdit.imagemUrl ? (
+              <img src={expandedEdit.imagemUrl} alt={expandedEdit.especie || 'Pokémon'} />
+            ) : (
+              <span className="pokemon-expanded-avatar-placeholder">?</span>
+            )}
+          </div>
+          <div className="pokemon-expanded-title">
+            <div className="pokemon-expanded-title-main">
+              <input
+                value={expandedEdit.apelido}
+                onChange={(e) => set('apelido', e.target.value)}
+                className="pokemon-expanded-apelido"
+                placeholder="Apelido"
+              />
+              <input
+                value={expandedEdit.especie}
+                onChange={(e) => set('especie', e.target.value)}
+                className="pokemon-expanded-especie"
+                placeholder="Espécie"
+              />
+            </div>
+            <div className="pokemon-expanded-badges">
+              <span className="pokemon-expanded-badge pokemon-expanded-badge--type">
+                {expandedEdit.tipoPrimario || 'NORMAL'}
+              </span>
+              {expandedEdit.tipoSecundario && (
+                <span className="pokemon-expanded-badge pokemon-expanded-badge--type-secondary">
+                  {expandedEdit.tipoSecundario}
+                </span>
+              )}
+              <span className="pokemon-expanded-badge pokemon-expanded-badge--meta">
+                Nível{' '}
+                <input
+                  type="number"
+                  min={1}
+                  value={expandedEdit.nivel}
+                  onChange={(e) => set('nivel', parseInt(e.target.value, 10) || 1)}
+                />
+              </span>
+              <span className="pokemon-expanded-badge pokemon-expanded-badge--meta">
+                Gênero{' '}
+                <select
+                  value={expandedEdit.genero}
+                  onChange={(e) => set('genero', e.target.value)}
+                >
+                  <option value="MACHO">♂️</option>
+                  <option value="FEMEA">♀️</option>
+                  <option value="SEM_GENERO">Sem gênero</option>
+                </select>
+              </span>
+            </div>
+          </div>
+        </div>
+        <div className="pokemon-expanded-header-actions">
+          <button type="button" className="btn btn-secondary" onClick={onAbrirCatalogo}>
+            Buscar na PokéAPI
+          </button>
+        </div>
       </div>
 
-      <div className="pokemon-edit-grid">
-        <div className="pokemon-edit-section">
-          <h4>Identificação</h4>
-          <Field label="ID"><span className="pokemon-edit-readonly">{expandedPokemon.id}</span></Field>
-          <Field label="Pokédex #"><input type="number" min={0} value={expandedEdit.pokedexId} onChange={(e) => set('pokedexId', parseInt(e.target.value, 10) || 0)} className="pokemon-edit-input" /></Field>
-          <Field label="Espécie"><input value={expandedEdit.especie} onChange={(e) => set('especie', e.target.value)} className="pokemon-edit-input" /></Field>
-          <Field label="Apelido"><input value={expandedEdit.apelido} onChange={(e) => set('apelido', e.target.value)} className="pokemon-edit-input" /></Field>
-          <Field label="URL da imagem"><input value={expandedEdit.imagemUrl} onChange={(e) => set('imagemUrl', e.target.value)} className="pokemon-edit-input" /></Field>
-          <Field label="Nível"><input type="number" min={1} value={expandedEdit.nivel} onChange={(e) => set('nivel', parseInt(e.target.value, 10) || 1)} className="pokemon-edit-input pokemon-edit-input--num" /></Field>
-          <Field label="XP atual"><input type="number" min={0} value={expandedEdit.xpAtual} onChange={(e) => set('xpAtual', parseInt(e.target.value, 10) || 0)} className="pokemon-edit-input pokemon-edit-input--num" /></Field>
-          <Field label="Nível de vínculo"><input type="number" min={0} value={expandedEdit.nivelDeVinculo} onChange={(e) => set('nivelDeVinculo', parseInt(e.target.value, 10) || 0)} className="pokemon-edit-input pokemon-edit-input--num" /></Field>
+      <div className="pokemon-expanded-bars">
+        <div className="pokemon-expanded-bar">
+          <div className="pokemon-expanded-bar-header">
+            <span className="pokemon-expanded-bar-label pokemon-expanded-bar-label--hp">HP (Vida)</span>
+            <span className="pokemon-expanded-bar-value">Total {expandedEdit.hpMaximo}</span>
+          </div>
+          <div className="pokemon-expanded-bar-track">
+            <div
+              className={`pokemon-expanded-bar-fill pokemon-expanded-bar-fill--hp ${hpPercent < 30 ? 'is-low' : ''}`}
+              style={{ width: `${hpPercent}%` }}
+            />
+          </div>
+        </div>
+        <div className="pokemon-expanded-bar">
+          <div className="pokemon-expanded-bar-header">
+            <span className="pokemon-expanded-bar-label pokemon-expanded-bar-label--st">ST (Stamina)</span>
+            <span className="pokemon-expanded-bar-value">Total {expandedEdit.staminaMaxima}</span>
+          </div>
+          <div className="pokemon-expanded-bar-track">
+            <div
+              className="pokemon-expanded-bar-fill pokemon-expanded-bar-fill--st"
+              style={{ width: `${staminaPercent}%` }}
+            />
+          </div>
+        </div>
+      </div>
+
+      <div className="pokemon-expanded-main-grid">
+        <div className="pokemon-expanded-main-column">
+          <div className="pokemon-edit-section pokemon-edit-section--glass">
+            <h4>Identificação</h4>
+            <div className="pokemon-expanded-inline-fields">
+              <Field label="Pokédex #">
+                <input
+                  type="number"
+                  min={0}
+                  value={expandedEdit.pokedexId}
+                  onChange={(e) => set('pokedexId', parseInt(e.target.value, 10) || 0)}
+                  className="pokemon-edit-input"
+                />
+              </Field>
+              <Field label="URL da imagem">
+                <input
+                  value={expandedEdit.imagemUrl}
+                  onChange={(e) => set('imagemUrl', e.target.value)}
+                  className="pokemon-edit-input"
+                />
+              </Field>
+            </div>
+            <div className="pokemon-expanded-inline-fields">
+              <Field label="Tipo primário">
+                <select
+                  value={expandedEdit.tipoPrimario}
+                  onChange={(e) => set('tipoPrimario', e.target.value)}
+                  className="pokemon-edit-input"
+                >
+                  {TIPOS.map((t) => (
+                    <option key={t} value={t}>{t}</option>
+                  ))}
+                </select>
+              </Field>
+              <Field label="Tipo secundário">
+                <select
+                  value={expandedEdit.tipoSecundario}
+                  onChange={(e) => set('tipoSecundario', e.target.value)}
+                  className="pokemon-edit-input"
+                >
+                  <option value="">—</option>
+                  {TIPOS.map((t) => (
+                    <option key={t} value={t}>{t}</option>
+                  ))}
+                </select>
+              </Field>
+            </div>
+            <div className="pokemon-expanded-inline-fields">
+              <Field label="Shiny">
+                <input
+                  type="checkbox"
+                  checked={expandedEdit.shiny}
+                  onChange={(e) => set('shiny', e.target.checked)}
+                />
+              </Field>
+              <Field label="Pokébola de captura">
+                <select
+                  value={expandedEdit.pokebolaCaptura}
+                  onChange={(e) => set('pokebolaCaptura', e.target.value)}
+                  className="pokemon-edit-input"
+                >
+                  {POKEBOLAS.map((b) => (
+                    <option key={b} value={b}>{b}</option>
+                  ))}
+                </select>
+              </Field>
+            </div>
+            <div className="pokemon-expanded-inline-fields">
+              <Field label="XP atual">
+                <input
+                  type="number"
+                  min={0}
+                  value={expandedEdit.xpAtual}
+                  onChange={(e) => set('xpAtual', parseInt(e.target.value, 10) || 0)}
+                  className="pokemon-edit-input pokemon-edit-input--num"
+                />
+              </Field>
+              <Field label="Nível de vínculo">
+                <input
+                  type="number"
+                  min={0}
+                  value={expandedEdit.nivelDeVinculo}
+                  onChange={(e) => set('nivelDeVinculo', parseInt(e.target.value, 10) || 0)}
+                  className="pokemon-edit-input pokemon-edit-input--num"
+                />
+              </Field>
+            </div>
+          </div>
+
+          <div className="pokemon-edit-section pokemon-edit-section--glass">
+            <h4>Detalhes e anotações</h4>
+            <Field label="Notas">
+              <textarea
+                value={expandedEdit.notas}
+                onChange={(e) => set('notas', e.target.value)}
+                className="pokemon-edit-input pokemon-edit-textarea"
+                rows={3}
+              />
+            </Field>
+          </div>
         </div>
 
-        <div className="pokemon-edit-section">
-          <h4>Tipos e aparência</h4>
-          <Field label="Tipo primário">
-            <select value={expandedEdit.tipoPrimario} onChange={(e) => set('tipoPrimario', e.target.value)} className="pokemon-edit-input">
-              {TIPOS.map((t) => <option key={t} value={t}>{t}</option>)}
-            </select>
-          </Field>
-          <Field label="Tipo secundário">
-            <select value={expandedEdit.tipoSecundario} onChange={(e) => set('tipoSecundario', e.target.value)} className="pokemon-edit-input">
-              <option value="">—</option>
-              {TIPOS.map((t) => <option key={t} value={t}>{t}</option>)}
-            </select>
-          </Field>
-          <Field label="Gênero">
-            <select value={expandedEdit.genero} onChange={(e) => set('genero', e.target.value)} className="pokemon-edit-input">
-              <option value="MACHO">Macho</option>
-              <option value="FEMEA">Fêmea</option>
-              <option value="SEM_GENERO">Sem gênero</option>
-            </select>
-          </Field>
-          <Field label="Shiny">
-            <input type="checkbox" checked={expandedEdit.shiny} onChange={(e) => set('shiny', e.target.checked)} />
-          </Field>
-          <Field label="Pokébola de captura">
-            <select value={expandedEdit.pokebolaCaptura} onChange={(e) => set('pokebolaCaptura', e.target.value)} className="pokemon-edit-input">
-              {POKEBOLAS.map((b) => <option key={b} value={b}>{b}</option>)}
-            </select>
-          </Field>
-        </div>
+        <div className="pokemon-expanded-main-column">
+          <div className="pokemon-edit-section pokemon-edit-section--glass">
+            <h4>Personalidade e preferências</h4>
+            <Field label="Personalidade">
+              <select
+                value={expandedEdit.personalidadeId}
+                onChange={(e) => set('personalidadeId', e.target.value)}
+                className="pokemon-edit-input"
+              >
+                <option value="">—</option>
+                {listaPersonalidades.map((per) => (
+                  <option key={per.id} value={per.id}>{per.nome}</option>
+                ))}
+              </select>
+            </Field>
+            <Field label="Fruta favorita (berry)">
+              <input
+                value={expandedEdit.berryFavorita}
+                onChange={(e) => set('berryFavorita', e.target.value)}
+                className="pokemon-edit-input"
+              />
+            </Field>
+            <Field label="Especialização">
+              <select
+                value={expandedEdit.especializacao}
+                onChange={(e) => set('especializacao', e.target.value)}
+                className="pokemon-edit-input"
+              >
+                <option value="">—</option>
+                {ESPECIALIZACOES.map((s) => (
+                  <option key={s} value={s}>{s}</option>
+                ))}
+              </select>
+            </Field>
+          </div>
 
-        <div className="pokemon-edit-section">
-          <h4>Personalidade e preferências</h4>
-          <Field label="Personalidade">
-            <select value={expandedEdit.personalidadeId} onChange={(e) => set('personalidadeId', e.target.value)} className="pokemon-edit-input">
-              <option value="">—</option>
-              {listaPersonalidades.map((per) => <option key={per.id} value={per.id}>{per.nome}</option>)}
-            </select>
-          </Field>
-          <Field label="Fruta favorita (berry)"><input value={expandedEdit.berryFavorita} onChange={(e) => set('berryFavorita', e.target.value)} className="pokemon-edit-input" /></Field>
-          <Field label="Especialização">
-            <select value={expandedEdit.especializacao} onChange={(e) => set('especializacao', e.target.value)} className="pokemon-edit-input">
-              <option value="">—</option>
-              {ESPECIALIZACOES.map((s) => <option key={s} value={s}>{s}</option>)}
-            </select>
-          </Field>
-        </div>
+          <div className="pokemon-edit-section pokemon-edit-section--glass pokemon-expanded-atributos">
+            <h4>Atributos</h4>
+            <div className="pokemon-expanded-atributos-grid">
+              <Field label="HP máximo">
+                <input
+                  type="number"
+                  min={1}
+                  value={expandedEdit.hpMaximo}
+                  onChange={(e) => set('hpMaximo', parseInt(e.target.value, 10) || 1)}
+                  className="pokemon-edit-input pokemon-edit-input--num"
+                />
+              </Field>
+              <Field label="Stamina máxima">
+                <input
+                  type="number"
+                  min={1}
+                  value={expandedEdit.staminaMaxima}
+                  onChange={(e) => set('staminaMaxima', parseInt(e.target.value, 10) || 1)}
+                  className="pokemon-edit-input pokemon-edit-input--num"
+                />
+              </Field>
+              <Field label="Ataque">
+                <input
+                  type="number"
+                  min={0}
+                  value={expandedEdit.ataque}
+                  onChange={(e) => set('ataque', parseInt(e.target.value, 10) || 0)}
+                  className="pokemon-edit-input pokemon-edit-input--num"
+                />
+              </Field>
+              <Field label="Ataque especial">
+                <input
+                  type="number"
+                  min={0}
+                  value={expandedEdit.ataqueEspecial}
+                  onChange={(e) => set('ataqueEspecial', parseInt(e.target.value, 10) || 0)}
+                  className="pokemon-edit-input pokemon-edit-input--num"
+                />
+              </Field>
+              <Field label="Defesa">
+                <input
+                  type="number"
+                  min={0}
+                  value={expandedEdit.defesa}
+                  onChange={(e) => set('defesa', parseInt(e.target.value, 10) || 0)}
+                  className="pokemon-edit-input pokemon-edit-input--num"
+                />
+              </Field>
+              <Field label="Defesa especial">
+                <input
+                  type="number"
+                  min={0}
+                  value={expandedEdit.defesaEspecial}
+                  onChange={(e) => set('defesaEspecial', parseInt(e.target.value, 10) || 0)}
+                  className="pokemon-edit-input pokemon-edit-input--num"
+                />
+              </Field>
+              <Field label="Velocidade">
+                <input
+                  type="number"
+                  min={0}
+                  value={expandedEdit.speed}
+                  onChange={(e) => set('speed', parseInt(e.target.value, 10) || 0)}
+                  className="pokemon-edit-input pokemon-edit-input--num"
+                />
+              </Field>
+              <Field label="Técnica">
+                <input
+                  type="number"
+                  min={0}
+                  value={expandedEdit.tecnica}
+                  onChange={(e) => set('tecnica', parseInt(e.target.value, 10) || 0)}
+                  className="pokemon-edit-input pokemon-edit-input--num"
+                />
+              </Field>
+              <Field label="Respeito">
+                <input
+                  type="number"
+                  min={0}
+                  value={expandedEdit.respeito}
+                  onChange={(e) => set('respeito', parseInt(e.target.value, 10) || 0)}
+                  className="pokemon-edit-input pokemon-edit-input--num"
+                />
+              </Field>
+            </div>
+          </div>
 
-        <div className="pokemon-edit-section">
-          <h4>Vitalidade</h4>
-          <Field label="HP máximo"><input type="number" min={1} value={expandedEdit.hpMaximo} onChange={(e) => set('hpMaximo', parseInt(e.target.value, 10) || 1)} className="pokemon-edit-input pokemon-edit-input--num" /></Field>
-          <Field label="HP atual"><input type="number" min={0} value={expandedEdit.hpAtual} onChange={(e) => set('hpAtual', parseInt(e.target.value, 10) || 0)} className="pokemon-edit-input pokemon-edit-input--num" /></Field>
-          <Field label="HP temporário"><input type="number" min={0} value={expandedEdit.hpTemporario} onChange={(e) => set('hpTemporario', parseInt(e.target.value, 10) || 0)} className="pokemon-edit-input pokemon-edit-input--num" /></Field>
-          <Field label="Stamina máxima"><input type="number" min={1} value={expandedEdit.staminaMaxima} onChange={(e) => set('staminaMaxima', parseInt(e.target.value, 10) || 1)} className="pokemon-edit-input pokemon-edit-input--num" /></Field>
-          <Field label="Stamina atual"><input type="number" min={0} value={expandedEdit.staminaAtual} onChange={(e) => set('staminaAtual', parseInt(e.target.value, 10) || 0)} className="pokemon-edit-input pokemon-edit-input--num" /></Field>
-          <Field label="Stamina temporária"><input type="number" min={0} value={expandedEdit.staminaTemporaria} onChange={(e) => set('staminaTemporaria', parseInt(e.target.value, 10) || 0)} className="pokemon-edit-input pokemon-edit-input--num" /></Field>
-        </div>
-
-        <div className="pokemon-edit-section">
-          <h4>Atributos de combate</h4>
-          <Field label="Ataque"><input type="number" min={0} value={expandedEdit.ataque} onChange={(e) => set('ataque', parseInt(e.target.value, 10) || 0)} className="pokemon-edit-input pokemon-edit-input--num" /></Field>
-          <Field label="Ataque especial"><input type="number" min={0} value={expandedEdit.ataqueEspecial} onChange={(e) => set('ataqueEspecial', parseInt(e.target.value, 10) || 0)} className="pokemon-edit-input pokemon-edit-input--num" /></Field>
-          <Field label="Defesa"><input type="number" min={0} value={expandedEdit.defesa} onChange={(e) => set('defesa', parseInt(e.target.value, 10) || 0)} className="pokemon-edit-input pokemon-edit-input--num" /></Field>
-          <Field label="Defesa especial"><input type="number" min={0} value={expandedEdit.defesaEspecial} onChange={(e) => set('defesaEspecial', parseInt(e.target.value, 10) || 0)} className="pokemon-edit-input pokemon-edit-input--num" /></Field>
-          <Field label="Velocidade"><input type="number" min={0} value={expandedEdit.speed} onChange={(e) => set('speed', parseInt(e.target.value, 10) || 0)} className="pokemon-edit-input pokemon-edit-input--num" /></Field>
-          <Field label="Técnica"><input type="number" min={0} value={expandedEdit.tecnica} onChange={(e) => set('tecnica', parseInt(e.target.value, 10) || 0)} className="pokemon-edit-input pokemon-edit-input--num" /></Field>
-          <Field label="Respeito"><input type="number" min={0} value={expandedEdit.respeito} onChange={(e) => set('respeito', parseInt(e.target.value, 10) || 0)} className="pokemon-edit-input pokemon-edit-input--num" /></Field>
-        </div>
-
-        <div className="pokemon-edit-section">
-          <h4>Status e itens</h4>
-          <Field label="Item segurado">
-            <select value={expandedEdit.itemSeguradoId} onChange={(e) => set('itemSeguradoId', e.target.value)} className="pokemon-edit-input">
-              <option value="">—</option>
-              {listaItens.map((item) => <option key={item.id} value={item.id}>{item.nome || item.id}</option>)}
-            </select>
-          </Field>
-          <div className="pokemon-edit-field">
-            <label>Condições de status</label>
-            <div className="pokemon-edit-status-list">
-              {CONDICOES_STATUS.map((c) => (
-                <label key={c} className="pokemon-edit-status-item">
-                  <input type="checkbox" checked={(expandedEdit.statusAtuais || []).includes(c)} onChange={() => toggleStatus(c)} />
-                  <span>{c}</span>
-                </label>
-              ))}
+          <div className="pokemon-edit-section pokemon-edit-section--glass">
+            <h4>Status e itens</h4>
+            <Field label="Item segurado">
+              <select
+                value={expandedEdit.itemSeguradoId}
+                onChange={(e) => set('itemSeguradoId', e.target.value)}
+                className="pokemon-edit-input"
+              >
+                <option value="">—</option>
+                {listaItens.map((item) => (
+                  <option key={item.id} value={item.id}>{item.nome || item.id}</option>
+                ))}
+              </select>
+            </Field>
+            <div className="pokemon-edit-field">
+              <label>Condições de status</label>
+              <div className="pokemon-edit-status-list">
+                {CONDICOES_STATUS.map((c) => (
+                  <label key={c} className="pokemon-edit-status-item">
+                    <input
+                      type="checkbox"
+                      checked={(expandedEdit.statusAtuais || []).includes(c)}
+                      onChange={() => toggleStatus(c)}
+                    />
+                    <span>{c}</span>
+                  </label>
+                ))}
+              </div>
             </div>
           </div>
         </div>
       </div>
 
-      <div className="pokemon-edit-section pokemon-edit-section--full">
-        <h4>Notas</h4>
-        <Field label="Notas">
-          <textarea value={expandedEdit.notas} onChange={(e) => set('notas', e.target.value)} className="pokemon-edit-input pokemon-edit-textarea" rows={3} />
-        </Field>
-      </div>
-
-      <div className="pokemon-edit-section pokemon-edit-section--full">
-        <h4>Movimentos conhecidos ({movimentosAtuais.length}/8)</h4>
+      <div className="pokemon-edit-section pokemon-edit-section--full pokemon-edit-section--glass">
+        <h4>Golpes &amp; Técnicas ({movimentosAtuais.length}/8)</h4>
         <div className="pokemon-movimentos-list">
           {movimentosAtuais.map((m) => (
             <div key={m.id} className={`pokemon-movimento-card ${expandedMovimentoId === m.id ? 'is-expanded' : ''}`}>
@@ -364,8 +597,8 @@ export default function PokemonList() {
 
   const formatGenero = (g) => {
     if (!g) return '—'
-    if (g === 'MACHO') return 'Macho'
-    if (g === 'FEMEA') return 'Fêmea'
+    if (g === 'MACHO') return '♂️'
+    if (g === 'FEMEA') return '♀️'
     return 'Sem gênero'
   }
 
@@ -478,10 +711,7 @@ export default function PokemonList() {
         xpAtual: expandedEdit.xpAtual,
         pokebolaCaptura: expandedEdit.pokebolaCaptura || undefined,
         itemSeguradoId: expandedEdit.itemSeguradoId || null,
-        hpAtual: expandedEdit.hpAtual,
-        hpTemporario: expandedEdit.hpTemporario,
-        staminaAtual: expandedEdit.staminaAtual,
-        staminaTemporaria: expandedEdit.staminaTemporaria,
+        // hp/stamina atuais foram removidos do modelo; apenas máximos são persistidos
         ataque: expandedEdit.ataque,
         ataqueEspecial: expandedEdit.ataqueEspecial,
         defesa: expandedEdit.defesa,
@@ -495,6 +725,9 @@ export default function PokemonList() {
       const updated = await getPokemon(expandedPokemon.id)
       setExpandedPokemon(updated)
       await load()
+      // Após salvar, recolhe o card expandido
+      setExpandedId(null)
+      setExpandedPokemon(null)
     } catch (err) {
       setErro(err.message)
     } finally {
@@ -561,6 +794,7 @@ export default function PokemonList() {
                     <h2 className="pokemon-banner-apelido">{p.apelido || p.especie || '???'}</h2>
                     <p className="pokemon-banner-especie">{p.especie || '???'}</p>
                     <div className="pokemon-banner-meta">
+                      <span>Lv. {p.nivel}</span>
                       <span>{(p.movimentosConhecidos || []).length} ataques</span>
                       <span className="pokemon-banner-tipos">
                         {[p.tipoPrimario, p.tipoSecundario].filter(Boolean).join(' / ')}
@@ -636,6 +870,7 @@ export default function PokemonList() {
                     <h2 className="pokemon-banner-apelido">{p.apelido || p.especie || '???'}</h2>
                     <p className="pokemon-banner-especie">{p.especie || '???'}</p>
                     <div className="pokemon-banner-meta">
+                      <span>Lv. {p.nivel}</span>
                       <span>{(p.movimentosConhecidos || []).length} ataques</span>
                       <span className="pokemon-banner-tipos">
                         {[p.tipoPrimario, p.tipoSecundario].filter(Boolean).join(' / ')}
@@ -730,6 +965,7 @@ export default function PokemonList() {
                           cursor: 'pointer',
                           marginBottom: '0.5rem',
                           textAlign: 'left',
+                          color: 'var(--text)',
                         }}
                       >
                         <span style={{ minWidth: 28, color: 'var(--text-muted)', fontSize: '0.85rem' }}>#{p.id}</span>

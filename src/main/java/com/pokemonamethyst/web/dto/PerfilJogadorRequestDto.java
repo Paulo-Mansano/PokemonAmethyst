@@ -15,9 +15,7 @@ public class PerfilJogadorRequestDto {
     private Integer nivel;
     private Integer xpAtual;
     private Integer hpMaximo;
-    private Integer hpAtual;
     private Integer staminaMaxima;
-    private Integer staminaAtual;
     private Integer habilidade;
     private AtributosDto atributos;
 
@@ -33,12 +31,8 @@ public class PerfilJogadorRequestDto {
     public void setXpAtual(Integer xpAtual) { this.xpAtual = xpAtual; }
     public Integer getHpMaximo() { return hpMaximo; }
     public void setHpMaximo(Integer hpMaximo) { this.hpMaximo = hpMaximo; }
-    public Integer getHpAtual() { return hpAtual; }
-    public void setHpAtual(Integer hpAtual) { this.hpAtual = hpAtual; }
     public Integer getStaminaMaxima() { return staminaMaxima; }
     public void setStaminaMaxima(Integer staminaMaxima) { this.staminaMaxima = staminaMaxima; }
-    public Integer getStaminaAtual() { return staminaAtual; }
-    public void setStaminaAtual(Integer staminaAtual) { this.staminaAtual = staminaAtual; }
     public Integer getHabilidade() { return habilidade; }
     public void setHabilidade(Integer habilidade) { this.habilidade = habilidade; }
     public AtributosDto getAtributos() { return atributos; }

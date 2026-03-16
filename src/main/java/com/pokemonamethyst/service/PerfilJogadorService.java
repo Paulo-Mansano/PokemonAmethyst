@@ -40,7 +40,7 @@ public class PerfilJogadorService {
         return perfilRepository.findByUsuarioIdWithMochila(usuarioId)
                 .orElseGet(() -> {
                     criarOuAtualizar(usuarioId, PERFIL_NOME_PADRAO, ClasseJogador.TREINADOR,
-                            null, null, null, null, null, null, null, null, null);
+                            null, null, null, null, null, null, null);
                     return perfilRepository.findByUsuarioIdWithMochila(usuarioId)
                             .orElseThrow(() -> new RecursoNaoEncontradoException("Perfil do jogador não encontrado."));
                 });
@@ -49,7 +49,7 @@ public class PerfilJogadorService {
     @Transactional
     public PerfilJogador criarOuAtualizar(String usuarioId, String nomePersonagem, ClasseJogador classe,
                                           Integer pokedolares, Integer nivel, Integer xpAtual,
-                                          Integer hpMaximo, Integer hpAtual, Integer staminaMaxima, Integer staminaAtual,
+                                          Integer hpMaximo, Integer staminaMaxima,
                                           Integer habilidade, Atributos atributos) {
         Usuario usuario = usuarioRepository.findById(usuarioId)
                 .orElseThrow(() -> new RecursoNaoEncontradoException("Usuário não encontrado."));
@@ -59,9 +59,7 @@ public class PerfilJogadorService {
             perfil = new PerfilJogador();
             perfil.setUsuario(usuario);
             perfil.setHpMaximo(HP_STAMINA_INICIAL);
-            perfil.setHpAtual(HP_STAMINA_INICIAL);
             perfil.setStaminaMaxima(HP_STAMINA_INICIAL);
-            perfil.setStaminaAtual(HP_STAMINA_INICIAL);
             Mochila mochila = new Mochila();
             mochila.setPesoMaximo(PESO_MAXIMO_MOCHILA_PADRAO);
             perfil.setMochila(mochila);
@@ -76,9 +74,7 @@ public class PerfilJogadorService {
         if (nivel != null) perfil.setNivel(nivel);
         if (xpAtual != null) perfil.setXpAtual(xpAtual);
         if (hpMaximo != null) perfil.setHpMaximo(hpMaximo);
-        if (hpAtual != null) perfil.setHpAtual(hpAtual);
         if (staminaMaxima != null) perfil.setStaminaMaxima(staminaMaxima);
-        if (staminaAtual != null) perfil.setStaminaAtual(staminaAtual);
         if (habilidade != null) perfil.setHabilidade(habilidade);
         if (atributos != null) perfil.setAtributos(atributos);
 

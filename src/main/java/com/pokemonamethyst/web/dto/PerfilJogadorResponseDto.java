@@ -15,16 +15,14 @@ public class PerfilJogadorResponseDto {
     private int xpAtual;
     private int xpProximoNivel;
     private int hpMaximo;
-    private int hpAtual;
     private int staminaMaxima;
-    private int staminaAtual;
     private int habilidade;
     private AtributosDto atributos;
     private List<PokemonResponseDto> timePrincipal;
     private List<PokemonResponseDto> box;
 
     public PerfilJogadorResponseDto() {}
-    public PerfilJogadorResponseDto(String id, String nomePersonagem, String classe, int pokedolares, int nivel, int xpAtual, int xpProximoNivel, int hpMaximo, int hpAtual, int staminaMaxima, int staminaAtual, int habilidade, AtributosDto atributos, List<PokemonResponseDto> timePrincipal, List<PokemonResponseDto> box) {
+    public PerfilJogadorResponseDto(String id, String nomePersonagem, String classe, int pokedolares, int nivel, int xpAtual, int xpProximoNivel, int hpMaximo, int staminaMaxima, int habilidade, AtributosDto atributos, List<PokemonResponseDto> timePrincipal, List<PokemonResponseDto> box) {
         this.id = id;
         this.nomePersonagem = nomePersonagem;
         this.classe = classe;
@@ -33,9 +31,7 @@ public class PerfilJogadorResponseDto {
         this.xpAtual = xpAtual;
         this.xpProximoNivel = xpProximoNivel;
         this.hpMaximo = hpMaximo;
-        this.hpAtual = hpAtual;
         this.staminaMaxima = staminaMaxima;
-        this.staminaAtual = staminaAtual;
         this.habilidade = habilidade;
         this.atributos = atributos;
         this.timePrincipal = timePrincipal;
@@ -58,9 +54,7 @@ public class PerfilJogadorResponseDto {
                 p.getXpAtual(),
                 p.getNivel() * 10,
                 p.getHpMaximo(),
-                p.getHpAtual(),
                 p.getStaminaMaxima(),
-                p.getStaminaAtual(),
                 p.getHabilidade(),
                 atr,
                 time != null ? time.stream().map(PokemonResponseDto::from).collect(Collectors.toList()) : List.of(),
@@ -84,12 +78,8 @@ public class PerfilJogadorResponseDto {
     public void setXpProximoNivel(int xpProximoNivel) { this.xpProximoNivel = xpProximoNivel; }
     public int getHpMaximo() { return hpMaximo; }
     public void setHpMaximo(int hpMaximo) { this.hpMaximo = hpMaximo; }
-    public int getHpAtual() { return hpAtual; }
-    public void setHpAtual(int hpAtual) { this.hpAtual = hpAtual; }
     public int getStaminaMaxima() { return staminaMaxima; }
     public void setStaminaMaxima(int staminaMaxima) { this.staminaMaxima = staminaMaxima; }
-    public int getStaminaAtual() { return staminaAtual; }
-    public void setStaminaAtual(int staminaAtual) { this.staminaAtual = staminaAtual; }
     public int getHabilidade() { return habilidade; }
     public void setHabilidade(int habilidade) { this.habilidade = habilidade; }
     public AtributosDto getAtributos() { return atributos; }

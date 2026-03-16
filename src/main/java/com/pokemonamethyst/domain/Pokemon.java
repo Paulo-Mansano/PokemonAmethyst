@@ -80,20 +80,8 @@ public class Pokemon {
     @Column(name = "hp_maximo", nullable = false)
     private int hpMaximo;
 
-    @Column(name = "hp_atual", nullable = false)
-    private int hpAtual;
-
-    @Column(name = "hp_temporario", nullable = false)
-    private int hpTemporario = 0;
-
     @Column(name = "stamina_maxima", nullable = false)
     private int staminaMaxima;
-
-    @Column(name = "stamina_atual", nullable = false)
-    private int staminaAtual;
-
-    @Column(name = "stamina_temporaria", nullable = false)
-    private int staminaTemporaria = 0;
 
     private int ataque;
     @Column(name = "ataque_especial")
@@ -169,16 +157,8 @@ public class Pokemon {
     public void setItemSegurado(Item itemSegurado) { this.itemSegurado = itemSegurado; }
     public int getHpMaximo() { return hpMaximo; }
     public void setHpMaximo(int hpMaximo) { this.hpMaximo = hpMaximo; }
-    public int getHpAtual() { return hpAtual; }
-    public void setHpAtual(int hpAtual) { this.hpAtual = hpAtual; }
-    public int getHpTemporario() { return hpTemporario; }
-    public void setHpTemporario(int hpTemporario) { this.hpTemporario = hpTemporario; }
     public int getStaminaMaxima() { return staminaMaxima; }
     public void setStaminaMaxima(int staminaMaxima) { this.staminaMaxima = staminaMaxima; }
-    public int getStaminaAtual() { return staminaAtual; }
-    public void setStaminaAtual(int staminaAtual) { this.staminaAtual = staminaAtual; }
-    public int getStaminaTemporaria() { return staminaTemporaria; }
-    public void setStaminaTemporaria(int staminaTemporaria) { this.staminaTemporaria = staminaTemporaria; }
     public int getAtaque() { return ataque; }
     public void setAtaque(int ataque) { this.ataque = ataque; }
     public int getAtaqueEspecial() { return ataqueEspecial; }

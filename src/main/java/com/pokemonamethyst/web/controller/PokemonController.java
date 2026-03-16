@@ -98,7 +98,6 @@ public class PokemonController {
                 dto.getGenero(), dto.getShiny(), dto.getPersonalidadeId(),
                 dto.getEspecializacao(), dto.getBerryFavorita(), dto.getNivelDeVinculo(),
                 dto.getNivel(), dto.getXpAtual(), dto.getPokebolaCaptura(), dto.getItemSeguradoId(),
-                dto.getHpAtual(), dto.getHpTemporario(), dto.getStaminaAtual(), dto.getStaminaTemporaria(),
                 dto.getAtaque(), dto.getAtaqueEspecial(), dto.getDefesa(), dto.getDefesaEspecial(),
                 dto.getSpeed(), dto.getTecnica(), dto.getRespeito(), dto.getStatusAtuais(),
                 dto.getMovimentoIds()

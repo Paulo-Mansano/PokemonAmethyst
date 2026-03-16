@@ -17,9 +17,7 @@ export default function Perfil() {
     nivel: 1,
     xpAtual: 0,
     hpMaximo: 10,
-    hpAtual: 10,
     staminaMaxima: 10,
-    staminaAtual: 10,
     habilidade: 0,
     atributos: { forca: 0, speed: 0, inteligencia: 0, tecnica: 0, sabedoria: 0, percepcao: 0, dominio: 0, respeito: 0 },
   })
@@ -36,9 +34,7 @@ export default function Perfil() {
             nivel: p.nivel ?? 1,
             xpAtual: p.xpAtual ?? 0,
             hpMaximo: p.hpMaximo ?? 10,
-            hpAtual: p.hpAtual ?? 10,
             staminaMaxima: p.staminaMaxima ?? 10,
-            staminaAtual: p.staminaAtual ?? 10,
             habilidade: p.habilidade ?? 0,
             atributos: p.atributos ?? { forca: 0, speed: 0, inteligencia: 0, tecnica: 0, sabedoria: 0, percepcao: 0, dominio: 0, respeito: 0 },
           })
@@ -117,18 +113,12 @@ export default function Perfil() {
             <input type="number" min={0} value={form.xpAtual} onChange={(e) => handleChange('xpAtual', parseInt(e.target.value, 10) || 0)} />
           </div>
           <div className="form-group">
-            <label>HP máximo / atual</label>
-            <div style={{ display: 'flex', gap: '0.5rem' }}>
-              <input type="number" min={1} value={form.hpMaximo} onChange={(e) => handleChange('hpMaximo', parseInt(e.target.value, 10) || 1)} />
-              <input type="number" min={0} value={form.hpAtual} onChange={(e) => handleChange('hpAtual', parseInt(e.target.value, 10) || 0)} />
-            </div>
+            <label>HP máximo</label>
+            <input type="number" min={1} value={form.hpMaximo} onChange={(e) => handleChange('hpMaximo', parseInt(e.target.value, 10) || 1)} />
           </div>
           <div className="form-group">
-            <label>Stamina máxima / atual</label>
-            <div style={{ display: 'flex', gap: '0.5rem' }}>
-              <input type="number" min={1} value={form.staminaMaxima} onChange={(e) => handleChange('staminaMaxima', parseInt(e.target.value, 10) || 1)} />
-              <input type="number" min={0} value={form.staminaAtual} onChange={(e) => handleChange('staminaAtual', parseInt(e.target.value, 10) || 0)} />
-            </div>
+            <label>Stamina máxima</label>
+            <input type="number" min={1} value={form.staminaMaxima} onChange={(e) => handleChange('staminaMaxima', parseInt(e.target.value, 10) || 1)} />
           </div>
           <div className="form-group">
             <label>Habilidade</label>

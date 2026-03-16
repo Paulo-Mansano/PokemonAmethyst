@@ -25,10 +25,6 @@ public class PokemonAtualizarRequestDto {
     private Integer xpAtual;
     private Pokebola pokebolaCaptura;
     private String itemSeguradoId;
-    private Integer hpAtual;
-    private Integer hpTemporario;
-    private Integer staminaAtual;
-    private Integer staminaTemporaria;
     private Integer ataque;
     private Integer ataqueEspecial;
     private Integer defesa;
@@ -77,14 +73,6 @@ public class PokemonAtualizarRequestDto {
     public void setPokebolaCaptura(Pokebola pokebolaCaptura) { this.pokebolaCaptura = pokebolaCaptura; }
     public String getItemSeguradoId() { return itemSeguradoId; }
     public void setItemSeguradoId(String itemSeguradoId) { this.itemSeguradoId = itemSeguradoId; }
-    public Integer getHpAtual() { return hpAtual; }
-    public void setHpAtual(Integer hpAtual) { this.hpAtual = hpAtual; }
-    public Integer getHpTemporario() { return hpTemporario; }
-    public void setHpTemporario(Integer hpTemporario) { this.hpTemporario = hpTemporario; }
-    public Integer getStaminaAtual() { return staminaAtual; }
-    public void setStaminaAtual(Integer staminaAtual) { this.staminaAtual = staminaAtual; }
-    public Integer getStaminaTemporaria() { return staminaTemporaria; }
-    public void setStaminaTemporaria(Integer staminaTemporaria) { this.staminaTemporaria = staminaTemporaria; }
     public Integer getAtaque() { return ataque; }
     public void setAtaque(Integer ataque) { this.ataque = ataque; }
     public Integer getAtaqueEspecial() { return ataqueEspecial; }
