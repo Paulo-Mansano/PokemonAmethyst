@@ -9,6 +9,47 @@ function capitalize(str) {
 }
 
 const TIPOS = ['NORMAL', 'FOGO', 'AGUA', 'ELETRICO', 'GRAMA', 'GELO', 'LUTADOR', 'VENENOSO', 'TERRA', 'VOADOR', 'PSIQUICO', 'INSETO', 'PEDRA', 'FANTASMA', 'DRAGAO', 'SOMBRIO', 'METAL', 'FADA']
+
+const TYPE_COLORS = {
+  NORMAL: '#A8A77A',
+  FOGO: '#EE8130',
+  AGUA: '#6390F0',
+  ELETRICO: '#F7D02C',
+  GRAMA: '#7AC74C',
+  GELO: '#96D9D6',
+  LUTADOR: '#C22E28',
+  VENENOSO: '#A33EA1',
+  TERRA: '#E2BF65',
+  VOADOR: '#A98FF3',
+  PSIQUICO: '#F95587',
+  INSETO: '#A6B91A',
+  PEDRA: '#B6A136',
+  FANTASMA: '#735797',
+  DRAGAO: '#6F35FC',
+  SOMBRIO: '#705746',
+  METAL: '#B7B7CE',
+  FADA: '#D685AD',
+}
+
+function hexToRgb(hex) {
+  if (!hex || !hex.startsWith('#')) return null
+  const n = parseInt(hex.slice(1), 16)
+  return [n >> 16, (n >> 8) & 0xff, n & 0xff]
+}
+
+function getCardBackground(p) {
+  const base = '#151521'
+  const prim = (p && p.tipoPrimario && TYPE_COLORS[p.tipoPrimario]) ? hexToRgb(TYPE_COLORS[p.tipoPrimario]) : null
+  const sec = (p && p.tipoSecundario && TYPE_COLORS[p.tipoSecundario]) ? hexToRgb(TYPE_COLORS[p.tipoSecundario]) : null
+  if (!prim) return base
+  const [r1, g1, b1] = prim
+  if (!sec) {
+    return `linear-gradient(135deg, rgba(${r1},${g1},${b1},0.25), rgba(${r1},${g1},${b1},0.05)), ${base}`
+  }
+  const [r2, g2, b2] = sec
+  return `linear-gradient(135deg, rgba(${r1},${g1},${b1},0.25), rgba(${r2},${g2},${b2},0.15), rgba(${r1},${g1},${b1},0.05)), ${base}`
+}
+
 const POKEBOLAS = ['POKEBALL', 'GREATBALL', 'ULTRABALL', 'MASTERBALL', 'SAFARIBALL', 'LUXURYBALL', 'FRIENDLYBALL', 'OUTRA']
 const ESPECIALIZACOES = ['VELOCISTA', 'ATACANTE_FISICO', 'ATACANTE_ESPECIAL', 'TANQUE', 'SUPORTE', 'UTILITARIO']
 const CONDICOES_STATUS = ['PARALISADO', 'ENVENENADO', 'DORMINDO', 'QUEIMADO', 'CONGELADO', 'CONFUSO']
@@ -779,6 +820,7 @@ export default function PokemonList() {
               <div
                 key={p.id}
                 className={`pokemon-banner-card ${expandedId === p.id ? 'is-expanded' : ''}`}
+                style={{ background: getCardBackground(p) }}
                 onClick={() => toggleExpand(p)}
                 role="button"
                 tabIndex={0}
@@ -864,6 +906,7 @@ export default function PokemonList() {
               <div
                 key={p.id}
                 className={`pokemon-banner-card ${expandedId === p.id ? 'is-expanded' : ''}`}
+                style={{ background: getCardBackground(p) }}
                 onClick={() => toggleExpand(p)}
                 role="button"
                 tabIndex={0}

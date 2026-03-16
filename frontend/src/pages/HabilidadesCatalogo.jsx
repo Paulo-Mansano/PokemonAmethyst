@@ -158,31 +158,21 @@ export default function HabilidadesCatalogo() {
         {habilidades.length === 0 ? (
           <p style={{ color: 'var(--text-muted)' }}>Nenhuma habilidade. Use &quot;Criar habilidade&quot; ou &quot;Importar todas da PokéAPI&quot;.</p>
         ) : (
-          <div style={{ overflowX: 'auto' }}>
-            <table className="table">
-              <thead>
-                <tr>
-                  <th>Nome (PT)</th>
-                  <th>Nome (EN)</th>
-                  <th>Descrição</th>
-                  <th style={{ width: 90 }}></th>
-                </tr>
-              </thead>
-              <tbody>
-                {habilidades.map((h) => (
-                  <tr key={h.id}>
-                    <td>{h.nome}</td>
-                    <td>{h.nomeEn || '—'}</td>
-                    <td style={{ maxWidth: 400 }}>{h.descricao || '—'}</td>
-                    <td>
-                      <button type="button" className="btn btn-secondary" style={{ fontSize: '0.85rem' }} onClick={() => handleEditar(h)}>
-                        Editar
-                      </button>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
+          <div className="habilidades-grid">
+            {habilidades.map((h) => (
+              <div key={h.id} className="habilidade-card card">
+                <div className="habilidade-card-header">
+                  <h4 className="habilidade-card-nome">{h.nome}</h4>
+                  {h.nomeEn && <span className="habilidade-card-nome-en">{h.nomeEn}</span>}
+                </div>
+                <p className="habilidade-card-descricao">{h.descricao || '—'}</p>
+                <div className="habilidade-card-actions">
+                  <button type="button" className="btn btn-secondary" style={{ fontSize: '0.85rem' }} onClick={() => handleEditar(h)}>
+                    Editar
+                  </button>
+                </div>
+              </div>
+            ))}
           </div>
         )}
       </div>

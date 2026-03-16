@@ -4,6 +4,42 @@ import { getMovimentos, importarMovimentosPokeApi, criarMovimento, atualizarMovi
 const TIPAGENS = ['NORMAL', 'FOGO', 'AGUA', 'ELETRICO', 'GRAMA', 'GELO', 'LUTADOR', 'VENENOSO', 'TERRA', 'VOADOR', 'PSIQUICO', 'INSETO', 'PEDRA', 'FANTASMA', 'DRAGAO', 'SOMBRIO', 'METAL', 'FADA']
 const CATEGORIAS = ['FISICO', 'ESPECIAL', 'STATUS']
 
+const TYPE_COLORS = {
+  NORMAL: '#A8A77A',
+  FOGO: '#EE8130',
+  AGUA: '#6390F0',
+  ELETRICO: '#F7D02C',
+  GRAMA: '#7AC74C',
+  GELO: '#96D9D6',
+  LUTADOR: '#C22E28',
+  VENENOSO: '#A33EA1',
+  TERRA: '#E2BF65',
+  VOADOR: '#A98FF3',
+  PSIQUICO: '#F95587',
+  INSETO: '#A6B91A',
+  PEDRA: '#B6A136',
+  FANTASMA: '#735797',
+  DRAGAO: '#6F35FC',
+  SOMBRIO: '#705746',
+  METAL: '#B7B7CE',
+  FADA: '#D685AD',
+}
+
+function hexToRgb(hex) {
+  if (!hex || !hex.startsWith('#')) return null
+  const n = parseInt(hex.slice(1), 16)
+  return [n >> 16, (n >> 8) & 0xff, n & 0xff]
+}
+
+function getMoveCardBackground(move) {
+  const base = '#151521'
+  const tipo = move?.tipo
+  const hex = tipo && TYPE_COLORS[tipo] ? TYPE_COLORS[tipo] : null
+  if (!hex) return base
+  const [r, g, b] = hexToRgb(hex)
+  return `linear-gradient(135deg, rgba(${r},${g},${b},0.25), rgba(${r},${g},${b},0.05)), ${base}`
+}
+
 export default function MovimentosCatalogo() {
   const [user, setUser] = useState(null)
   const [movimentos, setMovimentos] = useState([])
@@ -189,39 +225,31 @@ export default function MovimentosCatalogo() {
         {movimentos.length === 0 ? (
           <p style={{ color: 'var(--text-muted)' }}>Nenhum movimento. Use &quot;Criar movimento&quot; ou &quot;Importar todos da PokéAPI&quot;.</p>
         ) : (
-          <div style={{ overflowX: 'auto' }}>
-            <table className="table">
-              <thead>
-                <tr>
-                  <th>Nome (PT)</th>
-                  <th>Nome (EN)</th>
-                  <th>Tipo</th>
-                  <th>Categoria</th>
-                  <th>Stamina</th>
-                  <th>Dado</th>
-                  <th>Efeito</th>
-                  <th style={{ width: 90 }}></th>
-                </tr>
-              </thead>
-              <tbody>
-                {movimentos.map((m) => (
-                  <tr key={m.id}>
-                    <td>{m.nome}</td>
-                    <td>{m.nomeEn || '—'}</td>
-                    <td>{m.tipo || '—'}</td>
-                    <td>{m.categoria || '—'}</td>
-                    <td>{m.custoStamina}</td>
-                    <td>{m.dadoDeDano || '—'}</td>
-                    <td style={{ maxWidth: 280 }}>{m.descricaoEfeito ? (m.descricaoEfeito.length > 60 ? m.descricaoEfeito.slice(0, 60) + '…' : m.descricaoEfeito) : '—'}</td>
-                    <td>
-                      <button type="button" className="btn btn-secondary" style={{ fontSize: '0.85rem' }} onClick={() => handleEditar(m)}>
-                        Editar
-                      </button>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
+          <div className="movimentos-grid">
+            {movimentos.map((m) => (
+              <div key={m.id} className="movimento-card card" style={{ background: getMoveCardBackground(m) }}>
+                <div className="movimento-card-header">
+                  <h4 className="movimento-card-nome">{m.nome}</h4>
+                  {m.tipo && (
+                    <span className={`pokemon-type-tag pokemon-type-${(m.tipo || '').toLowerCase()}`}>
+                      {m.tipo}
+                    </span>
+                  )}
+                </div>
+                {m.nomeEn && <span className="movimento-card-nome-en">{m.nomeEn}</span>}
+                <div className="movimento-card-meta">
+                  {m.categoria && <span>{m.categoria}</span>}
+                  <span>Stamina: {m.custoStamina ?? 0}</span>
+                  {m.dadoDeDano && <span>Dado: {m.dadoDeDano}</span>}
+                </div>
+                <p className="movimento-card-efeito">{m.descricaoEfeito || '—'}</p>
+                <div className="movimento-card-actions">
+                  <button type="button" className="btn btn-secondary" style={{ fontSize: '0.85rem' }} onClick={() => handleEditar(m)}>
+                    Editar
+                  </button>
+                </div>
+              </div>
+            ))}
           </div>
         )}
       </div>

@@ -69,85 +69,99 @@ export default function Perfil() {
     }
   }
 
-  if (loading) return <div className="container">Carregando perfil...</div>
-  if (erro && !perfil) return <div className="container"><p style={{ color: 'var(--danger)' }}>{erro}</p></div>
+  if (loading) return <div className="container container--wide">Carregando perfil...</div>
+  if (erro && !perfil) return <div className="container container--wide"><p style={{ color: 'var(--danger)' }}>{erro}</p></div>
 
   const avisoSemPerfil = location.state?.semPerfil && !perfil
+  const ATRIBUTOS = ['forca', 'speed', 'inteligencia', 'tecnica', 'sabedoria', 'percepcao', 'dominio', 'respeito']
 
   return (
-    <div className="container">
-      <h1 style={{ marginBottom: '1rem' }}>Ficha do Jogador</h1>
+    <div className="container container--wide perfil-page">
+      <h1 className="perfil-page-title">Ficha do Jogador</h1>
       {avisoSemPerfil && (
-        <p style={{ padding: '0.75rem 1rem', background: 'var(--border)', borderRadius: 8, marginBottom: '1rem', color: 'var(--text-muted)' }}>
+        <p className="perfil-aviso">
           Crie sua ficha para acessar Pokémon e Mochila.
         </p>
       )}
-      <form onSubmit={handleSubmit} className="card">
-        <div className="form-group">
-          <label>Nome do personagem</label>
-          <input
-            value={form.nomePersonagem}
-            onChange={(e) => handleChange('nomePersonagem', e.target.value)}
-            required
-          />
-        </div>
-        <div className="form-group">
-          <label>Classe</label>
-          <select value={form.classe} onChange={(e) => handleChange('classe', e.target.value)}>
-            {CLASSES.map((c) => (
-              <option key={c} value={c}>{c}</option>
-            ))}
-          </select>
-        </div>
-        <div className="grid-2">
-          <div className="form-group">
-            <label>Pokedólares</label>
-            <input type="number" min={0} value={form.pokedolares} onChange={(e) => handleChange('pokedolares', parseInt(e.target.value, 10) || 0)} />
+      <form onSubmit={handleSubmit} className="card perfil-card">
+        <div className="perfil-grid perfil-grid--identity">
+          <div className="form-group perfil-field perfil-field--nome">
+            <label>Nome do personagem</label>
+            <input
+              value={form.nomePersonagem}
+              onChange={(e) => handleChange('nomePersonagem', e.target.value)}
+              required
+            />
           </div>
-          <div className="form-group">
-            <label>Nível</label>
-            <input type="number" min={1} value={form.nivel} onChange={(e) => handleChange('nivel', parseInt(e.target.value, 10) || 1)} />
-          </div>
-          <div className="form-group">
-            <label>XP atual</label>
-            <input type="number" min={0} value={form.xpAtual} onChange={(e) => handleChange('xpAtual', parseInt(e.target.value, 10) || 0)} />
-          </div>
-          <div className="form-group">
-            <label>HP máximo</label>
-            <input type="number" min={1} value={form.hpMaximo} onChange={(e) => handleChange('hpMaximo', parseInt(e.target.value, 10) || 1)} />
-          </div>
-          <div className="form-group">
-            <label>Stamina máxima</label>
-            <input type="number" min={1} value={form.staminaMaxima} onChange={(e) => handleChange('staminaMaxima', parseInt(e.target.value, 10) || 1)} />
-          </div>
-          <div className="form-group">
-            <label>Habilidade</label>
-            <input type="number" min={0} value={form.habilidade} onChange={(e) => handleChange('habilidade', parseInt(e.target.value, 10) || 0)} />
+          <div className="form-group perfil-field perfil-field--classe">
+            <label>Classe</label>
+            <select value={form.classe} onChange={(e) => handleChange('classe', e.target.value)}>
+              {CLASSES.map((c) => (
+                <option key={c} value={c}>{c}</option>
+              ))}
+            </select>
           </div>
         </div>
-        <h3 style={{ marginTop: '1.5rem', marginBottom: '0.5rem' }}>Atributos</h3>
-        <div className="grid-2">
-          {['forca', 'speed', 'inteligencia', 'tecnica', 'sabedoria', 'percepcao', 'dominio', 'respeito'].map((attr) => (
-            <div key={attr} className="form-group">
-              <label>{attr}</label>
-              <input
-                type="number"
-                min={0}
-                value={form.atributos[attr] ?? 0}
-                onChange={(e) => handleAtributo(attr, e.target.value)}
-              />
+
+        <div className="perfil-section">
+          <h3 className="perfil-section-title">Recursos</h3>
+          <div className="perfil-grid perfil-grid--stats">
+            <div className="form-group perfil-field">
+              <label>Pokedólares</label>
+              <input type="number" min={0} value={form.pokedolares} onChange={(e) => handleChange('pokedolares', parseInt(e.target.value, 10) || 0)} />
             </div>
-          ))}
+            <div className="form-group perfil-field">
+              <label>Nível</label>
+              <input type="number" min={1} value={form.nivel} onChange={(e) => handleChange('nivel', parseInt(e.target.value, 10) || 1)} />
+            </div>
+            <div className="form-group perfil-field">
+              <label>XP atual</label>
+              <input type="number" min={0} value={form.xpAtual} onChange={(e) => handleChange('xpAtual', parseInt(e.target.value, 10) || 0)} />
+            </div>
+            <div className="form-group perfil-field">
+              <label>HP</label>
+              <input type="number" min={1} value={form.hpMaximo} onChange={(e) => handleChange('hpMaximo', parseInt(e.target.value, 10) || 1)} />
+            </div>
+            <div className="form-group perfil-field">
+              <label>Stamina</label>
+              <input type="number" min={1} value={form.staminaMaxima} onChange={(e) => handleChange('staminaMaxima', parseInt(e.target.value, 10) || 1)} />
+            </div>
+            <div className="form-group perfil-field">
+              <label>Habilidade</label>
+              <input type="number" min={0} value={form.habilidade} onChange={(e) => handleChange('habilidade', parseInt(e.target.value, 10) || 0)} />
+            </div>
+          </div>
         </div>
-        {erro && <p style={{ color: 'var(--danger)', marginTop: '1rem' }}>{erro}</p>}
-        <button type="submit" className="btn btn-primary" style={{ marginTop: '1rem' }} disabled={saving}>
-          {saving ? 'Salvando...' : 'Salvar ficha'}
-        </button>
+
+        <div className="perfil-section">
+          <h3 className="perfil-section-title">Atributos</h3>
+          <div className="perfil-grid perfil-grid--atributos">
+            {ATRIBUTOS.map((attr) => (
+              <div key={attr} className="form-group perfil-field">
+                <label>{attr}</label>
+                <input
+                  type="number"
+                  min={0}
+                  value={form.atributos[attr] ?? 0}
+                  onChange={(e) => handleAtributo(attr, e.target.value)}
+                />
+              </div>
+            ))}
+          </div>
+        </div>
+
+        {erro && <p className="perfil-erro">{erro}</p>}
+        <div className="perfil-actions">
+          <button type="submit" className="btn btn-primary" disabled={saving}>
+            {saving ? 'Salvando...' : 'Salvar ficha'}
+          </button>
+        </div>
       </form>
+
       {perfil?.timePrincipal?.length > 0 && (
-        <div className="card" style={{ marginTop: '1rem' }}>
-          <h3>Time principal</h3>
-          <ul style={{ paddingLeft: '1.2rem', margin: 0 }}>
+        <div className="card perfil-time-card">
+          <h3 className="perfil-section-title">Time principal</h3>
+          <ul className="perfil-time-list">
             {perfil.timePrincipal.map((p) => (
               <li key={p.id}>{p.apelido || p.especie} (Nv. {p.nivel})</li>
             ))}
