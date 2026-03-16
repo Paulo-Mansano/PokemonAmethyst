@@ -228,8 +228,9 @@ input, select, textarea {
 }
 
 .pokemon-banner-tipos {
-  font-weight: 600;
-  color: var(--accent);
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
 }
 
 .pokemon-banner-actions {
@@ -491,6 +492,37 @@ input, select, textarea {
   color: #e0f2fe;
   border: 1px solid rgba(56, 189, 248, 0.6);
 }
+
+/* Badges de tipo em estilo Pokédex */
+.pokemon-type-tag {
+  display: inline-flex;
+  align-items: center;
+  padding: 0 8px;
+  min-height: 20px;
+  border-radius: 999px;
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.03em;
+}
+
+.pokemon-type-normal { background: #A8A77A; color: #111827; }
+.pokemon-type-fogo { background: #EE8130; color: #111827; }
+.pokemon-type-agua { background: #6390F0; color: #0b1120; }
+.pokemon-type-eletrico { background: #F7D02C; color: #111827; }
+.pokemon-type-grama { background: #7AC74C; color: #052e16; }
+.pokemon-type-gelo { background: #96D9D6; color: #022c22; }
+.pokemon-type-lutador { background: #C22E28; color: #f9fafb; }
+.pokemon-type-venenoso { background: #A33EA1; color: #f9fafb; }
+.pokemon-type-terra { background: #E2BF65; color: #3f1f0f; }
+.pokemon-type-voador { background: #A98FF3; color: #020617; }
+.pokemon-type-psiquico { background: #F95587; color: #1f2937; }
+.pokemon-type-inseto { background: #A6B91A; color: #0f172a; }
+.pokemon-type-pedra { background: #B6A136; color: #111827; }
+.pokemon-type-fantasma { background: #735797; color: #e5e7eb; }
+.pokemon-type-dragao { background: #6F35FC; color: #e5e7eb; }
+.pokemon-type-sombrio { background: #705746; color: #f9fafb; }
+.pokemon-type-metal { background: #B7B7CE; color: #020617; }
+.pokemon-type-fada { background: #D685AD; color: #111827; }
 
 .pokemon-expanded-badge--meta {
   background: rgba(15, 23, 42, 0.9);

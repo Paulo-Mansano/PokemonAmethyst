@@ -128,11 +128,15 @@ function ExpandedForm({
               />
             </div>
             <div className="pokemon-expanded-badges">
-              <span className="pokemon-expanded-badge pokemon-expanded-badge--type">
+              <span
+                className={`pokemon-type-tag pokemon-type-${(expandedEdit.tipoPrimario || 'NORMAL').toLowerCase()}`}
+              >
                 {expandedEdit.tipoPrimario || 'NORMAL'}
               </span>
               {expandedEdit.tipoSecundario && (
-                <span className="pokemon-expanded-badge pokemon-expanded-badge--type-secondary">
+                <span
+                  className={`pokemon-type-tag pokemon-type-${expandedEdit.tipoSecundario.toLowerCase()}`}
+                >
                   {expandedEdit.tipoSecundario}
                 </span>
               )}
@@ -797,7 +801,16 @@ export default function PokemonList() {
                       <span>Lv. {p.nivel}</span>
                       <span>{(p.movimentosConhecidos || []).length} ataques</span>
                       <span className="pokemon-banner-tipos">
-                        {[p.tipoPrimario, p.tipoSecundario].filter(Boolean).join(' / ')}
+                        {[p.tipoPrimario, p.tipoSecundario]
+                          .filter(Boolean)
+                          .map((t) => (
+                            <span
+                              key={t}
+                              className={`pokemon-type-tag pokemon-type-${t.toLowerCase()}`}
+                            >
+                              {t}
+                            </span>
+                          ))}
                       </span>
                       <span>{formatGenero(p.genero)}</span>
                       {p.personalidade && <span>{p.personalidade}</span>}
@@ -873,7 +886,16 @@ export default function PokemonList() {
                       <span>Lv. {p.nivel}</span>
                       <span>{(p.movimentosConhecidos || []).length} ataques</span>
                       <span className="pokemon-banner-tipos">
-                        {[p.tipoPrimario, p.tipoSecundario].filter(Boolean).join(' / ')}
+                        {[p.tipoPrimario, p.tipoSecundario]
+                          .filter(Boolean)
+                          .map((t) => (
+                            <span
+                              key={t}
+                              className={`pokemon-type-tag pokemon-type-${t.toLowerCase()}`}
+                            >
+                              {t}
+                            </span>
+                          ))}
                       </span>
                       <span>{formatGenero(p.genero)}</span>
                       {p.personalidade && <span>{p.personalidade}</span>}
