@@ -13,6 +13,31 @@ public class PerfilJogadorService {
     private static final int PESO_MAXIMO_MOCHILA_PADRAO = 50;
     private static final int HP_STAMINA_INICIAL = 10;
     private static final String PERFIL_NOME_PADRAO = "Treinador";
+    private static final int MIN_ATRIBUTO = 1;
+    private static final int HABILIDADE_INICIAL = 1;
+
+    private static Atributos atributosIniciais() {
+        return new Atributos(
+                MIN_ATRIBUTO, MIN_ATRIBUTO,
+                MIN_ATRIBUTO, MIN_ATRIBUTO,
+                MIN_ATRIBUTO, MIN_ATRIBUTO,
+                MIN_ATRIBUTO, MIN_ATRIBUTO
+        );
+    }
+
+    private static Atributos normalizarAtributos(Atributos atributos) {
+        if (atributos == null) return null;
+        return new Atributos(
+                Math.max(MIN_ATRIBUTO, atributos.getForca()),
+                Math.max(MIN_ATRIBUTO, atributos.getSpeed()),
+                Math.max(MIN_ATRIBUTO, atributos.getInteligencia()),
+                Math.max(MIN_ATRIBUTO, atributos.getTecnica()),
+                Math.max(MIN_ATRIBUTO, atributos.getSabedoria()),
+                Math.max(MIN_ATRIBUTO, atributos.getPercepcao()),
+                Math.max(MIN_ATRIBUTO, atributos.getDominio()),
+                Math.max(MIN_ATRIBUTO, atributos.getRespeito())
+        );
+    }
 
     private final PerfilJogadorRepository perfilRepository;
     private final UsuarioRepository usuarioRepository;
@@ -60,12 +85,11 @@ public class PerfilJogadorService {
             perfil.setUsuario(usuario);
             perfil.setHpMaximo(HP_STAMINA_INICIAL);
             perfil.setStaminaMaxima(HP_STAMINA_INICIAL);
+            perfil.setHabilidade(HABILIDADE_INICIAL);
             Mochila mochila = new Mochila();
             mochila.setPesoMaximo(PESO_MAXIMO_MOCHILA_PADRAO);
             perfil.setMochila(mochila);
-            if (atributos == null) {
-                perfil.setAtributos(new Atributos());
-            }
+            perfil.setAtributos(atributos == null ? atributosIniciais() : normalizarAtributos(atributos));
         }
 
         if (nomePersonagem != null) perfil.setNomePersonagem(nomePersonagem);
@@ -75,8 +99,8 @@ public class PerfilJogadorService {
         if (xpAtual != null) perfil.setXpAtual(xpAtual);
         if (hpMaximo != null) perfil.setHpMaximo(hpMaximo);
         if (staminaMaxima != null) perfil.setStaminaMaxima(staminaMaxima);
-        if (habilidade != null) perfil.setHabilidade(habilidade);
-        if (atributos != null) perfil.setAtributos(atributos);
+        if (habilidade != null) perfil.setHabilidade(Math.max(HABILIDADE_INICIAL, habilidade));
+        if (atributos != null) perfil.setAtributos(normalizarAtributos(atributos));
 
         return perfilRepository.save(perfil);
     }

@@ -4,9 +4,15 @@ import com.pokemonamethyst.domain.PerfilJogador;
 import com.pokemonamethyst.domain.Pokemon;
 import com.pokemonamethyst.security.UsuarioPrincipal;
 import com.pokemonamethyst.service.PerfilJogadorService;
+import com.pokemonamethyst.service.PokemonLearnsetService;
 import com.pokemonamethyst.service.PokemonService;
+import com.pokemonamethyst.web.dto.MovimentoResponseDto;
 import com.pokemonamethyst.web.dto.PokemonAtualizarRequestDto;
+import com.pokemonamethyst.web.dto.PokemonGanharXpRequestDto;
+import com.pokemonamethyst.web.dto.PokemonGanharXpResponseDto;
 import com.pokemonamethyst.web.dto.PokemonRequestDto;
+import com.pokemonamethyst.web.dto.PokemonAtualizarComAprendizagemResponseDto;
+import com.pokemonamethyst.web.dto.PokemonMovimentoAprendidoRequestDto;
 import com.pokemonamethyst.web.dto.PokemonResponseDto;
 import jakarta.validation.Valid;
 import org.springframework.http.HttpStatus;
@@ -24,10 +30,12 @@ public class PokemonController {
 
     private final PerfilJogadorService perfilService;
     private final PokemonService pokemonService;
+    private final PokemonLearnsetService pokemonLearnsetService;
 
-    public PokemonController(PerfilJogadorService perfilService, PokemonService pokemonService) {
+    public PokemonController(PerfilJogadorService perfilService, PokemonService pokemonService, PokemonLearnsetService pokemonLearnsetService) {
         this.perfilService = perfilService;
         this.pokemonService = pokemonService;
+        this.pokemonLearnsetService = pokemonLearnsetService;
     }
 
     private String perfilId(UsuarioPrincipal principal) {
@@ -42,14 +50,6 @@ public class PokemonController {
         return ResponseEntity.ok(lista.stream().map(PokemonResponseDto::from).toList());
     }
 
-    @PostMapping("/vazio")
-    @Transactional
-    public ResponseEntity<PokemonResponseDto> criarVazio(@AuthenticationPrincipal UsuarioPrincipal principal) {
-        String perfilId = perfilId(principal);
-        Pokemon pokemon = pokemonService.criarVazio(perfilId);
-        return ResponseEntity.status(HttpStatus.CREATED).body(PokemonResponseDto.from(pokemon));
-    }
-
     @PostMapping
     @Transactional
     public ResponseEntity<PokemonResponseDto> criar(
@@ -59,19 +59,47 @@ public class PokemonController {
         Pokemon pokemon = pokemonService.criar(
                 perfilId,
                 dto.getPokedexId(),
-                dto.getEspecie(),
-                dto.getTipoPrimario(),
                 dto.getApelido(),
-                dto.getTipoSecundario(),
                 dto.getGenero(),
                 dto.getPokebolaCaptura(),
-                dto.getHpMaximoOrDefault(),
                 dto.getStaminaMaximaOrDefault(),
-                dto.getImagemUrl(),
                 dto.getMovimentoIds(),
                 dto.getPersonalidadeId()
         );
         return ResponseEntity.status(HttpStatus.CREATED).body(PokemonResponseDto.from(pokemon));
+    }
+
+    @PostMapping("/{id}/xp/ganhar")
+    @Transactional
+    public ResponseEntity<PokemonGanharXpResponseDto> ganharXp(
+            @AuthenticationPrincipal UsuarioPrincipal principal,
+            @PathVariable String id,
+            @Valid @RequestBody PokemonGanharXpRequestDto dto) {
+        String perfilId = perfilId(principal);
+        PokemonGanharXpResponseDto response = pokemonService.ganharXp(id, perfilId, dto.getXpGanho());
+        return ResponseEntity.ok(response);
+    }
+
+    @PostMapping("/{id}/movimentos-aprendendo/aceitar")
+    @Transactional
+    public ResponseEntity<PokemonResponseDto> aceitarMovimentoAprendido(
+            @AuthenticationPrincipal UsuarioPrincipal principal,
+            @PathVariable String id,
+            @Valid @RequestBody PokemonMovimentoAprendidoRequestDto dto) {
+        String perfilId = perfilId(principal);
+        Pokemon pokemon = pokemonService.aceitarMovimentoAprendido(id, perfilId, dto.getMovimentoId(), dto.getSubstituirMovimentoId());
+        return ResponseEntity.ok(PokemonResponseDto.from(pokemon));
+    }
+
+    @PostMapping("/{id}/movimentos-aprendendo/recusar")
+    @Transactional
+    public ResponseEntity<PokemonResponseDto> recusarMovimentoAprendido(
+            @AuthenticationPrincipal UsuarioPrincipal principal,
+            @PathVariable String id,
+            @Valid @RequestBody PokemonMovimentoAprendidoRequestDto dto) {
+        String perfilId = perfilId(principal);
+        Pokemon pokemon = pokemonService.recusarMovimentoAprendido(id, perfilId, dto.getMovimentoId());
+        return ResponseEntity.ok(PokemonResponseDto.from(pokemon));
     }
 
     @GetMapping("/{id}")
@@ -86,23 +114,37 @@ public class PokemonController {
 
     @PutMapping("/{id}")
     @Transactional
-    public ResponseEntity<PokemonResponseDto> atualizar(
+    public ResponseEntity<PokemonAtualizarComAprendizagemResponseDto> atualizar(
             @AuthenticationPrincipal UsuarioPrincipal principal,
             @PathVariable String id,
             @RequestBody PokemonAtualizarRequestDto dto) {
         String perfilId = perfilId(principal);
-        Pokemon pokemon = pokemonService.atualizar(
+        PokemonAtualizarComAprendizagemResponseDto resultado = pokemonService.atualizar(
                 id, perfilId,
-                dto.getEspecie(), dto.getTipoPrimario(), dto.getTipoSecundario(), dto.getPokedexId(),
-                dto.getApelido(), dto.getImagemUrl(), dto.getNotas(),
+                dto.getPokedexId(),
+                dto.getApelido(), dto.getNotas(),
                 dto.getGenero(), dto.getShiny(), dto.getPersonalidadeId(),
                 dto.getEspecializacao(), dto.getBerryFavorita(), dto.getNivelDeVinculo(),
                 dto.getNivel(), dto.getXpAtual(), dto.getPokebolaCaptura(), dto.getItemSeguradoId(),
-                dto.getAtaque(), dto.getAtaqueEspecial(), dto.getDefesa(), dto.getDefesaEspecial(),
-                dto.getSpeed(), dto.getTecnica(), dto.getRespeito(), dto.getStatusAtuais(),
-                dto.getMovimentoIds()
+                dto.getTecnica(), dto.getRespeito(), dto.getStatusAtuais(),
+                dto.getMovimentoIds(), dto.getHabilidadeId()
         );
-        return ResponseEntity.ok(PokemonResponseDto.from(pokemon));
+        return ResponseEntity.ok(resultado);
+    }
+
+    @GetMapping("/{id}/movimentos-disponiveis")
+    @Transactional(readOnly = true)
+    public ResponseEntity<List<MovimentoResponseDto>> listarMovimentosDisponiveis(
+            @AuthenticationPrincipal UsuarioPrincipal principal,
+            @PathVariable String id) {
+        String perfilId = perfilId(principal);
+        Pokemon pokemon = pokemonService.buscarPorIdEPerfil(id, perfilId);
+        List<MovimentoResponseDto> movimentos = pokemonLearnsetService
+                .listarMovimentosDisponiveis(pokemon.getSpecies(), pokemon.getNivel(), null)
+                .stream()
+                .map(MovimentoResponseDto::from)
+                .toList();
+        return ResponseEntity.ok(movimentos);
     }
 
     @PutMapping("/{id}/time")

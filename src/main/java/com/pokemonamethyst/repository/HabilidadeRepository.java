@@ -11,4 +11,8 @@ public interface HabilidadeRepository extends JpaRepository<Habilidade, String> 
     List<Habilidade> findAllByOrderByNome();
 
     Optional<Habilidade> findByPokeapiId(Integer pokeapiId);
+
+    Optional<Habilidade> findByNomeIgnoreCase(String nome);
+
+    Optional<Habilidade> findByNomeEnIgnoreCase(String nomeEn);
 }

@@ -18,8 +18,8 @@ export default function Perfil() {
     xpAtual: 0,
     hpMaximo: 10,
     staminaMaxima: 10,
-    habilidade: 0,
-    atributos: { forca: 0, speed: 0, inteligencia: 0, tecnica: 0, sabedoria: 0, percepcao: 0, dominio: 0, respeito: 0 },
+    habilidade: 1,
+    atributos: { forca: 1, speed: 1, inteligencia: 1, tecnica: 1, sabedoria: 1, percepcao: 1, dominio: 1, respeito: 1 },
   })
 
   useEffect(() => {
@@ -35,8 +35,17 @@ export default function Perfil() {
             xpAtual: p.xpAtual ?? 0,
             hpMaximo: p.hpMaximo ?? 10,
             staminaMaxima: p.staminaMaxima ?? 10,
-            habilidade: p.habilidade ?? 0,
-            atributos: p.atributos ?? { forca: 0, speed: 0, inteligencia: 0, tecnica: 0, sabedoria: 0, percepcao: 0, dominio: 0, respeito: 0 },
+            habilidade: Math.max(1, p.habilidade ?? 1),
+            atributos: {
+              forca: Math.max(1, p.atributos?.forca ?? 1),
+              speed: Math.max(1, p.atributos?.speed ?? 1),
+              inteligencia: Math.max(1, p.atributos?.inteligencia ?? 1),
+              tecnica: Math.max(1, p.atributos?.tecnica ?? 1),
+              sabedoria: Math.max(1, p.atributos?.sabedoria ?? 1),
+              percepcao: Math.max(1, p.atributos?.percepcao ?? 1),
+              dominio: Math.max(1, p.atributos?.dominio ?? 1),
+              respeito: Math.max(1, p.atributos?.respeito ?? 1),
+            },
           })
         }
       })
@@ -49,9 +58,11 @@ export default function Perfil() {
   }
 
   const handleAtributo = (attr, value) => {
+    const n = parseInt(value, 10)
     setForm((f) => ({
       ...f,
-      atributos: { ...f.atributos, [attr]: parseInt(value, 10) || 0 },
+      // Garantimos que nenhum atributo seja salvo como 0.
+      atributos: { ...f.atributos, [attr]: Number.isFinite(n) ? Math.max(1, n) : 1 },
     }))
   }
 
@@ -128,7 +139,7 @@ export default function Perfil() {
             </div>
             <div className="form-group perfil-field">
               <label>Habilidade</label>
-              <input type="number" min={0} value={form.habilidade} onChange={(e) => handleChange('habilidade', parseInt(e.target.value, 10) || 0)} />
+              <input type="number" min={1} value={form.habilidade} onChange={(e) => handleChange('habilidade', Math.max(1, parseInt(e.target.value, 10) || 1))} />
             </div>
           </div>
         </div>
@@ -141,8 +152,8 @@ export default function Perfil() {
                 <label>{attr}</label>
                 <input
                   type="number"
-                  min={0}
-                  value={form.atributos[attr] ?? 0}
+                  min={1}
+                  value={form.atributos[attr] ?? 1}
                   onChange={(e) => handleAtributo(attr, e.target.value)}
                 />
               </div>

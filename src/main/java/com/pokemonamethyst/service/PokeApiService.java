@@ -2,25 +2,35 @@ package com.pokemonamethyst.service;
 
 import com.pokemonamethyst.domain.CategoriaMovimento;
 import com.pokemonamethyst.domain.Habilidade;
+import com.pokemonamethyst.domain.MoveLearnMethod;
 import com.pokemonamethyst.domain.Movimento;
 import com.pokemonamethyst.domain.Item;
+import com.pokemonamethyst.domain.PokemonSpeciesHabilidade;
+import com.pokemonamethyst.domain.PokemonSpeciesMovimento;
+import com.pokemonamethyst.domain.PokemonSpecies;
 import com.pokemonamethyst.domain.Tipagem;
 import com.pokemonamethyst.repository.HabilidadeRepository;
 import com.pokemonamethyst.repository.MovimentoRepository;
 import com.pokemonamethyst.repository.ItemRepository;
+import com.pokemonamethyst.repository.PokemonSpeciesHabilidadeRepository;
+import com.pokemonamethyst.repository.PokemonSpeciesMovimentoRepository;
+import com.pokemonamethyst.repository.PokemonSpeciesRepository;
 import com.pokemonamethyst.exception.RecursoNaoEncontradoException;
 import com.pokemonamethyst.web.dto.PokeApiItemBuscaResponseDto;
 import com.pokemonamethyst.web.dto.PokeApiItemResumoDto;
 import com.pokemonamethyst.web.dto.PokeApiPokemonDetailDto;
 import com.pokemonamethyst.web.dto.PokeApiPokemonSummaryDto;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.client.HttpClientErrorException;
 import org.springframework.web.client.RestTemplate;
 
 import java.util.ArrayList;
+import java.util.Comparator;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.stream.Collectors;
 
 @Service
@@ -64,13 +74,30 @@ public class PokeApiService {
     private final MovimentoRepository movimentoRepository;
     private final ItemRepository itemRepository;
     private final HabilidadeRepository habilidadeRepository;
+    private final PokemonSpeciesRepository pokemonSpeciesRepository;
+    private final PokemonSpeciesHabilidadeRepository speciesHabilidadeRepository;
+    private final PokemonSpeciesMovimentoRepository speciesMovimentoRepository;
+    private final PokemonAbilityService pokemonAbilityService;
+    private final PokemonLearnsetService pokemonLearnsetService;
+    private final Map<String, Integer> versionGroupOrderCache = new ConcurrentHashMap<>();
+    private final Map<Integer, Object> speciesImportLocks = new ConcurrentHashMap<>();
 
     public PokeApiService(RestTemplate restTemplate, MovimentoRepository movimentoRepository, ItemRepository itemRepository,
-                          HabilidadeRepository habilidadeRepository) {
+                          HabilidadeRepository habilidadeRepository,
+                          PokemonSpeciesRepository pokemonSpeciesRepository,
+                          PokemonSpeciesHabilidadeRepository speciesHabilidadeRepository,
+                          PokemonSpeciesMovimentoRepository speciesMovimentoRepository,
+                          PokemonAbilityService pokemonAbilityService,
+                          PokemonLearnsetService pokemonLearnsetService) {
         this.restTemplate = restTemplate;
         this.movimentoRepository = movimentoRepository;
         this.itemRepository = itemRepository;
         this.habilidadeRepository = habilidadeRepository;
+        this.pokemonSpeciesRepository = pokemonSpeciesRepository;
+        this.speciesHabilidadeRepository = speciesHabilidadeRepository;
+        this.speciesMovimentoRepository = speciesMovimentoRepository;
+        this.pokemonAbilityService = pokemonAbilityService;
+        this.pokemonLearnsetService = pokemonLearnsetService;
     }
 
     private static final int FETCH_SIZE_COM_FILTRO = 2000;
@@ -125,6 +152,100 @@ public class PokeApiService {
             return toDetail(data);
         } catch (HttpClientErrorException.NotFound e) {
             throw new RecursoNaoEncontradoException("Pokémon não encontrado na PokéAPI: " + idOuNome);
+        }
+    }
+
+    @Transactional
+    public PokemonSpecies obterOuImportarSpecies(int pokedexId) {
+        if (pokedexId <= 0) {
+            return pokemonSpeciesRepository.findByPokedexId(0)
+                    .orElseThrow(() -> new RecursoNaoEncontradoException("Espécie padrão não encontrada."));
+        }
+        return pokemonSpeciesRepository.findByPokedexId(pokedexId)
+                .orElseGet(() -> importarSpeciesDaPokeApi(pokedexId));
+    }
+
+    /**
+     * Fluxo otimizado para criação: tenta local primeiro e só importa da PokéAPI no primeiro uso da espécie.
+     * Usa lock por pokedexId para evitar importação duplicada em acessos concorrentes.
+     */
+    @Transactional
+    public PokemonSpecies obterSpeciesParaCriacao(int pokedexId) {
+        if (pokedexId <= 0) {
+            throw new RecursoNaoEncontradoException("pokedexId inválido para criação de espécie.");
+        }
+        Optional<PokemonSpecies> local = pokemonSpeciesRepository.findByPokedexId(pokedexId);
+        if (local.isPresent()) {
+            return local.get();
+        }
+
+        Object lock = speciesImportLocks.computeIfAbsent(pokedexId, ignored -> new Object());
+        synchronized (lock) {
+            Optional<PokemonSpecies> localDentroLock = pokemonSpeciesRepository.findByPokedexId(pokedexId);
+            if (localDentroLock.isPresent()) {
+                return localDentroLock.get();
+            }
+            return importarSpeciesDaPokeApi(pokedexId);
+        }
+    }
+
+    @Transactional(readOnly = true)
+    public PokemonSpecies obterSpeciesLocal(int pokedexId) {
+        if (pokedexId <= 0) {
+            return pokemonSpeciesRepository.findByPokedexId(0)
+                    .orElseThrow(() -> new RecursoNaoEncontradoException("Espécie padrão não encontrada."));
+        }
+        return pokemonSpeciesRepository.findByPokedexId(pokedexId)
+                .orElseThrow(() -> new RecursoNaoEncontradoException(
+                        "Espécie não importada localmente. Importe via endpoint de mestre. pokedexId=" + pokedexId
+                ));
+    }
+
+    @SuppressWarnings("unchecked")
+    @Transactional
+    public PokemonSpecies importarSpeciesDaPokeApi(int pokedexId) {
+        try {
+            Map<String, Object> pokemonData = restTemplate.getForObject(BASE_URL + "/pokemon/" + pokedexId, Map.class);
+            Map<String, Object> speciesData = restTemplate.getForObject(BASE_URL + "/pokemon-species/" + pokedexId, Map.class);
+            if (pokemonData == null || speciesData == null) {
+                throw new RecursoNaoEncontradoException("Não foi possível carregar dados da espécie na PokéAPI: " + pokedexId);
+            }
+
+            PokemonSpecies species = pokemonSpeciesRepository.findByPokedexId(pokedexId).orElseGet(PokemonSpecies::new);
+            species.setPokedexId(pokedexId);
+            species.setNome(capitalizarNomeMove((String) pokemonData.getOrDefault("name", "unknown")));
+            species.setImagemUrl(extrairImageUrl(pokemonData));
+            species.setSpriteShinyUrl(extrairShinyUrl(pokemonData));
+            species.setTipoPrimario(extrairTipoPorSlot(pokemonData, 1));
+            species.setTipoSecundario(extrairTipoPorSlot(pokemonData, 2));
+            species.setBaseHp(extrairStat(pokemonData, "hp"));
+            species.setBaseAtaque(extrairStat(pokemonData, "attack"));
+            species.setBaseDefesa(extrairStat(pokemonData, "defense"));
+            species.setBaseAtaqueEspecial(extrairStat(pokemonData, "special-attack"));
+            species.setBaseDefesaEspecial(extrairStat(pokemonData, "special-defense"));
+            species.setBaseSpeed(extrairStat(pokemonData, "speed"));
+            species.setBaseExperience(((Number) pokemonData.getOrDefault("base_experience", 0)).intValue());
+            species.setHeight(((Number) pokemonData.getOrDefault("height", 0)).intValue());
+            species.setWeight(((Number) pokemonData.getOrDefault("weight", 0)).intValue());
+            species.setGrowthRate(extrairNomeReferencia(speciesData.get("growth_rate")));
+            Number captureRate = (Number) speciesData.get("capture_rate");
+            species.setCaptureRate(captureRate != null ? captureRate.intValue() : null);
+            species.setHabitat(extrairNomeReferencia(speciesData.get("habitat")));
+            species.setLegendary(Boolean.TRUE.equals(speciesData.get("is_legendary")));
+            species.setMythical(Boolean.TRUE.equals(speciesData.get("is_mythical")));
+            Number genderRate = (Number) speciesData.get("gender_rate");
+            species.setGenderRate(genderRate != null ? genderRate.intValue() : null);
+            species.setHasGenderDifferences(Boolean.TRUE.equals(speciesData.get("has_gender_differences")));
+            species.setForms(extrairFormsJson(pokemonData));
+
+            PokemonSpecies saved = pokemonSpeciesRepository.save(species);
+            sincronizarAbilitiesDaSpecies(saved, pokemonData);
+            sincronizarLearnsetDaSpecies(saved, pokemonData);
+            pokemonAbilityService.invalidarCacheSpecies(saved.getId());
+            pokemonLearnsetService.invalidarCacheSpecies(saved.getId());
+            return saved;
+        } catch (HttpClientErrorException.NotFound e) {
+            throw new RecursoNaoEncontradoException("Pokémon não encontrado na PokéAPI: " + pokedexId);
         }
     }
 
@@ -185,6 +306,17 @@ public class PokeApiService {
     }
 
     @SuppressWarnings("unchecked")
+    private String extrairShinyUrl(Map<String, Object> data) {
+        Object sprites = data.get("sprites");
+        if (sprites instanceof Map) {
+            Map<String, Object> sp = (Map<String, Object>) sprites;
+            String shiny = (String) sp.get("front_shiny");
+            if (shiny != null && !shiny.isEmpty()) return shiny;
+        }
+        return null;
+    }
+
+    @SuppressWarnings("unchecked")
     private Tipagem nomeParaTipagem(Map<String, Object> typeEntry) {
         Object type = typeEntry.get("type");
         if (type instanceof Map) {
@@ -194,6 +326,182 @@ public class PokeApiService {
             }
         }
         return Tipagem.NORMAL;
+    }
+
+    @SuppressWarnings("unchecked")
+    private Tipagem extrairTipoPorSlot(Map<String, Object> pokemonData, int slot) {
+        List<Map<String, Object>> types = (List<Map<String, Object>>) pokemonData.get("types");
+        if (types == null || types.isEmpty()) return slot == 1 ? Tipagem.NORMAL : null;
+        for (Map<String, Object> entry : types) {
+            Number s = (Number) entry.get("slot");
+            if (s != null && s.intValue() == slot) {
+                return nomeParaTipagem(entry);
+            }
+        }
+        types.sort(Comparator.comparingInt(e -> ((Number) e.getOrDefault("slot", 99)).intValue()));
+        if (slot == 1) return nomeParaTipagem(types.get(0));
+        return types.size() > 1 ? nomeParaTipagem(types.get(1)) : null;
+    }
+
+    @SuppressWarnings("unchecked")
+    private int extrairStat(Map<String, Object> pokemonData, String statName) {
+        List<Map<String, Object>> stats = (List<Map<String, Object>>) pokemonData.get("stats");
+        if (stats == null) return 1;
+        for (Map<String, Object> entry : stats) {
+            Object statObj = entry.get("stat");
+            if (statObj instanceof Map<?, ?> statMap) {
+                Object name = statMap.get("name");
+                if (statName.equals(name)) {
+                    Number base = (Number) entry.get("base_stat");
+                    return base != null ? Math.max(1, base.intValue()) : 1;
+                }
+            }
+        }
+        return 1;
+    }
+
+    @SuppressWarnings("unchecked")
+    private void sincronizarAbilitiesDaSpecies(PokemonSpecies species, Map<String, Object> pokemonData) {
+        speciesHabilidadeRepository.deleteBySpeciesId(species.getId());
+        List<Map<String, Object>> abilities = (List<Map<String, Object>>) pokemonData.get("abilities");
+        if (abilities == null || abilities.isEmpty()) {
+            return;
+        }
+        List<PokemonSpeciesHabilidade> entities = new ArrayList<>();
+        for (Map<String, Object> entry : abilities) {
+            Number slotNumber = (Number) entry.get("slot");
+            int slot = slotNumber != null ? slotNumber.intValue() : 1;
+            boolean hidden = Boolean.TRUE.equals(entry.get("is_hidden"));
+            String abilityName = extrairNomeReferencia(entry.get("ability"));
+            if (abilityName == null || abilityName.isBlank()) {
+                continue;
+            }
+            Habilidade habilidade = encontrarHabilidadePorNome(abilityName);
+            if (habilidade == null) {
+                continue;
+            }
+            PokemonSpeciesHabilidade relation = new PokemonSpeciesHabilidade();
+            relation.setSpecies(species);
+            relation.setHabilidade(habilidade);
+            relation.setSlot(slot);
+            relation.setHidden(hidden);
+            entities.add(relation);
+        }
+        if (!entities.isEmpty()) {
+            speciesHabilidadeRepository.saveAll(entities);
+        }
+    }
+
+    @SuppressWarnings("unchecked")
+    private void sincronizarLearnsetDaSpecies(PokemonSpecies species, Map<String, Object> pokemonData) {
+        speciesMovimentoRepository.deleteBySpeciesId(species.getId());
+        List<Map<String, Object>> moves = (List<Map<String, Object>>) pokemonData.get("moves");
+        if (moves == null || moves.isEmpty()) {
+            return;
+        }
+        List<PokemonSpeciesMovimento> entities = new ArrayList<>();
+        for (Map<String, Object> moveEntry : moves) {
+            String moveName = extrairNomeReferencia(moveEntry.get("move"));
+            if (moveName == null || moveName.isBlank()) {
+                continue;
+            }
+            Movimento movimento = encontrarMovimentoPorNome(moveName);
+            if (movimento == null) {
+                continue;
+            }
+            List<Map<String, Object>> details = (List<Map<String, Object>>) moveEntry.get("version_group_details");
+            Map<String, Object> latestDetail = selecionarDetalheMaisRecente(details);
+            if (latestDetail == null) {
+                continue;
+            }
+            String methodName = extrairNomeReferencia(latestDetail.get("move_learn_method"));
+            MoveLearnMethod learnMethod = MoveLearnMethod.fromPokeApi(methodName);
+            Number levelRaw = (Number) latestDetail.get("level_learned_at");
+            Integer level = levelRaw != null && levelRaw.intValue() > 0 ? levelRaw.intValue() : null;
+
+            PokemonSpeciesMovimento relation = new PokemonSpeciesMovimento();
+            relation.setSpecies(species);
+            relation.setMovimento(movimento);
+            relation.setLearnMethod(learnMethod);
+            relation.setLevel(level);
+            entities.add(relation);
+        }
+        if (!entities.isEmpty()) {
+            speciesMovimentoRepository.saveAll(entities);
+        }
+    }
+
+    @SuppressWarnings("unchecked")
+    private Map<String, Object> selecionarDetalheMaisRecente(List<Map<String, Object>> details) {
+        if (details == null || details.isEmpty()) {
+            return null;
+        }
+        Map<String, Object> best = null;
+        int bestOrder = Integer.MIN_VALUE;
+        for (Map<String, Object> detail : details) {
+            String versionGroup = extrairNomeReferencia(detail.get("version_group"));
+            int currentOrder = obterOrdemVersionGroup(versionGroup);
+            if (currentOrder > bestOrder) {
+                bestOrder = currentOrder;
+                best = detail;
+            }
+        }
+        return best;
+    }
+
+    @SuppressWarnings("unchecked")
+    private int obterOrdemVersionGroup(String versionGroup) {
+        if (versionGroup == null || versionGroup.isBlank()) {
+            return Integer.MIN_VALUE;
+        }
+        return versionGroupOrderCache.computeIfAbsent(versionGroup, key -> {
+            try {
+                Map<String, Object> vg = restTemplate.getForObject(BASE_URL + "/version-group/" + key, Map.class);
+                if (vg == null) {
+                    return Integer.MIN_VALUE;
+                }
+                Number order = (Number) vg.get("order");
+                return order != null ? order.intValue() : Integer.MIN_VALUE;
+            } catch (Exception e) {
+                return Integer.MIN_VALUE;
+            }
+        });
+    }
+
+    @SuppressWarnings("unchecked")
+    private String extrairFormsJson(Map<String, Object> pokemonData) {
+        List<Map<String, Object>> forms = (List<Map<String, Object>>) pokemonData.get("forms");
+        if (forms == null || forms.isEmpty()) {
+            return null;
+        }
+        List<String> nomes = forms.stream()
+                .map(f -> extrairNomeReferencia(f))
+                .filter(n -> n != null && !n.isBlank())
+                .toList();
+        if (nomes.isEmpty()) {
+            return null;
+        }
+        return nomes.stream().map(n -> "\"" + n + "\"").collect(Collectors.joining(",", "[", "]"));
+    }
+
+    private Movimento encontrarMovimentoPorNome(String moveName) {
+        return movimentoRepository.findByNomeEnIgnoreCase(moveName)
+                .or(() -> movimentoRepository.findByNomeIgnoreCase(capitalizarNomeMove(moveName)))
+                .orElse(null);
+    }
+
+    private Habilidade encontrarHabilidadePorNome(String abilityName) {
+        return habilidadeRepository.findByNomeEnIgnoreCase(abilityName)
+                .or(() -> habilidadeRepository.findByNomeIgnoreCase(capitalizarNomeMove(abilityName)))
+                .orElse(null);
+    }
+
+    private String extrairNomeReferencia(Object refObj) {
+        if (refObj instanceof Map<?, ?> refMap) {
+            Object name = refMap.get("name");
+            if (name instanceof String s && !s.isBlank()) return s;
+        }
+        return null;
     }
 
     /**

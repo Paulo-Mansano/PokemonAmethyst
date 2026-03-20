@@ -5,6 +5,7 @@ import com.pokemonamethyst.domain.Item;
 import com.pokemonamethyst.domain.Movimento;
 import com.pokemonamethyst.domain.PerfilJogador;
 import com.pokemonamethyst.domain.Personalidade;
+import com.pokemonamethyst.domain.PokemonSpecies;
 import com.pokemonamethyst.repository.PerfilJogadorRepository;
 import com.pokemonamethyst.service.CatalogoService;
 import com.pokemonamethyst.service.PokeApiService;
@@ -67,6 +68,17 @@ public class MestreController {
     public ResponseEntity<Map<String, Integer>> importarItens() {
         int importados = pokeApiService.importarItens();
         return ResponseEntity.ok(Map.of("importados", importados));
+    }
+
+    @PostMapping("/pokeapi/importar-species/{pokedexId}")
+    @Transactional
+    public ResponseEntity<Map<String, Object>> importarSpecies(@PathVariable int pokedexId) {
+        PokemonSpecies species = pokeApiService.importarSpeciesDaPokeApi(pokedexId);
+        return ResponseEntity.ok(Map.of(
+                "id", species.getId(),
+                "pokedexId", species.getPokedexId(),
+                "nome", species.getNome()
+        ));
     }
 
     @GetMapping("/pokeapi/itens/listar")

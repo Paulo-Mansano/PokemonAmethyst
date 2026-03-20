@@ -3,7 +3,6 @@ package com.pokemonamethyst.web.dto;
 import com.pokemonamethyst.domain.*;
 
 import jakarta.validation.constraints.Min;
-import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Size;
 
@@ -11,18 +10,11 @@ import java.util.List;
 
 public class PokemonRequestDto {
 
-    @Min(0)
+    @NotNull(message = "pokedexId é obrigatório para criar um Pokémon.")
+    @Min(1)
     private Integer pokedexId;
 
-    @NotBlank(message = "Espécie é obrigatória")
-    private String especie;
-
-    @NotNull(message = "Tipo primário é obrigatório")
-    private Tipagem tipoPrimario;
-
     private String apelido;
-    private String imagemUrl;
-    private Tipagem tipoSecundario;
     private Genero genero;
     private Boolean shiny;
     private String personalidadeId;
@@ -33,15 +25,10 @@ public class PokemonRequestDto {
     private Integer xpAtual;
     private Pokebola pokebolaCaptura;
     private String itemSeguradoId;
-    private Integer hpMaximo;
     private Integer staminaMaxima;
 
     @Size(max = 8, message = "Máximo de 8 ataques")
     private List<String> movimentoIds;
-
-    public int getHpMaximoOrDefault() {
-        return hpMaximo != null ? hpMaximo : 20;
-    }
 
     public int getStaminaMaximaOrDefault() {
         return staminaMaxima != null ? staminaMaxima : 10;
@@ -49,16 +36,8 @@ public class PokemonRequestDto {
 
     public Integer getPokedexId() { return pokedexId; }
     public void setPokedexId(Integer pokedexId) { this.pokedexId = pokedexId; }
-    public String getEspecie() { return especie; }
-    public void setEspecie(String especie) { this.especie = especie; }
-    public Tipagem getTipoPrimario() { return tipoPrimario; }
-    public void setTipoPrimario(Tipagem tipoPrimario) { this.tipoPrimario = tipoPrimario; }
     public String getApelido() { return apelido; }
     public void setApelido(String apelido) { this.apelido = apelido; }
-    public String getImagemUrl() { return imagemUrl; }
-    public void setImagemUrl(String imagemUrl) { this.imagemUrl = imagemUrl; }
-    public Tipagem getTipoSecundario() { return tipoSecundario; }
-    public void setTipoSecundario(Tipagem tipoSecundario) { this.tipoSecundario = tipoSecundario; }
     public Genero getGenero() { return genero; }
     public void setGenero(Genero genero) { this.genero = genero; }
     public Boolean getShiny() { return shiny; }
@@ -79,8 +58,6 @@ public class PokemonRequestDto {
     public void setPokebolaCaptura(Pokebola pokebolaCaptura) { this.pokebolaCaptura = pokebolaCaptura; }
     public String getItemSeguradoId() { return itemSeguradoId; }
     public void setItemSeguradoId(String itemSeguradoId) { this.itemSeguradoId = itemSeguradoId; }
-    public Integer getHpMaximo() { return hpMaximo; }
-    public void setHpMaximo(Integer hpMaximo) { this.hpMaximo = hpMaximo; }
     public Integer getStaminaMaxima() { return staminaMaxima; }
     public void setStaminaMaxima(Integer staminaMaxima) { this.staminaMaxima = staminaMaxima; }
     public List<String> getMovimentoIds() { return movimentoIds; }

@@ -2,6 +2,7 @@ package com.pokemonamethyst.web.dto;
 
 import com.pokemonamethyst.domain.Movimento;
 import com.pokemonamethyst.domain.Pokemon;
+import com.pokemonamethyst.domain.PokemonSpecies;
 
 import java.util.List;
 import java.util.stream.Collectors;
@@ -37,6 +38,8 @@ public class PokemonResponseDto {
     private int speed;
     private int tecnica;
     private int respeito;
+    private String habilidadeAtivaId;
+    private String habilidadeAtivaNome;
     private List<String> statusAtuais;
     private List<MovimentoResponseDto> movimentosConhecidos;
 
@@ -75,8 +78,16 @@ public class PokemonResponseDto {
 
     public static PokemonResponseDto from(Pokemon p) {
         if (p == null) return null;
+        PokemonSpecies species = p.getSpecies();
         String especie = p.getEspecie();
         if (especie == null) especie = "";
+        int nivel = Math.max(1, p.getNivel());
+        int hpMaximo = calcularHp(species != null ? species.getBaseHp() : 1, p.getIvHp(), nivel);
+        int ataque = calcularStat(species != null ? species.getBaseAtaque() : 1, p.getIvAtaque(), nivel);
+        int ataqueEspecial = calcularStat(species != null ? species.getBaseAtaqueEspecial() : 1, p.getIvAtaqueEspecial(), nivel);
+        int defesa = calcularStat(species != null ? species.getBaseDefesa() : 1, p.getIvDefesa(), nivel);
+        int defesaEspecial = calcularStat(species != null ? species.getBaseDefesaEspecial() : 1, p.getIvDefesaEspecial(), nivel);
+        int speed = calcularStat(species != null ? species.getBaseSpeed() : 1, p.getIvSpeed(), nivel);
         PokemonResponseDto dto = new PokemonResponseDto(
                 p.getId(),
                 p.getOrdemTime(),
@@ -93,28 +104,42 @@ public class PokemonResponseDto {
                 p.getEspecializacao() != null ? p.getEspecializacao().name() : null,
                 p.getBerryFavorita() != null ? p.getBerryFavorita() : null,
                 p.getNivelDeVinculo(),
-                p.getNivel(),
+                nivel,
                 p.getXpAtual(),
                 p.getPokebolaCaptura() != null ? p.getPokebolaCaptura().name() : null,
                 p.getItemSegurado() != null ? p.getItemSegurado().getId() : null,
-                p.getHpMaximo(),
+                hpMaximo,
                 p.getStaminaMaxima(),
-                p.getAtaque(),
-                p.getAtaqueEspecial(),
-                p.getDefesa(),
-                p.getDefesaEspecial(),
-                p.getSpeed(),
+                ataque,
+                ataqueEspecial,
+                defesa,
+                defesaEspecial,
+                speed,
                 p.getTecnica(),
                 p.getRespeito(),
                 p.getStatusAtuais() != null ? p.getStatusAtuais().stream().map(Enum::name).toList() : List.of()
         );
         dto.setPersonalidadeId(p.getPersonalidade() != null ? p.getPersonalidade().getId() : null);
+        dto.setHabilidadeAtivaId(p.getHabilidadeAtiva() != null ? p.getHabilidadeAtiva().getId() : null);
+        dto.setHabilidadeAtivaNome(p.getHabilidadeAtiva() != null ? p.getHabilidadeAtiva().getNome() : null);
         if (p.getMovimentosConhecidos() != null && !p.getMovimentosConhecidos().isEmpty()) {
             dto.setMovimentosConhecidos(p.getMovimentosConhecidos().stream()
                     .map(MovimentoResponseDto::from)
                     .collect(Collectors.toList()));
         }
         return dto;
+    }
+
+    private static int calcularHp(int base, int iv, int nivel) {
+        return ((Math.max(1, base) + limitarIv(iv)) * nivel / 10) + nivel + 10;
+    }
+
+    private static int calcularStat(int base, int iv, int nivel) {
+        return ((Math.max(1, base) + limitarIv(iv)) * nivel / 10) + 5;
+    }
+
+    private static int limitarIv(int iv) {
+        return Math.max(0, Math.min(31, iv));
     }
 
     public String getId() { return id; }
@@ -175,6 +200,10 @@ public class PokemonResponseDto {
     public void setTecnica(int tecnica) { this.tecnica = tecnica; }
     public int getRespeito() { return respeito; }
     public void setRespeito(int respeito) { this.respeito = respeito; }
+    public String getHabilidadeAtivaId() { return habilidadeAtivaId; }
+    public void setHabilidadeAtivaId(String habilidadeAtivaId) { this.habilidadeAtivaId = habilidadeAtivaId; }
+    public String getHabilidadeAtivaNome() { return habilidadeAtivaNome; }
+    public void setHabilidadeAtivaNome(String habilidadeAtivaNome) { this.habilidadeAtivaNome = habilidadeAtivaNome; }
     public List<String> getStatusAtuais() { return statusAtuais; }
     public void setStatusAtuais(List<String> statusAtuais) { this.statusAtuais = statusAtuais; }
     public List<MovimentoResponseDto> getMovimentosConhecidos() { return movimentosConhecidos; }

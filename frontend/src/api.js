@@ -81,16 +81,6 @@ export async function getPokemons() {
   return res.json();
 }
 
-export async function criarPokemonVazio() {
-  const res = await request('/perfis/meu/pokemons/vazio', { method: 'POST' });
-  if (!res.ok) {
-    if (res.status === 404) throw new Error(MSG_SEM_PERFIL);
-    const data = await res.json().catch(() => ({}));
-    throw new Error(data.mensagem || 'Erro ao criar Pokémon');
-  }
-  return res.json();
-}
-
 export async function criarPokemon(body) {
   const res = await request('/perfis/meu/pokemons', {
     method: 'POST',
@@ -121,6 +111,51 @@ export async function atualizarPokemon(id, body) {
   if (!res.ok) {
     const data = await res.json().catch(() => ({}));
     throw new Error(data.mensagem || 'Erro ao atualizar Pokémon');
+  }
+  return res.json();
+}
+
+export async function ganharXpPokemon(id, xpGanho) {
+  const res = await request(`/perfis/meu/pokemons/${id}/xp/ganhar`, {
+    method: 'POST',
+    body: JSON.stringify({ xpGanho }),
+  });
+  if (!res.ok) {
+    const data = await res.json().catch(() => ({}));
+    throw new Error(data.mensagem || 'Erro ao ganhar XP');
+  }
+  return res.json();
+}
+
+export async function aceitarMovimentoAprendido(id, movimentoId, substituirMovimentoId) {
+  const res = await request(`/perfis/meu/pokemons/${id}/movimentos-aprendendo/aceitar`, {
+    method: 'POST',
+    body: JSON.stringify({ movimentoId, substituirMovimentoId: substituirMovimentoId || null }),
+  });
+  if (!res.ok) {
+    const data = await res.json().catch(() => ({}));
+    throw new Error(data.mensagem || 'Erro ao aceitar novo ataque');
+  }
+  return res.json();
+}
+
+export async function recusarMovimentoAprendido(id, movimentoId) {
+  const res = await request(`/perfis/meu/pokemons/${id}/movimentos-aprendendo/recusar`, {
+    method: 'POST',
+    body: JSON.stringify({ movimentoId }),
+  });
+  if (!res.ok) {
+    const data = await res.json().catch(() => ({}));
+    throw new Error(data.mensagem || 'Erro ao recusar novo ataque');
+  }
+  return res.json();
+}
+
+export async function getMovimentosDisponiveisPokemon(id) {
+  const res = await request(`/perfis/meu/pokemons/${id}/movimentos-disponiveis`);
+  if (!res.ok) {
+    const data = await res.json().catch(() => ({}));
+    throw new Error(data.mensagem || 'Erro ao carregar movimentos disponíveis');
   }
   return res.json();
 }

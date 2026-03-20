@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react'
 import { Link } from 'react-router-dom'
-import { getMeuPerfil, criarPokemonVazio, getPokemon, atualizarPokemon, colocarNoTime, removerDoTime, excluirPokemon, getPokeApiList, getPokeApiPokemon, getMovimentos, getPersonalidades, getItens } from '../api'
+import { getMeuPerfil, criarPokemon, getPokemon, atualizarPokemon, colocarNoTime, removerDoTime, excluirPokemon, getPokeApiList, getPokeApiPokemon, getMovimentos, getMovimentosDisponiveisPokemon, getPersonalidades, getItens, getHabilidades, ganharXpPokemon, aceitarMovimentoAprendido, recusarMovimentoAprendido } from '../api'
 
 const PAGE_SIZE = 20
 function capitalize(str) {
@@ -85,6 +85,7 @@ function editStateFromPokemon(p) {
     respeito: p.respeito ?? 0,
     statusAtuais: Array.isArray(p.statusAtuais) ? [...p.statusAtuais] : [],
     movimentoIds: (p.movimentosConhecidos || []).map((m) => m.id),
+    habilidadeId: p.habilidadeAtivaId || '',
   }
 }
 
@@ -101,7 +102,9 @@ function ExpandedForm({
   expandedEdit,
   setExpandedEdit,
   listaMovimentos,
+  listaMovimentosDisponiveis,
   listaPersonalidades,
+  listaHabilidades,
   listaItens,
   expandedPokemon,
   onSalvar,
@@ -114,12 +117,16 @@ function ExpandedForm({
   POKEBOLAS,
   ESPECIALIZACOES,
   CONDICOES_STATUS,
+  onGanharXp,
+  ganharXpLoading,
+  acoesBloqueadas,
 }) {
   const [movimentoBusca, setMovimentoBusca] = useState('')
   const [expandedMovimentoId, setExpandedMovimentoId] = useState(null)
+  const [xpGanho, setXpGanho] = useState('')
   const set = (key, value) => setExpandedEdit((e) => (e ? { ...e, [key]: value } : e))
   const movimentosAtuais = (expandedEdit.movimentoIds || []).map((id) => listaMovimentos.find((m) => m.id === id)).filter(Boolean)
-  const movimentosDisponiveis = listaMovimentos.filter((m) => !(expandedEdit.movimentoIds || []).includes(m.id))
+  const movimentosDisponiveis = (listaMovimentosDisponiveis || []).filter((m) => !(expandedEdit.movimentoIds || []).includes(m.id))
   const buscaTrim = (movimentoBusca || '').trim().toLowerCase()
   const movimentosFiltrados = buscaTrim
     ? movimentosDisponiveis.filter((m) => {
@@ -163,9 +170,9 @@ function ExpandedForm({
               />
               <input
                 value={expandedEdit.especie}
-                onChange={(e) => set('especie', e.target.value)}
                 className="pokemon-expanded-especie"
                 placeholder="Espécie"
+                readOnly
               />
             </div>
             <div className="pokemon-expanded-badges">
@@ -246,17 +253,17 @@ function ExpandedForm({
               <Field label="Pokédex #">
                 <input
                   type="number"
-                  min={0}
+                  min={1}
                   value={expandedEdit.pokedexId}
-                  onChange={(e) => set('pokedexId', parseInt(e.target.value, 10) || 0)}
                   className="pokemon-edit-input"
+                  readOnly
                 />
               </Field>
               <Field label="URL da imagem">
                 <input
                   value={expandedEdit.imagemUrl}
-                  onChange={(e) => set('imagemUrl', e.target.value)}
                   className="pokemon-edit-input"
+                  readOnly
                 />
               </Field>
             </div>
@@ -264,8 +271,8 @@ function ExpandedForm({
               <Field label="Tipo primário">
                 <select
                   value={expandedEdit.tipoPrimario}
-                  onChange={(e) => set('tipoPrimario', e.target.value)}
                   className="pokemon-edit-input"
+                  disabled
                 >
                   {TIPOS.map((t) => (
                     <option key={t} value={t}>{t}</option>
@@ -275,8 +282,8 @@ function ExpandedForm({
               <Field label="Tipo secundário">
                 <select
                   value={expandedEdit.tipoSecundario}
-                  onChange={(e) => set('tipoSecundario', e.target.value)}
                   className="pokemon-edit-input"
+                  disabled
                 >
                   <option value="">—</option>
                   {TIPOS.map((t) => (
@@ -314,6 +321,31 @@ function ExpandedForm({
                   onChange={(e) => set('xpAtual', parseInt(e.target.value, 10) || 0)}
                   className="pokemon-edit-input pokemon-edit-input--num"
                 />
+              </Field>
+              <Field label="Ganhar XP">
+                <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center' }}>
+                  <input
+                    type="number"
+                    min={1}
+                    value={xpGanho}
+                    onChange={(e) => setXpGanho(e.target.value)}
+                    placeholder="Ex.: 15"
+                    className="pokemon-edit-input pokemon-edit-input--num"
+                    style={{ width: 120 }}
+                  />
+                  <button
+                    type="button"
+                    className="btn btn-secondary btn-sm"
+                    disabled={ganharXpLoading || acoesBloqueadas || !xpGanho || parseInt(xpGanho, 10) <= 0}
+                    onClick={() => {
+                      const valor = parseInt(xpGanho, 10)
+                      if (!valor || valor <= 0) return
+                      Promise.resolve(onGanharXp && onGanharXp(expandedPokemon?.id, valor)).finally(() => setXpGanho(''))
+                    }}
+                  >
+                    {ganharXpLoading ? '...' : 'Ganhar'}
+                  </button>
+                </div>
               </Field>
               <Field label="Nível de vínculo">
                 <input
@@ -384,8 +416,8 @@ function ExpandedForm({
                   type="number"
                   min={1}
                   value={expandedEdit.hpMaximo}
-                  onChange={(e) => set('hpMaximo', parseInt(e.target.value, 10) || 1)}
                   className="pokemon-edit-input pokemon-edit-input--num"
+                  readOnly
                 />
               </Field>
               <Field label="Stamina máxima">
@@ -402,8 +434,8 @@ function ExpandedForm({
                   type="number"
                   min={0}
                   value={expandedEdit.ataque}
-                  onChange={(e) => set('ataque', parseInt(e.target.value, 10) || 0)}
                   className="pokemon-edit-input pokemon-edit-input--num"
+                  readOnly
                 />
               </Field>
               <Field label="Ataque especial">
@@ -411,8 +443,8 @@ function ExpandedForm({
                   type="number"
                   min={0}
                   value={expandedEdit.ataqueEspecial}
-                  onChange={(e) => set('ataqueEspecial', parseInt(e.target.value, 10) || 0)}
                   className="pokemon-edit-input pokemon-edit-input--num"
+                  readOnly
                 />
               </Field>
               <Field label="Defesa">
@@ -420,8 +452,8 @@ function ExpandedForm({
                   type="number"
                   min={0}
                   value={expandedEdit.defesa}
-                  onChange={(e) => set('defesa', parseInt(e.target.value, 10) || 0)}
                   className="pokemon-edit-input pokemon-edit-input--num"
+                  readOnly
                 />
               </Field>
               <Field label="Defesa especial">
@@ -429,8 +461,8 @@ function ExpandedForm({
                   type="number"
                   min={0}
                   value={expandedEdit.defesaEspecial}
-                  onChange={(e) => set('defesaEspecial', parseInt(e.target.value, 10) || 0)}
                   className="pokemon-edit-input pokemon-edit-input--num"
+                  readOnly
                 />
               </Field>
               <Field label="Velocidade">
@@ -438,8 +470,8 @@ function ExpandedForm({
                   type="number"
                   min={0}
                   value={expandedEdit.speed}
-                  onChange={(e) => set('speed', parseInt(e.target.value, 10) || 0)}
                   className="pokemon-edit-input pokemon-edit-input--num"
+                  readOnly
                 />
               </Field>
               <Field label="Técnica">
@@ -465,6 +497,18 @@ function ExpandedForm({
 
           <div className="pokemon-edit-section pokemon-edit-section--glass">
             <h4>Status e itens</h4>
+            <Field label="Habilidade ativa">
+              <select
+                value={expandedEdit.habilidadeId || ''}
+                onChange={(e) => set('habilidadeId', e.target.value)}
+                className="pokemon-edit-input"
+              >
+                <option value="">Sortear automaticamente</option>
+                {listaHabilidades.map((hab) => (
+                  <option key={hab.id} value={hab.id}>{hab.nome || hab.nomeEn || hab.id}</option>
+                ))}
+              </select>
+            </Field>
             <Field label="Item segurado">
               <select
                 value={expandedEdit.itemSeguradoId}
@@ -558,7 +602,7 @@ function ExpandedForm({
 
       {erro && <p className="pokemon-expanded-erro">{erro}</p>}
       <div className="pokemon-expanded-form-actions">
-        <button type="submit" className="btn btn-primary" disabled={savingPokemon}>
+        <button type="submit" className="btn btn-primary" disabled={savingPokemon || acoesBloqueadas}>
           {savingPokemon ? 'Salvando...' : 'Salvar'}
         </button>
       </div>
@@ -573,18 +617,30 @@ export default function PokemonList() {
   const [modal, setModal] = useState(null)
   const [formLoading, setFormLoading] = useState(false)
   const [listaMovimentos, setListaMovimentos] = useState([])
+  const [listaMovimentosDisponiveis, setListaMovimentosDisponiveis] = useState([])
   const [listaPersonalidades, setListaPersonalidades] = useState([])
+  const [listaHabilidades, setListaHabilidades] = useState([])
   const [listaItens, setListaItens] = useState([])
   const [catalogoLista, setCatalogoLista] = useState([])
   const [catalogoLoading, setCatalogoLoading] = useState(false)
   const [catalogoOffset, setCatalogoOffset] = useState(0)
   const [catalogoErro, setCatalogoErro] = useState('')
   const [catalogoBusca, setCatalogoBusca] = useState('')
+  const [catalogoModo, setCatalogoModo] = useState('edit')
   const [savingPokemon, setSavingPokemon] = useState(false)
+  const [xpLoading, setXpLoading] = useState(false)
   const [expandedId, setExpandedId] = useState(null)
   const [expandedPokemon, setExpandedPokemon] = useState(null)
   const [expandedEdit, setExpandedEdit] = useState(null)
   const [expandedLoading, setExpandedLoading] = useState(false)
+
+  // Pop-up sequencial quando o Pokémon aprende novos ataques ao subir de nível.
+  const [ofertasAprendizagem, setOfertasAprendizagem] = useState([])
+  const [ofertaIdx, setOfertaIdx] = useState(0)
+  const [substituirMovimentoId, setSubstituirMovimentoId] = useState('')
+  const [nivelSubiuMsg, setNivelSubiuMsg] = useState('')
+
+  const popupAprendizagemAberta = ofertasAprendizagem.length > 0 && ofertaIdx < ofertasAprendizagem.length
 
   const load = () => {
     getMeuPerfil()
@@ -597,6 +653,7 @@ export default function PokemonList() {
 
   useEffect(() => {
     getMovimentos().then(setListaMovimentos).catch(() => setListaMovimentos([]))
+    getHabilidades().then(setListaHabilidades).catch(() => setListaHabilidades([]))
     getPersonalidades().then(setListaPersonalidades).catch(() => setListaPersonalidades([]))
     getItens().then(setListaItens).catch(() => setListaItens([]))
   }, [])
@@ -605,6 +662,18 @@ export default function PokemonList() {
     if (expandedPokemon) setExpandedEdit(editStateFromPokemon(expandedPokemon))
     else setExpandedEdit(null)
   }, [expandedPokemon])
+
+  useEffect(() => {
+    if (!popupAprendizagemAberta) return
+    const ids = expandedEdit?.movimentoIds || []
+    if (ids.length >= 8) {
+      if (!substituirMovimentoId || !ids.includes(substituirMovimentoId)) {
+        setSubstituirMovimentoId(ids[0] || '')
+      }
+    } else if (substituirMovimentoId) {
+      setSubstituirMovimentoId('')
+    }
+  }, [popupAprendizagemAberta, ofertaIdx, expandedEdit])
 
   const handleColocarNoTime = async (id, ordem) => {
     try {
@@ -625,17 +694,59 @@ export default function PokemonList() {
     }
   }
 
+  const handleGanharXp = async (pokemonId, xpGanho) => {
+    if (!pokemonId) return
+    setErro('')
+    setNivelSubiuMsg('')
+    setXpLoading(true)
+    try {
+      const response = await ganharXpPokemon(pokemonId, xpGanho)
+      if (response?.nivelSubiu) {
+        setNivelSubiuMsg(`Nível do Pokémon subiu para Lv. ${response.nivelDepois}!`)
+        if (response.movimentosAprendendo && response.movimentosAprendendo.length > 0) {
+          setOfertasAprendizagem(response.movimentosAprendendo)
+          setOfertaIdx(0)
+          setSubstituirMovimentoId('')
+        } else {
+          setOfertasAprendizagem([])
+          setOfertaIdx(0)
+        }
+      } else {
+        setOfertasAprendizagem([])
+        setOfertaIdx(0)
+      }
+      if (response?.pokemon) {
+        setExpandedPokemon(response.pokemon)
+      }
+      load()
+    } catch (err) {
+      setErro(err.message)
+      throw err
+    } finally {
+      setXpLoading(false)
+    }
+  }
+
   const toggleExpand = (p) => {
     if (expandedId === p.id) {
       setExpandedId(null)
       setExpandedPokemon(null)
+      setListaMovimentosDisponiveis([])
       return
     }
     setExpandedId(p.id)
     setExpandedLoading(true)
     setExpandedPokemon(null)
     getPokemon(p.id)
-      .then(setExpandedPokemon)
+      .then(async (pokemon) => {
+        setExpandedPokemon(pokemon)
+        try {
+          const disponiveis = await getMovimentosDisponiveisPokemon(p.id)
+          setListaMovimentosDisponiveis(disponiveis || [])
+        } catch {
+          setListaMovimentosDisponiveis(listaMovimentos)
+        }
+      })
       .catch(() => setExpandedId(null))
       .finally(() => setExpandedLoading(false))
   }
@@ -671,7 +782,8 @@ export default function PokemonList() {
       .finally(() => setCatalogoLoading(false))
   }
 
-  const handleAbrirCatalogo = () => {
+  const handleAbrirCatalogo = (modo = 'edit') => {
+    setCatalogoModo(modo)
     setModal('catalogo')
     setCatalogoOffset(0)
     setCatalogoBusca('')
@@ -680,21 +792,7 @@ export default function PokemonList() {
 
   const handleNovoPokemon = async () => {
     setErro('')
-    setFormLoading(true)
-    try {
-      const p = await criarPokemonVazio()
-      await load()
-      setExpandedId(p.id)
-      setExpandedLoading(true)
-      setExpandedPokemon(null)
-      const full = await getPokemon(p.id)
-      setExpandedPokemon(full)
-    } catch (err) {
-      setErro(err.message)
-    } finally {
-      setFormLoading(false)
-      setExpandedLoading(false)
-    }
+    handleAbrirCatalogo('create')
   }
 
   const handleBuscarCatalogo = () => {
@@ -706,17 +804,86 @@ export default function PokemonList() {
     setCatalogoErro('')
     try {
       const detail = await getPokeApiPokemon(id)
-      setExpandedEdit((e) => (e ? {
-        ...e,
-        pokedexId: detail.id,
-        especie: capitalize(detail.name),
-        tipoPrimario: detail.tipoPrimario || 'NORMAL',
-        tipoSecundario: detail.tipoSecundario || '',
-        imagemUrl: detail.imageUrl || '',
-      } : e))
+      if (catalogoModo === 'create') {
+        setFormLoading(true)
+        const created = await criarPokemon({ pokedexId: detail.id })
+        await load()
+        setExpandedId(created.id)
+        setExpandedLoading(true)
+        setExpandedPokemon(null)
+        const full = await getPokemon(created.id)
+        setExpandedPokemon(full)
+      } else {
+        setExpandedEdit((e) => (e ? {
+          ...e,
+          pokedexId: detail.id,
+          especie: capitalize(detail.name),
+          tipoPrimario: detail.tipoPrimario || 'NORMAL',
+          tipoSecundario: detail.tipoSecundario || '',
+          imagemUrl: detail.imageUrl || '',
+        } : e))
+      }
       setModal(null)
     } catch (err) {
       setCatalogoErro(err.message)
+    } finally {
+      setFormLoading(false)
+      setExpandedLoading(false)
+    }
+  }
+
+  const handleRecusarOfertaAprendizagem = async () => {
+    const oferta = ofertasAprendizagem[ofertaIdx]
+    if (!oferta || !expandedPokemon) return
+    setErro('')
+    setXpLoading(true)
+    try {
+      await recusarMovimentoAprendido(expandedPokemon.id, oferta.id)
+      const proximo = ofertaIdx + 1
+      if (proximo >= ofertasAprendizagem.length) {
+        setOfertasAprendizagem([])
+        setOfertaIdx(0)
+        setNivelSubiuMsg('')
+      } else {
+        setOfertaIdx(proximo)
+      }
+      await load()
+    } catch (err) {
+      setErro(err.message)
+    } finally {
+      setXpLoading(false)
+    }
+  }
+
+  const handleAceitarOfertaAprendizagem = async () => {
+    const oferta = ofertasAprendizagem[ofertaIdx]
+    if (!oferta || !expandedPokemon) return
+    setErro('')
+    setXpLoading(true)
+    try {
+      const idsAtuais = expandedEdit?.movimentoIds || []
+      const noLimite = idsAtuais.length >= 8
+      let substituto = null
+      if (noLimite) {
+        // Garante que a substituição use a lista atual (pode mudar conforme pop-ups anteriores).
+        substituto = idsAtuais.includes(substituirMovimentoId) ? substituirMovimentoId : (idsAtuais[0] || null)
+      }
+      const atualizado = await aceitarMovimentoAprendido(expandedPokemon.id, oferta.id, substituto)
+      if (atualizado) setExpandedPokemon(atualizado)
+
+      const proximo = ofertaIdx + 1
+      if (proximo >= ofertasAprendizagem.length) {
+        setOfertasAprendizagem([])
+        setOfertaIdx(0)
+        setNivelSubiuMsg('')
+      } else {
+        setOfertaIdx(proximo)
+      }
+      await load()
+    } catch (err) {
+      setErro(err.message)
+    } finally {
+      setXpLoading(false)
     }
   }
 
@@ -738,13 +905,9 @@ export default function PokemonList() {
     setErro('')
     setSavingPokemon(true)
     try {
-      await atualizarPokemon(expandedPokemon.id, {
-        especie: expandedEdit.especie || undefined,
-        tipoPrimario: expandedEdit.tipoPrimario || undefined,
-        tipoSecundario: expandedEdit.tipoSecundario || null,
-        pokedexId: expandedEdit.pokedexId ?? 0,
+      const resultado = await atualizarPokemon(expandedPokemon.id, {
+        pokedexId: expandedEdit.pokedexId && expandedEdit.pokedexId > 0 ? expandedEdit.pokedexId : null,
         apelido: expandedEdit.apelido || null,
-        imagemUrl: expandedEdit.imagemUrl || null,
         notas: expandedEdit.notas || null,
         genero: (expandedEdit.genero && expandedEdit.genero !== '' ? expandedEdit.genero : 'SEM_GENERO'),
         shiny: expandedEdit.shiny,
@@ -756,23 +919,34 @@ export default function PokemonList() {
         xpAtual: expandedEdit.xpAtual,
         pokebolaCaptura: expandedEdit.pokebolaCaptura || undefined,
         itemSeguradoId: expandedEdit.itemSeguradoId || null,
-        // hp/stamina atuais foram removidos do modelo; apenas máximos são persistidos
-        ataque: expandedEdit.ataque,
-        ataqueEspecial: expandedEdit.ataqueEspecial,
-        defesa: expandedEdit.defesa,
-        defesaEspecial: expandedEdit.defesaEspecial,
-        speed: expandedEdit.speed,
         tecnica: expandedEdit.tecnica,
         respeito: expandedEdit.respeito,
+        habilidadeId: expandedEdit.habilidadeId || null,
         statusAtuais: expandedEdit.statusAtuais?.length ? expandedEdit.statusAtuais : null,
         movimentoIds: expandedEdit.movimentoIds?.length ? expandedEdit.movimentoIds : [],
       })
-      const updated = await getPokemon(expandedPokemon.id)
-      setExpandedPokemon(updated)
+      if (resultado?.pokemon) {
+        setExpandedPokemon(resultado.pokemon)
+      } else {
+        const updated = await getPokemon(expandedPokemon.id)
+        setExpandedPokemon(updated)
+      }
       await load()
-      // Após salvar, recolhe o card expandido
-      setExpandedId(null)
-      setExpandedPokemon(null)
+
+      const movimentosAprendendo = resultado?.movimentosAprendendo || []
+      if (movimentosAprendendo.length > 0) {
+        setOfertasAprendizagem(movimentosAprendendo)
+        setOfertaIdx(0)
+        setNivelSubiuMsg(`Nível do Pokémon subiu para Lv. ${resultado.nivelDepois}`)
+        // Mantém o card aberto até aceitar/recusar os ataques.
+      } else {
+        // Após salvar, recolhe o card expandido
+        setExpandedId(null)
+        setExpandedPokemon(null)
+        setOfertasAprendizagem([])
+        setOfertaIdx(0)
+        setNivelSubiuMsg('')
+      }
     } catch (err) {
       setErro(err.message)
     } finally {
@@ -855,6 +1029,7 @@ export default function PokemonList() {
                           ))}
                       </span>
                       <span>{formatGenero(p.genero)}</span>
+                      {p.habilidadeAtivaNome && <span>Hab.: {p.habilidadeAtivaNome}</span>}
                       {p.personalidade && <span>{p.personalidade}</span>}
                       {p.berryFavorita && <span>Fruta: {p.berryFavorita}</span>}
                     </div>
@@ -872,19 +1047,24 @@ export default function PokemonList() {
                         expandedEdit={expandedEdit}
                         setExpandedEdit={setExpandedEdit}
                         listaMovimentos={listaMovimentos}
+                        listaMovimentosDisponiveis={listaMovimentosDisponiveis.length ? listaMovimentosDisponiveis : listaMovimentos}
                         listaPersonalidades={listaPersonalidades}
+                        listaHabilidades={listaHabilidades}
                         listaItens={listaItens}
                         expandedPokemon={expandedPokemon}
                         onSalvar={handleSalvarExpanded}
                         savingPokemon={savingPokemon}
                         erro={erro}
-                        onAbrirCatalogo={() => setModal('catalogo')}
+                        onAbrirCatalogo={() => handleAbrirCatalogo('edit')}
                         addMovimento={addMovimento}
                         removeMovimento={removeMovimento}
                         TIPOS={TIPOS}
                         POKEBOLAS={POKEBOLAS}
                         ESPECIALIZACOES={ESPECIALIZACOES}
                         CONDICOES_STATUS={CONDICOES_STATUS}
+                        onGanharXp={handleGanharXp}
+                        ganharXpLoading={xpLoading}
+                        acoesBloqueadas={popupAprendizagemAberta}
                       />
                     ) : null}
                   </div>
@@ -941,6 +1121,7 @@ export default function PokemonList() {
                           ))}
                       </span>
                       <span>{formatGenero(p.genero)}</span>
+                      {p.habilidadeAtivaNome && <span>Hab.: {p.habilidadeAtivaNome}</span>}
                       {p.personalidade && <span>{p.personalidade}</span>}
                       {p.berryFavorita && <span>Fruta: {p.berryFavorita}</span>}
                     </div>
@@ -961,19 +1142,24 @@ export default function PokemonList() {
                         expandedEdit={expandedEdit}
                         setExpandedEdit={setExpandedEdit}
                         listaMovimentos={listaMovimentos}
+                        listaMovimentosDisponiveis={listaMovimentosDisponiveis.length ? listaMovimentosDisponiveis : listaMovimentos}
                         listaPersonalidades={listaPersonalidades}
+                        listaHabilidades={listaHabilidades}
                         listaItens={listaItens}
                         expandedPokemon={expandedPokemon}
                         onSalvar={handleSalvarExpanded}
                         savingPokemon={savingPokemon}
                         erro={erro}
-                        onAbrirCatalogo={() => setModal('catalogo')}
+                        onAbrirCatalogo={() => handleAbrirCatalogo('edit')}
                         addMovimento={addMovimento}
                         removeMovimento={removeMovimento}
                         TIPOS={TIPOS}
                         POKEBOLAS={POKEBOLAS}
                         ESPECIALIZACOES={ESPECIALIZACOES}
                         CONDICOES_STATUS={CONDICOES_STATUS}
+                        onGanharXp={handleGanharXp}
+                        ganharXpLoading={xpLoading}
+                        acoesBloqueadas={popupAprendizagemAberta}
                       />
                     ) : null}
                   </div>
@@ -988,7 +1174,11 @@ export default function PokemonList() {
         <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.7)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 10, padding: '1rem' }}>
           <div className="card" style={{ maxWidth: 560, width: '100%', maxHeight: '90vh', overflow: 'auto' }}>
             <h3 style={{ marginTop: 0 }}>Catálogo PokéAPI</h3>
-            <p style={{ color: 'var(--text-muted)', fontSize: '0.9rem', marginBottom: '0.75rem' }}>Busque por nome ou número da Pokédex. Clique em um para preencher espécie, tipos e imagem no card expandido.</p>
+            <p style={{ color: 'var(--text-muted)', fontSize: '0.9rem', marginBottom: '0.75rem' }}>
+              {catalogoModo === 'create'
+                ? 'Busque por nome ou número da Pokédex. Clique em um para criar o Pokémon diretamente da PokéAPI.'
+                : 'Busque por nome ou número da Pokédex. Clique em um para preencher espécie, tipos e imagem no card expandido.'}
+            </p>
             <div style={{ display: 'flex', gap: '0.5rem', marginBottom: '1rem', flexWrap: 'wrap' }}>
               <input
                 type="text"
@@ -1053,6 +1243,74 @@ export default function PokemonList() {
                   </button>
                 </div>
               </>
+            )}
+          </div>
+        </div>
+      )}
+
+      {popupAprendizagemAberta && expandedPokemon && expandedEdit && (
+        <div
+          style={{
+            position: 'fixed',
+            inset: 0,
+            background: 'rgba(0,0,0,0.75)',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            zIndex: 20,
+            padding: '1rem',
+          }}
+        >
+          <div className="card" style={{ maxWidth: 560, width: '100%' }}>
+            <h3 style={{ marginTop: 0 }}>Aprender novo ataque</h3>
+            {nivelSubiuMsg ? <p style={{ color: 'var(--text-muted)' }}>{nivelSubiuMsg}</p> : null}
+            {ofertasAprendizagem[ofertaIdx] ? (
+              <>
+                <p style={{ marginBottom: '0.75rem' }}>
+                  Aceitar <b>{ofertasAprendizagem[ofertaIdx].nome}</b> ({ofertasAprendizagem[ofertaIdx].tipo})?
+                </p>
+
+                {(expandedEdit.movimentoIds || []).length >= 8 && (
+                  <div style={{ marginBottom: '0.75rem' }}>
+                    <label style={{ display: 'block', marginBottom: '0.25rem' }}>Selecione um ataque para substituir</label>
+                    <select
+                      value={substituirMovimentoId}
+                      onChange={(e) => setSubstituirMovimentoId(e.target.value)}
+                      className="pokemon-edit-input"
+                    >
+                      {(expandedEdit.movimentoIds || [])
+                        .map((id) => listaMovimentos.find((m) => m.id === id))
+                        .filter(Boolean)
+                        .map((m) => (
+                          <option key={m.id} value={m.id}>
+                            {m.nome}
+                          </option>
+                        ))}
+                    </select>
+                  </div>
+                )}
+
+                <div style={{ display: 'flex', gap: '0.5rem', justifyContent: 'flex-end', flexWrap: 'wrap' }}>
+                  <button
+                    type="button"
+                    className="btn btn-secondary"
+                    disabled={xpLoading}
+                    onClick={handleRecusarOfertaAprendizagem}
+                  >
+                    Recusar
+                  </button>
+                  <button
+                    type="button"
+                    className="btn btn-primary"
+                    disabled={xpLoading || ((expandedEdit.movimentoIds || []).length >= 8 && !substituirMovimentoId)}
+                    onClick={handleAceitarOfertaAprendizagem}
+                  >
+                    Aceitar
+                  </button>
+                </div>
+              </>
+            ) : (
+              <p style={{ color: 'var(--text-muted)' }}>Nenhuma oferta no momento.</p>
             )}
           </div>
         </div>
