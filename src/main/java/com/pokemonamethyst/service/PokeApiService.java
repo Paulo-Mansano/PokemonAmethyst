@@ -250,9 +250,14 @@ public class PokeApiService {
             PokemonSpecies saved = pokemonSpeciesRepository.save(species);
             sincronizarAbilitiesDaSpecies(saved, pokemonData);
             sincronizarLearnsetDaSpecies(saved, pokemonData);
-            pokemonAbilityService.invalidarCacheSpecies(saved.getId());
-            pokemonLearnsetService.invalidarCacheSpecies(saved.getId());
-            return saved;
+            String speciesId = saved.getId();
+            pokemonAbilityService.invalidarCacheSpecies(speciesId);
+            pokemonLearnsetService.invalidarCacheSpecies(speciesId);
+            // deleteBySpeciesId (habilidades/learnset) usa clearAutomatically=true e deixa `saved` detached.
+            // O objeto em memória ainda tem listas OneToMany vazias (default); merge ao salvar Pokemon pode
+            // aplicar orphanRemoval e apagar todo o learnset/habilidades no BD. Recarrega espécie gerenciada.
+            return pokemonSpeciesRepository.findByPokedexId(pokedexId)
+                    .orElseThrow(() -> new RecursoNaoEncontradoException("Espécie não encontrada após importação: " + pokedexId));
         } catch (HttpClientErrorException.NotFound e) {
             throw new RecursoNaoEncontradoException("Pokémon não encontrado na PokéAPI: " + pokedexId);
         } catch (RestClientException e) {
@@ -278,6 +283,9 @@ public class PokeApiService {
             return pokemonSpeciesRepository.save(species);
         } catch (HttpClientErrorException.NotFound e) {
             throw new RecursoNaoEncontradoException("Pokémon não encontrado na PokéAPI: " + pokedexId);
+        } catch (RestClientException e) {
+            throw new RegraNegocioException(
+                    "Falha ao consultar a PokéAPI (rede ou limite). Tente novamente em instantes. Detalhe: " + e.getMessage());
         }
     }
 

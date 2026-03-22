@@ -155,7 +155,8 @@ export async function criarPokemon(body) {
   if (!res.ok) {
     if (res.status === 404) throw new Error(MSG_SEM_PERFIL);
     const data = await res.json().catch(() => ({}));
-    throw new Error(data.mensagem || 'Erro ao criar Pokémon');
+    const extra = data.detalhe ? ` (${data.detalhe})` : '';
+    throw new Error((data.mensagem || 'Erro ao criar Pokémon') + extra);
   }
   return res.json();
 }

@@ -46,7 +46,7 @@ public class PokemonLearnsetService {
     }
 
     public List<PokemonSpeciesMovimento> listarLearnset(String speciesId) {
-        return speciesMovimentoRepository.findBySpeciesId(speciesId);
+        return speciesMovimentoRepository.findBySpeciesIdComMovimento(speciesId);
     }
 
     /**
@@ -119,9 +119,14 @@ public class PokemonLearnsetService {
                 .toList();
 
         if (nivelSeguro == 1) {
+            if (levelUp.isEmpty()) {
+                return List.of();
+            }
+            // Bloco inicial do learnset (em geral nível 1). Se não houver nível 1 na base, usa o menor nível LEVEL_UP.
+            int nivelInicial = levelUp.get(0).getLevel();
             List<Movimento> nivel1 = new ArrayList<>();
             for (PokemonSpeciesMovimento e : levelUp) {
-                if (e.getLevel() != 1) {
+                if (!Integer.valueOf(nivelInicial).equals(e.getLevel())) {
                     break;
                 }
                 Movimento m = e.getMovimento();
@@ -159,7 +164,7 @@ public class PokemonLearnsetService {
         }
         List<Movimento> embaralhado = new ArrayList<>(pool);
         Collections.shuffle(embaralhado, ThreadLocalRandom.current());
-        return embaralhado.subList(0, MAX_MOVIMENTOS_POR_POKEMON);
+        return new ArrayList<>(embaralhado.subList(0, MAX_MOVIMENTOS_POR_POKEMON));
     }
 
     /**

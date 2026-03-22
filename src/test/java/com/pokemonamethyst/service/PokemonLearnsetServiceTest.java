@@ -50,7 +50,7 @@ class PokemonLearnsetServiceTest {
         machineMove.setLearnMethod(MoveLearnMethod.MACHINE);
         machineMove.setLevel(null);
 
-        when(repository.findBySpeciesId("species-1")).thenReturn(List.of(moveLevel1, moveLevel20, machineMove));
+        when(repository.findBySpeciesIdComMovimento("species-1")).thenReturn(List.of(moveLevel1, moveLevel20, machineMove));
 
         List<Movimento> disponiveis = service.listarMovimentosDisponiveis(
                 species,
@@ -83,7 +83,7 @@ class PokemonLearnsetServiceTest {
         PokemonSpeciesMovimento e3 = entry(species, c, 1, 2);
         PokemonSpeciesMovimento e4 = entry(species, d, 1, 3);
 
-        when(repository.findBySpeciesId("species-2")).thenReturn(List.of(e1, e2, e3, e4));
+        when(repository.findBySpeciesIdComMovimento("species-2")).thenReturn(List.of(e1, e2, e3, e4));
 
         List<Movimento> iniciais = service.listarMovimentosIniciais(species, 1, 3);
 
@@ -109,7 +109,7 @@ class PokemonLearnsetServiceTest {
         PokemonSpeciesMovimento e2 = entry(species, b, 1, 0);
         PokemonSpeciesMovimento e3 = entry(species, x, 5, 1);
 
-        when(repository.findBySpeciesId("species-lv1")).thenReturn(List.of(e1, e2, e3));
+        when(repository.findBySpeciesIdComMovimento("species-lv1")).thenReturn(List.of(e1, e2, e3));
 
         List<Movimento> moves = service.escolherMovimentosAoCriarPokemon(species, 1);
 

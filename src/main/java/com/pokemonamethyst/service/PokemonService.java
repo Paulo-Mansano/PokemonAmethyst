@@ -132,12 +132,21 @@ public class PokemonService {
         pokemon.setPerfil(perfil);
         pokemon.setOrdemTime(null);
         pokemon.setSpecies(pokeApiService.obterSpeciesParaCriacao(pokedexIdVal));
+        // Importação de espécie usa deleteBySpeciesId (clearAutomatically=true) e limpa o contexto JPA;
+        // o perfil carregado acima fica detached e a coleção lazy pokemons quebra (LazyInitializationException).
+        perfil = perfilRepository.findById(perfilId)
+                .orElseThrow(() -> new RecursoNaoEncontradoException("Perfil não encontrado."));
+        pokemon.setPerfil(perfil);
         pokemon.setGenero(genero != null ? genero : definirGeneroAleatorio(pokemon.getSpecies()));
         pokemon.setShiny(sortearShiny());
         if (pokemon.isShiny()) {
-            PokemonSpecies sp = pokeApiService.garantirSpriteShinyNaEspecie(pokemon.getSpecies());
-            if (sp != null) {
-                pokemon.setSpecies(sp);
+            try {
+                PokemonSpecies sp = pokeApiService.garantirSpriteShinyNaEspecie(pokemon.getSpecies());
+                if (sp != null) {
+                    pokemon.setSpecies(sp);
+                }
+            } catch (RegraNegocioException | RecursoNaoEncontradoException e) {
+                // Sprite shiny extra é opcional; não bloqueia a criação (rede / limite PokéAPI).
             }
         }
         pokemon.setHabilidadeAtiva(pokemonAbilityService.sortearHabilidadeAtiva(pokemon.getSpecies()));
@@ -212,9 +221,13 @@ public class PokemonService {
         if (isShiny != null) {
             pokemon.setShiny(isShiny);
             if (Boolean.TRUE.equals(isShiny)) {
-                PokemonSpecies sp = pokeApiService.garantirSpriteShinyNaEspecie(pokemon.getSpecies());
-                if (sp != null) {
-                    pokemon.setSpecies(sp);
+                try {
+                    PokemonSpecies sp = pokeApiService.garantirSpriteShinyNaEspecie(pokemon.getSpecies());
+                    if (sp != null) {
+                        pokemon.setSpecies(sp);
+                    }
+                } catch (RegraNegocioException | RecursoNaoEncontradoException e) {
+                    // Idem criação: não falha a atualização se a PokéAPI não responder.
                 }
             }
         }
