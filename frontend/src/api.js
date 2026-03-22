@@ -1,4 +1,4 @@
-const BASE = '/api';
+const BASE = import.meta.env.VITE_API_BASE || '/api';
 
 function request(path, options = {}) {
   const url = path.startsWith('http') ? path : `${BASE}${path}`;
