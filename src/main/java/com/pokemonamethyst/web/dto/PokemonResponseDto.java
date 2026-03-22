@@ -2,7 +2,10 @@ package com.pokemonamethyst.web.dto;
 
 import com.pokemonamethyst.domain.Movimento;
 import com.pokemonamethyst.domain.Pokemon;
+import com.pokemonamethyst.domain.GrowthRate;
+import com.pokemonamethyst.domain.PokemonExperience;
 import com.pokemonamethyst.domain.PokemonSpecies;
+import com.pokemonamethyst.domain.PokemonStatsCalculator;
 
 import java.util.List;
 import java.util.stream.Collectors;
@@ -20,6 +23,10 @@ public class PokemonResponseDto {
     private boolean shiny;
     private String tipoPrimario;
     private String tipoSecundario;
+    /** Tipos da espécie na Pokédex (sem override do mestre). */
+    private String tipoPrimarioEspecie;
+    private String tipoSecundarioEspecie;
+    private boolean tiposComOverride;
     private String personalidade;
     private String personalidadeId;
     private String especializacao;
@@ -27,9 +34,18 @@ public class PokemonResponseDto {
     private int nivelDeVinculo;
     private int nivel;
     private int xpAtual;
+    /** Slug da PokéAPI (ex.: {@code medium}, {@code medium-slow}). */
+    private String taxaCrescimento;
+    /** XP cumulativo mínimo do nível atual (limiar inferior). */
+    private int xpCumulativoInicioNivel;
+    /** XP cumulativo necessário para o próximo nível (ou teto no nível 100). */
+    private int xpCumulativoProximoNivel;
+    /** Quanto falta até {@link #xpCumulativoProximoNivel}. */
+    private int xpRestanteParaProximoNivel;
     private String pokebolaCaptura;
     private String itemSeguradoId;
     private int hpMaximo;
+    private int hpAtual;
     private int staminaMaxima;
     private int ataque;
     private int ataqueEspecial;
@@ -38,8 +54,16 @@ public class PokemonResponseDto {
     private int speed;
     private int tecnica;
     private int respeito;
+    private int evHp;
+    private int evAtaque;
+    private int evDefesa;
+    private int evAtaqueEspecial;
+    private int evDefesaEspecial;
+    private int evSpeed;
     private String habilidadeAtivaId;
     private String habilidadeAtivaNome;
+    private String origem;
+    private String estado;
     private List<String> statusAtuais;
     private List<MovimentoResponseDto> movimentosConhecidos;
 
@@ -82,12 +106,12 @@ public class PokemonResponseDto {
         String especie = p.getEspecie();
         if (especie == null) especie = "";
         int nivel = Math.max(1, p.getNivel());
-        int hpMaximo = calcularHp(species != null ? species.getBaseHp() : 1, p.getIvHp(), nivel);
-        int ataque = calcularStat(species != null ? species.getBaseAtaque() : 1, p.getIvAtaque(), nivel);
-        int ataqueEspecial = calcularStat(species != null ? species.getBaseAtaqueEspecial() : 1, p.getIvAtaqueEspecial(), nivel);
-        int defesa = calcularStat(species != null ? species.getBaseDefesa() : 1, p.getIvDefesa(), nivel);
-        int defesaEspecial = calcularStat(species != null ? species.getBaseDefesaEspecial() : 1, p.getIvDefesaEspecial(), nivel);
-        int speed = calcularStat(species != null ? species.getBaseSpeed() : 1, p.getIvSpeed(), nivel);
+        int hpMaximo = PokemonStatsCalculator.hpMaximo(species != null ? species.getBaseHp() : 1, p.getIvHp(), p.getEvHp(), nivel);
+        int ataque = PokemonStatsCalculator.statNaoHp(species != null ? species.getBaseAtaque() : 1, p.getIvAtaque(), p.getEvAtaque(), nivel);
+        int ataqueEspecial = PokemonStatsCalculator.statNaoHp(species != null ? species.getBaseAtaqueEspecial() : 1, p.getIvAtaqueEspecial(), p.getEvAtaqueEspecial(), nivel);
+        int defesa = PokemonStatsCalculator.statNaoHp(species != null ? species.getBaseDefesa() : 1, p.getIvDefesa(), p.getEvDefesa(), nivel);
+        int defesaEspecial = PokemonStatsCalculator.statNaoHp(species != null ? species.getBaseDefesaEspecial() : 1, p.getIvDefesaEspecial(), p.getEvDefesaEspecial(), nivel);
+        int speed = PokemonStatsCalculator.statNaoHp(species != null ? species.getBaseSpeed() : 1, p.getIvSpeed(), p.getEvSpeed(), nivel);
         PokemonResponseDto dto = new PokemonResponseDto(
                 p.getId(),
                 p.getOrdemTime(),
@@ -122,24 +146,35 @@ public class PokemonResponseDto {
         dto.setPersonalidadeId(p.getPersonalidade() != null ? p.getPersonalidade().getId() : null);
         dto.setHabilidadeAtivaId(p.getHabilidadeAtiva() != null ? p.getHabilidadeAtiva().getId() : null);
         dto.setHabilidadeAtivaNome(p.getHabilidadeAtiva() != null ? p.getHabilidadeAtiva().getNome() : null);
+        dto.setEvHp(p.getEvHp());
+        dto.setEvAtaque(p.getEvAtaque());
+        dto.setEvDefesa(p.getEvDefesa());
+        dto.setEvAtaqueEspecial(p.getEvAtaqueEspecial());
+        dto.setEvDefesaEspecial(p.getEvDefesaEspecial());
+        dto.setEvSpeed(p.getEvSpeed());
+        int hpAtual = p.getHpAtual() == null ? hpMaximo : p.getHpAtual();
+        dto.setHpAtual(Math.max(0, Math.min(hpAtual, hpMaximo)));
+        dto.setOrigem(p.getOrigem() != null ? p.getOrigem().name() : null);
+        dto.setEstado(p.getEstado() != null ? p.getEstado().name() : null);
+        GrowthRate curva = GrowthRate.fromSpecies(species);
+        int xpTotal = p.getXpAtual();
+        int xpIni = PokemonExperience.getTotalXpForLevel(nivel, curva);
+        int xpProx = nivel >= PokemonExperience.MAX_LEVEL
+                ? PokemonExperience.getTotalXpForLevel(PokemonExperience.MAX_LEVEL, curva)
+                : PokemonExperience.getTotalXpForLevel(nivel + 1, curva);
+        dto.setTaxaCrescimento(species != null ? species.getGrowthRate() : null);
+        dto.setXpCumulativoInicioNivel(xpIni);
+        dto.setXpCumulativoProximoNivel(xpProx);
+        dto.setXpRestanteParaProximoNivel(PokemonExperience.getXpRestanteParaProximoNivel(xpTotal, nivel, curva));
         if (p.getMovimentosConhecidos() != null && !p.getMovimentosConhecidos().isEmpty()) {
             dto.setMovimentosConhecidos(p.getMovimentosConhecidos().stream()
                     .map(MovimentoResponseDto::from)
                     .collect(Collectors.toList()));
         }
+        dto.setTipoPrimarioEspecie(p.getTipoPrimarioDaEspecie() != null ? p.getTipoPrimarioDaEspecie().name() : null);
+        dto.setTipoSecundarioEspecie(p.getTipoSecundarioDaEspecie() != null ? p.getTipoSecundarioDaEspecie().name() : null);
+        dto.setTiposComOverride(p.isTiposPersonalizados());
         return dto;
-    }
-
-    private static int calcularHp(int base, int iv, int nivel) {
-        return ((Math.max(1, base) + limitarIv(iv)) * nivel / 10) + nivel + 10;
-    }
-
-    private static int calcularStat(int base, int iv, int nivel) {
-        return ((Math.max(1, base) + limitarIv(iv)) * nivel / 10) + 5;
-    }
-
-    private static int limitarIv(int iv) {
-        return Math.max(0, Math.min(31, iv));
     }
 
     public String getId() { return id; }
@@ -164,6 +199,12 @@ public class PokemonResponseDto {
     public void setTipoPrimario(String tipoPrimario) { this.tipoPrimario = tipoPrimario; }
     public String getTipoSecundario() { return tipoSecundario; }
     public void setTipoSecundario(String tipoSecundario) { this.tipoSecundario = tipoSecundario; }
+    public String getTipoPrimarioEspecie() { return tipoPrimarioEspecie; }
+    public void setTipoPrimarioEspecie(String tipoPrimarioEspecie) { this.tipoPrimarioEspecie = tipoPrimarioEspecie; }
+    public String getTipoSecundarioEspecie() { return tipoSecundarioEspecie; }
+    public void setTipoSecundarioEspecie(String tipoSecundarioEspecie) { this.tipoSecundarioEspecie = tipoSecundarioEspecie; }
+    public boolean isTiposComOverride() { return tiposComOverride; }
+    public void setTiposComOverride(boolean tiposComOverride) { this.tiposComOverride = tiposComOverride; }
     public String getPersonalidade() { return personalidade; }
     public void setPersonalidade(String personalidade) { this.personalidade = personalidade; }
     public String getPersonalidadeId() { return personalidadeId; }
@@ -178,12 +219,22 @@ public class PokemonResponseDto {
     public void setNivel(int nivel) { this.nivel = nivel; }
     public int getXpAtual() { return xpAtual; }
     public void setXpAtual(int xpAtual) { this.xpAtual = xpAtual; }
+    public String getTaxaCrescimento() { return taxaCrescimento; }
+    public void setTaxaCrescimento(String taxaCrescimento) { this.taxaCrescimento = taxaCrescimento; }
+    public int getXpCumulativoInicioNivel() { return xpCumulativoInicioNivel; }
+    public void setXpCumulativoInicioNivel(int xpCumulativoInicioNivel) { this.xpCumulativoInicioNivel = xpCumulativoInicioNivel; }
+    public int getXpCumulativoProximoNivel() { return xpCumulativoProximoNivel; }
+    public void setXpCumulativoProximoNivel(int xpCumulativoProximoNivel) { this.xpCumulativoProximoNivel = xpCumulativoProximoNivel; }
+    public int getXpRestanteParaProximoNivel() { return xpRestanteParaProximoNivel; }
+    public void setXpRestanteParaProximoNivel(int xpRestanteParaProximoNivel) { this.xpRestanteParaProximoNivel = xpRestanteParaProximoNivel; }
     public String getPokebolaCaptura() { return pokebolaCaptura; }
     public void setPokebolaCaptura(String pokebolaCaptura) { this.pokebolaCaptura = pokebolaCaptura; }
     public String getItemSeguradoId() { return itemSeguradoId; }
     public void setItemSeguradoId(String itemSeguradoId) { this.itemSeguradoId = itemSeguradoId; }
     public int getHpMaximo() { return hpMaximo; }
     public void setHpMaximo(int hpMaximo) { this.hpMaximo = hpMaximo; }
+    public int getHpAtual() { return hpAtual; }
+    public void setHpAtual(int hpAtual) { this.hpAtual = hpAtual; }
     public int getStaminaMaxima() { return staminaMaxima; }
     public void setStaminaMaxima(int staminaMaxima) { this.staminaMaxima = staminaMaxima; }
     public int getAtaque() { return ataque; }
@@ -200,10 +251,26 @@ public class PokemonResponseDto {
     public void setTecnica(int tecnica) { this.tecnica = tecnica; }
     public int getRespeito() { return respeito; }
     public void setRespeito(int respeito) { this.respeito = respeito; }
+    public int getEvHp() { return evHp; }
+    public void setEvHp(int evHp) { this.evHp = evHp; }
+    public int getEvAtaque() { return evAtaque; }
+    public void setEvAtaque(int evAtaque) { this.evAtaque = evAtaque; }
+    public int getEvDefesa() { return evDefesa; }
+    public void setEvDefesa(int evDefesa) { this.evDefesa = evDefesa; }
+    public int getEvAtaqueEspecial() { return evAtaqueEspecial; }
+    public void setEvAtaqueEspecial(int evAtaqueEspecial) { this.evAtaqueEspecial = evAtaqueEspecial; }
+    public int getEvDefesaEspecial() { return evDefesaEspecial; }
+    public void setEvDefesaEspecial(int evDefesaEspecial) { this.evDefesaEspecial = evDefesaEspecial; }
+    public int getEvSpeed() { return evSpeed; }
+    public void setEvSpeed(int evSpeed) { this.evSpeed = evSpeed; }
     public String getHabilidadeAtivaId() { return habilidadeAtivaId; }
     public void setHabilidadeAtivaId(String habilidadeAtivaId) { this.habilidadeAtivaId = habilidadeAtivaId; }
     public String getHabilidadeAtivaNome() { return habilidadeAtivaNome; }
     public void setHabilidadeAtivaNome(String habilidadeAtivaNome) { this.habilidadeAtivaNome = habilidadeAtivaNome; }
+    public String getOrigem() { return origem; }
+    public void setOrigem(String origem) { this.origem = origem; }
+    public String getEstado() { return estado; }
+    public void setEstado(String estado) { this.estado = estado; }
     public List<String> getStatusAtuais() { return statusAtuais; }
     public void setStatusAtuais(List<String> statusAtuais) { this.statusAtuais = statusAtuais; }
     public List<MovimentoResponseDto> getMovimentosConhecidos() { return movimentosConhecidos; }

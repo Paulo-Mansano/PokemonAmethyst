@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react'
 import { Link } from 'react-router-dom'
-import { getMeuPerfil, criarPokemon, getPokemon, atualizarPokemon, colocarNoTime, removerDoTime, excluirPokemon, getPokeApiList, getPokeApiPokemon, getMovimentos, getMovimentosDisponiveisPokemon, getPersonalidades, getItens, getHabilidades, ganharXpPokemon, aceitarMovimentoAprendido, recusarMovimentoAprendido } from '../api'
+import { getMeuPerfil, getUsuario, criarPokemon, getPokemon, atualizarPokemon, colocarNoTime, removerDoTime, excluirPokemon, getPokeApiList, getPokeApiPokemon, getMovimentos, getMovimentosDisponiveisPokemon, getPersonalidades, getItens, getHabilidades, ganharXpPokemon, aceitarMovimentoAprendido, recusarMovimentoAprendido, mestreDefinirTiposPokemon } from '../api'
 
 const PAGE_SIZE = 20
 function capitalize(str) {
@@ -50,6 +50,20 @@ function getCardBackground(p) {
   return `linear-gradient(135deg, rgba(${r1},${g1},${b1},0.25), rgba(${r2},${g2},${b2},0.15), rgba(${r1},${g1},${b1},0.05)), ${base}`
 }
 
+/** Fundo no mesmo estilo do card de Pokémon, usando só o tipo do movimento. */
+function getMoveCardBackground(tipo) {
+  const t = tipo || 'NORMAL'
+  return getCardBackground({ tipoPrimario: t, tipoSecundario: null })
+}
+
+function formatMovimentoNomeExibicao(m) {
+  if (!m) return ''
+  const pt = (m.nome || '').trim()
+  const en = (m.nomeEn || '').trim()
+  if (pt && en) return `${pt} / ${en}`
+  return pt || en || ''
+}
+
 const POKEBOLAS = ['POKEBALL', 'GREATBALL', 'ULTRABALL', 'MASTERBALL', 'SAFARIBALL', 'LUXURYBALL', 'FRIENDLYBALL', 'OUTRA']
 const ESPECIALIZACOES = ['VELOCISTA', 'ATACANTE_FISICO', 'ATACANTE_ESPECIAL', 'TANQUE', 'SUPORTE', 'UTILITARIO']
 const CONDICOES_STATUS = ['PARALISADO', 'ENVENENADO', 'DORMINDO', 'QUEIMADO', 'CONGELADO', 'CONFUSO']
@@ -60,6 +74,9 @@ function editStateFromPokemon(p) {
     especie: p.especie ?? '',
     tipoPrimario: p.tipoPrimario ?? 'NORMAL',
     tipoSecundario: p.tipoSecundario || '',
+    tipoPrimarioEspecie: p.tipoPrimarioEspecie ?? p.tipoPrimario ?? 'NORMAL',
+    tipoSecundarioEspecie: p.tipoSecundarioEspecie || '',
+    tiposComOverride: !!p.tiposComOverride,
     pokedexId: p.pokedexId ?? 0,
     apelido: p.apelido || '',
     imagemUrl: p.imagemUrl || '',
@@ -120,12 +137,20 @@ function ExpandedForm({
   onGanharXp,
   ganharXpLoading,
   acoesBloqueadas,
+  usuarioMestre,
+  onRestaurarTiposEspecie,
 }) {
   const [movimentoBusca, setMovimentoBusca] = useState('')
-  const [expandedMovimentoId, setExpandedMovimentoId] = useState(null)
   const [xpGanho, setXpGanho] = useState('')
   const set = (key, value) => setExpandedEdit((e) => (e ? { ...e, [key]: value } : e))
-  const movimentosAtuais = (expandedEdit.movimentoIds || []).map((id) => listaMovimentos.find((m) => m.id === id)).filter(Boolean)
+  const movimentosAtuais = (expandedEdit.movimentoIds || [])
+    .map((id) => {
+      const fromCatalog = listaMovimentos.find((m) => m.id === id)
+      const fromPokemon = expandedPokemon?.movimentosConhecidos?.find((m) => m.id === id)
+      if (!fromCatalog && !fromPokemon) return null
+      return { ...(fromCatalog || {}), ...(fromPokemon || {}) }
+    })
+    .filter(Boolean)
   const movimentosDisponiveis = (listaMovimentosDisponiveis || []).filter((m) => !(expandedEdit.movimentoIds || []).includes(m.id))
   const buscaTrim = (movimentoBusca || '').trim().toLowerCase()
   const movimentosFiltrados = buscaTrim
@@ -272,7 +297,16 @@ function ExpandedForm({
                 <select
                   value={expandedEdit.tipoPrimario}
                   className="pokemon-edit-input"
-                  disabled
+                  disabled={!usuarioMestre?.mestre}
+                  onChange={(e) => {
+                    const v = e.target.value
+                    setExpandedEdit((ed) => {
+                      if (!ed) return ed
+                      let sec = ed.tipoSecundario
+                      if (sec && sec === v) sec = ''
+                      return { ...ed, tipoPrimario: v, tipoSecundario: sec }
+                    })
+                  }}
                 >
                   {TIPOS.map((t) => (
                     <option key={t} value={t}>{t}</option>
@@ -283,15 +317,34 @@ function ExpandedForm({
                 <select
                   value={expandedEdit.tipoSecundario}
                   className="pokemon-edit-input"
-                  disabled
+                  disabled={!usuarioMestre?.mestre}
+                  onChange={(e) => set('tipoSecundario', e.target.value)}
                 >
                   <option value="">—</option>
-                  {TIPOS.map((t) => (
+                  {TIPOS.filter((t) => t !== expandedEdit.tipoPrimario).map((t) => (
                     <option key={t} value={t}>{t}</option>
                   ))}
                 </select>
               </Field>
             </div>
+            {usuarioMestre?.mestre && (
+              <p className="pokemon-mestre-tipos-hint" style={{ margin: '0.35rem 0 0', fontSize: '0.85rem', color: 'var(--text-muted)' }}>
+                Tipos da espécie (Pokédex):{' '}
+                <strong>{expandedEdit.tipoPrimarioEspecie || '—'}</strong>
+                {expandedEdit.tipoSecundarioEspecie ? (
+                  <> / <strong>{expandedEdit.tipoSecundarioEspecie}</strong></>
+                ) : null}
+                . {expandedEdit.tiposComOverride ? 'Este Pokémon usa tipos personalizados.' : 'Altere acima para sobrescrever só nesta instância.'}
+                {typeof onRestaurarTiposEspecie === 'function' && (
+                  <>
+                    {' '}
+                    <button type="button" className="btn btn-secondary btn-sm" onClick={onRestaurarTiposEspecie}>
+                      Restaurar tipos da espécie
+                    </button>
+                  </>
+                )}
+              </p>
+            )}
             <div className="pokemon-expanded-inline-fields">
               <Field label="Shiny">
                 <input
@@ -544,32 +597,40 @@ function ExpandedForm({
         <h4>Golpes &amp; Técnicas ({movimentosAtuais.length}/8)</h4>
         <div className="pokemon-movimentos-list">
           {movimentosAtuais.map((m) => (
-            <div key={m.id} className={`pokemon-movimento-card ${expandedMovimentoId === m.id ? 'is-expanded' : ''}`}>
-              <div
-                className="pokemon-movimento-card-main"
-                onClick={() => setExpandedMovimentoId((id) => (id === m.id ? null : m.id))}
-                role="button"
-                tabIndex={0}
-                onKeyDown={(e) => e.key === 'Enter' && setExpandedMovimentoId((id) => (id === m.id ? null : m.id))}
-              >
-                <span className="pokemon-movimento-nome">{m.nome}</span>
-                <span className="pokemon-movimento-tipo">{m.tipo}</span>
-              </div>
-              <button type="button" className="btn btn-danger btn-sm" onClick={(ev) => { ev.stopPropagation(); removeMovimento(m.id); setExpandedMovimentoId((id) => (id === m.id ? null : id)); }}>Remover</button>
-              {expandedMovimentoId === m.id && (
-                <div className="pokemon-movimento-card-detail" onClick={(e) => e.stopPropagation()}>
-                  <p className="pokemon-movimento-detail-note">Dados do ataque (somente leitura). Para editar, use a aba Ataques/Movimentos.</p>
-                  <dl className="pokemon-movimento-detail-dl">
-                    <dt>Nome</dt><dd>{m.nome || '—'}</dd>
-                    <dt>Nome (EN)</dt><dd>{m.nomeEn || '—'}</dd>
-                    <dt>Tipo</dt><dd>{m.tipo || '—'}</dd>
-                    <dt>Categoria</dt><dd>{m.categoria || '—'}</dd>
-                    <dt>Custo de stamina</dt><dd>{m.custoStamina ?? '—'}</dd>
-                    <dt>Dado de dano</dt><dd>{m.dadoDeDano || '—'}</dd>
-                    <dt>Descrição do efeito</dt><dd>{m.descricaoEfeito || '—'}</dd>
-                  </dl>
+            <div
+              key={m.id}
+              className="pokemon-movimento-card pokemon-movimento-card--typed"
+              style={{ background: getMoveCardBackground(m.tipo) }}
+            >
+              <div className="pokemon-movimento-card-inner">
+                <div className="pokemon-movimento-card-header">
+                  <div className="pokemon-movimento-card-title-block">
+                    <span className="pokemon-movimento-nome">{formatMovimentoNomeExibicao(m)}</span>
+                    {m.tipo && (
+                      <span className={`pokemon-type-tag pokemon-type-${String(m.tipo).toLowerCase()}`}>{m.tipo}</span>
+                    )}
+                  </div>
+                  <button type="button" className="btn btn-danger btn-sm" onClick={() => removeMovimento(m.id)}>Remover</button>
                 </div>
-              )}
+                <div className="pokemon-movimento-card-body">
+                  <div className="pokemon-movimento-stat-row">
+                    <span className="pokemon-movimento-stat-label">Categoria</span>
+                    <span>{m.categoria || '—'}</span>
+                  </div>
+                  <div className="pokemon-movimento-stat-row">
+                    <span className="pokemon-movimento-stat-label">Custo de stamina</span>
+                    <span>{m.custoStamina != null ? m.custoStamina : '—'}</span>
+                  </div>
+                  <div className="pokemon-movimento-stat-row">
+                    <span className="pokemon-movimento-stat-label">Dado de dano</span>
+                    <span>{m.dadoDeDano || '—'}</span>
+                  </div>
+                  <div className="pokemon-movimento-desc">
+                    <span className="pokemon-movimento-stat-label">Efeito</span>
+                    <p>{m.descricaoEfeito || '—'}</p>
+                  </div>
+                </div>
+              </div>
             </div>
           ))}
         </div>
@@ -587,9 +648,15 @@ function ExpandedForm({
                 <p className="pokemon-movimento-empty">{movimentoBusca.trim() ? 'Nenhum movimento encontrado.' : 'Digite para filtrar os movimentos disponíveis.'}</p>
               ) : (
                 movimentosFiltrados.slice(0, 12).map((m) => (
-                  <div key={m.id} className="pokemon-movimento-disponivel">
-                    <span className="pokemon-movimento-disp-nome">{m.nome}</span>
-                    <span className="pokemon-movimento-disp-tipo">{m.tipo}</span>
+                  <div
+                    key={m.id}
+                    className="pokemon-movimento-disponivel"
+                    style={{ background: getMoveCardBackground(m.tipo) }}
+                  >
+                    <span className="pokemon-movimento-disp-nome">{formatMovimentoNomeExibicao(m)}</span>
+                    {m.tipo && (
+                      <span className={`pokemon-type-tag pokemon-type-${String(m.tipo).toLowerCase()}`}>{m.tipo}</span>
+                    )}
                     <button type="button" className="btn btn-primary btn-sm" onClick={() => addMovimento(m.id)}>Adicionar</button>
                   </div>
                 ))
@@ -639,6 +706,7 @@ export default function PokemonList() {
   const [ofertaIdx, setOfertaIdx] = useState(0)
   const [substituirMovimentoId, setSubstituirMovimentoId] = useState('')
   const [nivelSubiuMsg, setNivelSubiuMsg] = useState('')
+  const [usuarioMestre, setUsuarioMestre] = useState(null)
 
   const popupAprendizagemAberta = ofertasAprendizagem.length > 0 && ofertaIdx < ofertasAprendizagem.length
 
@@ -650,6 +718,12 @@ export default function PokemonList() {
   }
 
   useEffect(() => load(), [])
+
+  useEffect(() => {
+    getUsuario()
+      .then(setUsuarioMestre)
+      .catch(() => setUsuarioMestre(null))
+  }, [])
 
   useEffect(() => {
     getMovimentos().then(setListaMovimentos).catch(() => setListaMovimentos([]))
@@ -899,12 +973,40 @@ export default function PokemonList() {
     setExpandedEdit((e) => (!e ? e : { ...e, movimentoIds: (e.movimentoIds || []).filter((id) => id !== movimentoId) }))
   }
 
+  const handleRestaurarTiposEspecie = async () => {
+    if (!expandedPokemon?.id || !usuarioMestre?.mestre) return
+    setErro('')
+    setSavingPokemon(true)
+    try {
+      await mestreDefinirTiposPokemon(expandedPokemon.id, { resetTiposParaEspecie: true })
+      const updated = await getPokemon(expandedPokemon.id)
+      setExpandedPokemon(updated)
+      await load()
+    } catch (err) {
+      setErro(err.message)
+    } finally {
+      setSavingPokemon(false)
+    }
+  }
+
   const handleSalvarExpanded = async (e) => {
     e.preventDefault()
     if (!expandedPokemon || !expandedEdit) return
     setErro('')
     setSavingPokemon(true)
     try {
+      if (usuarioMestre?.mestre) {
+        const sec = expandedEdit.tipoSecundario || null
+        if (sec && sec === expandedEdit.tipoPrimario) {
+          setErro('Tipo primário e secundário não podem ser iguais.')
+          setSavingPokemon(false)
+          return
+        }
+        await mestreDefinirTiposPokemon(expandedPokemon.id, {
+          tipoPrimario: expandedEdit.tipoPrimario,
+          tipoSecundario: sec,
+        })
+      }
       const resultado = await atualizarPokemon(expandedPokemon.id, {
         pokedexId: expandedEdit.pokedexId && expandedEdit.pokedexId > 0 ? expandedEdit.pokedexId : null,
         apelido: expandedEdit.apelido || null,
@@ -1065,6 +1167,8 @@ export default function PokemonList() {
                         onGanharXp={handleGanharXp}
                         ganharXpLoading={xpLoading}
                         acoesBloqueadas={popupAprendizagemAberta}
+                        usuarioMestre={usuarioMestre}
+                        onRestaurarTiposEspecie={handleRestaurarTiposEspecie}
                       />
                     ) : null}
                   </div>
@@ -1160,6 +1264,8 @@ export default function PokemonList() {
                         onGanharXp={handleGanharXp}
                         ganharXpLoading={xpLoading}
                         acoesBloqueadas={popupAprendizagemAberta}
+                        usuarioMestre={usuarioMestre}
+                        onRestaurarTiposEspecie={handleRestaurarTiposEspecie}
                       />
                     ) : null}
                   </div>

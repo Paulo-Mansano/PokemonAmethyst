@@ -9,12 +9,17 @@ import com.pokemonamethyst.repository.MovimentoRepository;
 import com.pokemonamethyst.repository.PersonalidadeRepository;
 import com.pokemonamethyst.repository.PokemonRepository;
 import com.pokemonamethyst.repository.PerfilJogadorRepository;
+import com.pokemonamethyst.web.dto.PokemonBatalhaAplicarDanoRequestDto;
+import com.pokemonamethyst.web.dto.PokemonBatalhaCalculoRequestDto;
+import com.pokemonamethyst.web.dto.PokemonBatalhaCalculoResponseDto;
+import com.pokemonamethyst.web.dto.PokemonCapturaResponseDto;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-import java.util.Comparator;
 import java.util.HashMap;
+import java.util.LinkedHashMap;
+import java.util.LinkedHashSet;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
@@ -28,7 +33,8 @@ public class PokemonService {
     private static final int MAX_POKEMONS_NO_TIME = 6;
     private static final int MAX_MOVIMENTOS_POR_POKEMON = 8;
     private static final int NIVEL_INICIAL = 1;
-    private static final int XP_POR_NIVEL = 10;
+    private static final int POKEDEX_MIN = 1;
+    private static final int POKEDEX_MAX = 1025;
 
     private final PokemonRepository pokemonRepository;
     private final PerfilJogadorRepository perfilRepository;
@@ -72,21 +78,42 @@ public class PokemonService {
         return pokemonRepository.findBoxByPerfilId(perfilId);
     }
 
+    public List<Pokemon> listarSelvagens(String perfilId) {
+        return pokemonRepository.findByPerfilIdAndOrigemComRelacionamentos(perfilId, OrigemPokemon.SELVAGEM);
+    }
+
     public Pokemon buscarPorIdEPerfil(String id, String perfilId) {
         return pokemonRepository.findByIdAndPerfilId(id, perfilId)
                 .orElseThrow(() -> new RecursoNaoEncontradoException("Pokémon não encontrado."));
     }
 
-    private int xpMinimoParaNivel(int nivel) {
-        // nível 1 => 0 XP; nível 2 => 10 XP; nível 3 => 20 XP; etc.
-        int n = Math.max(1, nivel);
-        return (n - 1) * XP_POR_NIVEL;
-    }
-
-    private int calcularNivelPorXp(int xpAtual) {
-        int xp = Math.max(0, xpAtual);
-        // xp >= (nivel-1)*XP_POR_NIVEL => nivel = floor(xp/XP_POR_NIVEL) + 1
-        return Math.max(1, (xp / XP_POR_NIVEL) + 1);
+    @Transactional
+    public Pokemon gerarSelvagem(String perfilId, Integer pokedexId, Integer nivel) {
+        int nivelFinal = Math.max(1, Math.min(100, nivel == null ? 5 : nivel));
+        int pokedexEscolhido = pokedexId != null && pokedexId > 0
+                ? pokedexId
+                : ThreadLocalRandom.current().nextInt(POKEDEX_MIN, POKEDEX_MAX + 1);
+        Pokemon pokemon = criar(
+                perfilId,
+                pokedexEscolhido,
+                null,
+                null,
+                Pokebola.POKEBALL,
+                100,
+                null,
+                null
+        );
+        pokemon.setNivel(nivelFinal);
+        GrowthRate curva = GrowthRate.fromSpecies(pokemon.getSpecies());
+        pokemon.setXpAtual(PokemonExperience.getTotalXpForLevel(nivelFinal, curva));
+        pokemon.setOrigem(OrigemPokemon.SELVAGEM);
+        pokemon.setEstado(EstadoPokemon.ATIVO);
+        pokemon.setOrdemTime(null);
+        pokemon.setMovimentosConhecidos(
+                new ArrayList<>(pokemonLearnsetService.escolherMovimentosAoCriarPokemon(pokemon.getSpecies(), nivelFinal))
+        );
+        pokemon.setHpAtual(calcularHpMaximo(pokemon));
+        return pokemonRepository.save(pokemon);
     }
 
     @Transactional
@@ -100,9 +127,6 @@ public class PokemonService {
         PerfilJogador perfil = perfilRepository.findById(perfilId)
                 .orElseThrow(() -> new RecursoNaoEncontradoException("Perfil não encontrado."));
 
-        if (movimentoIds != null && movimentoIds.size() > MAX_MOVIMENTOS_POR_POKEMON) {
-            throw new RegraNegocioException("Máximo de " + MAX_MOVIMENTOS_POR_POKEMON + " ataques por Pokémon.");
-        }
         int pokedexIdVal = pokedexId;
         Pokemon pokemon = new Pokemon();
         pokemon.setPerfil(perfil);
@@ -110,26 +134,43 @@ public class PokemonService {
         pokemon.setSpecies(pokeApiService.obterSpeciesParaCriacao(pokedexIdVal));
         pokemon.setGenero(genero != null ? genero : definirGeneroAleatorio(pokemon.getSpecies()));
         pokemon.setShiny(sortearShiny());
+        if (pokemon.isShiny()) {
+            PokemonSpecies sp = pokeApiService.garantirSpriteShinyNaEspecie(pokemon.getSpecies());
+            if (sp != null) {
+                pokemon.setSpecies(sp);
+            }
+        }
         pokemon.setHabilidadeAtiva(pokemonAbilityService.sortearHabilidadeAtiva(pokemon.getSpecies()));
         pokemon.setPokebolaCaptura(pokebolaCaptura != null ? pokebolaCaptura : Pokebola.POKEBALL);
         pokemon.setApelido(apelido);
         pokemon.setStaminaMaxima(staminaMaxima);
         pokemon.setNivel(NIVEL_INICIAL);
         pokemon.setXpAtual(0);
+        pokemon.setOrigem(OrigemPokemon.TREINADOR);
+        pokemon.setEstado(EstadoPokemon.ATIVO);
         preencherIvsAleatorios(pokemon);
         if (personalidadeId != null && !personalidadeId.isBlank()) {
             personalidadeRepository.findById(personalidadeId).ifPresent(pokemon::setPersonalidade);
         }
 
         if (movimentoIds != null && !movimentoIds.isEmpty()) {
-            pokemonLearnsetService.validarMovimentosPermitidos(pokemon.getSpecies(), pokemon.getNivel(), movimentoIds);
-            List<Movimento> movimentos = buscarMovimentosPorIds(movimentoIds);
+            List<String> movimentoIdsUnicos = deduplicarIdsPreservandoOrdem(movimentoIds);
+            if (movimentoIdsUnicos.size() > MAX_MOVIMENTOS_POR_POKEMON) {
+                throw new RegraNegocioException("Máximo de " + MAX_MOVIMENTOS_POR_POKEMON + " ataques por Pokémon.");
+            }
+            pokemonLearnsetService.validarMovimentosPermitidos(pokemon.getSpecies(), pokemon.getNivel(), movimentoIdsUnicos);
+            List<Movimento> movimentos = semMovimentosDuplicados(buscarMovimentosPorIds(movimentoIdsUnicos));
             pokemon.setMovimentosConhecidos(movimentos);
         } else {
             pokemon.setMovimentosConhecidos(
-                    new ArrayList<>(pokemonLearnsetService.listarMovimentosIniciais(pokemon.getSpecies(), NIVEL_INICIAL, MAX_MOVIMENTOS_POR_POKEMON))
+                    new ArrayList<>(pokemonLearnsetService.escolherMovimentosAoCriarPokemon(
+                            pokemon.getSpecies(), NIVEL_INICIAL))
             );
         }
+
+        int hpMaximo = PokemonStatsCalculator.hpMaximo(
+                pokemon.getSpecies().getBaseHp(), pokemon.getIvHp(), pokemon.getEvHp(), pokemon.getNivel());
+        pokemon.setHpAtual(hpMaximo);
 
         Pokemon salvo = pokemonRepository.save(pokemon);
         perfil.getPokemons().add(salvo);
@@ -146,15 +187,8 @@ public class PokemonService {
                             List<String> movimentoIds, String habilidadeId) {
         Pokemon pokemon = buscarPorIdEPerfil(pokemonId, perfilId);
         int nivelAtual = pokemon.getNivel();
-        int xpAtualFinal = xpAtual != null ? xpAtual : pokemon.getXpAtual();
-        if (xpAtualFinal < 0) {
+        if (xpAtual != null && xpAtual < 0) {
             throw new RegraNegocioException("xpAtual não pode ser negativo.");
-        }
-        if (nivel != null && nivel > nivelAtual) {
-            int xpMin = xpMinimoParaNivel(nivel);
-            if (xpAtualFinal < xpMin) {
-                throw new RegraNegocioException("Para subir o nível para " + nivel + ", o Pokémon precisa de no mínimo " + xpMin + " XP.");
-            }
         }
         if (pokedexId != null && pokedexId <= 0) {
             throw new RegraNegocioException("pokedexId inválido. Use um valor maior que zero.");
@@ -175,7 +209,15 @@ public class PokemonService {
         if (apelido != null) pokemon.setApelido(apelido);
         if (notas != null) pokemon.setNotas(notas);
         if (genero != null) pokemon.setGenero(genero);
-        if (isShiny != null) pokemon.setShiny(isShiny);
+        if (isShiny != null) {
+            pokemon.setShiny(isShiny);
+            if (Boolean.TRUE.equals(isShiny)) {
+                PokemonSpecies sp = pokeApiService.garantirSpriteShinyNaEspecie(pokemon.getSpecies());
+                if (sp != null) {
+                    pokemon.setSpecies(sp);
+                }
+            }
+        }
         if (personalidadeId != null) {
             if (personalidadeId.isBlank()) {
                 pokemon.setPersonalidade(null);
@@ -187,8 +229,6 @@ public class PokemonService {
         if (especializacao != null) pokemon.setEspecializacao(especializacao);
         if (berryFavorita != null) pokemon.setBerryFavorita(berryFavorita);
         if (nivelDeVinculo != null) pokemon.setNivelDeVinculo(nivelDeVinculo);
-        if (nivel != null) pokemon.setNivel(nivel);
-        if (xpAtual != null) pokemon.setXpAtual(xpAtual);
         if (pokebolaCaptura != null) pokemon.setPokebolaCaptura(pokebolaCaptura);
         if (itemSeguradoId != null) {
             if (itemSeguradoId.isBlank()) {
@@ -202,11 +242,12 @@ public class PokemonService {
         if (respeito != null) pokemon.setRespeito(respeito);
         if (statusAtuais != null) pokemon.setStatusAtuais(statusAtuais);
         if (movimentoIds != null) {
-            if (movimentoIds.size() > MAX_MOVIMENTOS_POR_POKEMON) {
+            List<String> movimentoIdsUnicos = deduplicarIdsPreservandoOrdem(movimentoIds);
+            if (movimentoIdsUnicos.size() > MAX_MOVIMENTOS_POR_POKEMON) {
                 throw new RegraNegocioException("Máximo de " + MAX_MOVIMENTOS_POR_POKEMON + " ataques por Pokémon.");
             }
-            pokemonLearnsetService.validarMovimentosPermitidos(pokemon.getSpecies(), pokemon.getNivel(), movimentoIds);
-            List<Movimento> movimentos = buscarMovimentosPorIds(movimentoIds);
+            pokemonLearnsetService.validarMovimentosPermitidos(pokemon.getSpecies(), pokemon.getNivel(), movimentoIdsUnicos);
+            List<Movimento> movimentos = semMovimentosDuplicados(buscarMovimentosPorIds(movimentoIdsUnicos));
             pokemon.getMovimentosConhecidos().clear();
             pokemon.getMovimentosConhecidos().addAll(movimentos);
         }
@@ -221,9 +262,24 @@ public class PokemonService {
             }
         }
 
-        int nivelDepois = nivel != null ? nivel : nivelAtual;
+        GrowthRate curva = GrowthRate.fromSpecies(pokemon.getSpecies());
+        int x = pokemon.getXpAtual();
+        if (xpAtual != null) {
+            x = PokemonExperience.clampXpTotal(xpAtual, curva);
+        } else if (nivel != null && nivel != nivelAtual) {
+            int n = Math.max(PokemonExperience.MIN_LEVEL, Math.min(PokemonExperience.MAX_LEVEL, nivel));
+            x = PokemonExperience.getTotalXpForLevel(n, curva);
+        }
+        x = PokemonExperience.clampXpTotal(x, curva);
+        pokemon.setXpAtual(x);
+        pokemon.setNivel(PokemonExperience.calculateLevelFromXp(x, curva));
+        int hpMaximoAtualizado = calcularHpMaximo(pokemon);
+        int hpAtual = pokemon.getHpAtual() == null ? hpMaximoAtualizado : pokemon.getHpAtual();
+        pokemon.setHpAtual(Math.max(0, Math.min(hpAtual, hpMaximoAtualizado)));
+
+        int nivelDepois = pokemon.getNivel();
         List<Movimento> movimentosAprendendo = List.of();
-        if (nivel != null && nivelDepois > nivelAtual) {
+        if (nivelDepois > nivelAtual) {
             movimentosAprendendo = calcularMovimentosAprendidosEntreNiveis(pokemon, nivelAtual, nivelDepois);
         }
 
@@ -241,11 +297,16 @@ public class PokemonService {
 
         int nivelAntes = pokemon.getNivel();
         int xpAntes = pokemon.getXpAtual();
-        int xpDepois = Math.max(0, xpAntes + xpGanho);
-        int nivelDepois = calcularNivelPorXp(xpDepois);
+        GrowthRate curva = GrowthRate.fromSpecies(pokemon.getSpecies());
+        long soma = (long) xpAntes + xpGanho;
+        int xpDepois = (int) Math.min(PokemonExperience.getTotalXpForLevel(PokemonExperience.MAX_LEVEL, curva), Math.max(0, soma));
+        int nivelDepois = PokemonExperience.calculateLevelFromXp(xpDepois, curva);
 
         pokemon.setXpAtual(xpDepois);
         pokemon.setNivel(nivelDepois);
+        int hpMaximoAtualizado = calcularHpMaximo(pokemon);
+        int hpAtual = pokemon.getHpAtual() == null ? hpMaximoAtualizado : pokemon.getHpAtual();
+        pokemon.setHpAtual(Math.max(0, Math.min(hpAtual, hpMaximoAtualizado)));
 
         List<Movimento> movimentosAprendendo = new ArrayList<>();
         if (nivelDepois > nivelAntes) {
@@ -262,6 +323,87 @@ public class PokemonService {
         return com.pokemonamethyst.web.dto.PokemonGanharXpResponseDto.from(salvo, nivelAntes, nivelDepois, ofertas);
     }
 
+    @Transactional(readOnly = true)
+    public PokemonBatalhaCalculoResponseDto calcularDano(String perfilId, PokemonBatalhaCalculoRequestDto dto) {
+        Pokemon atacante = buscarPorIdEPerfil(dto.getAtacanteId(), perfilId);
+        Pokemon defensor = buscarPorIdEPerfil(dto.getDefensorId(), perfilId);
+
+        CategoriaMovimento categoria = dto.getCategoria() != null ? dto.getCategoria() : CategoriaMovimento.FISICO;
+        boolean categoriaFisica = categoria == CategoriaMovimento.FISICO;
+        int ataque = categoriaFisica ? calcularAtaque(atacante) : calcularAtaqueEspecial(atacante);
+        int defesa = categoriaFisica ? calcularDefesa(defensor) : calcularDefesaEspecial(defensor);
+
+        PokemonDamageCalculator.DamageInput input = new PokemonDamageCalculator.DamageInput(
+                atacante.getNivel(),
+                dto.getPoder(),
+                ataque,
+                defesa,
+                categoriaFisica,
+                dto.isCritico(),
+                dto.isQueimado(),
+                dto.getStabMultiplier(),
+                dto.getTypeMultiplier(),
+                dto.getOtherMultiplier(),
+                dto.getRandomMin(),
+                dto.getRandomMax(),
+                dto.getRandomValue()
+        );
+        PokemonDamageCalculator.DamageResult result = PokemonDamageCalculator.calcular(input);
+
+        PokemonBatalhaCalculoResponseDto response = new PokemonBatalhaCalculoResponseDto();
+        response.setAtacanteId(atacante.getId());
+        response.setDefensorId(defensor.getId());
+        response.setHpAtualDefensor(hpAtualNormalizado(defensor));
+        response.setHpMaximoDefensor(calcularHpMaximo(defensor));
+        response.setDanoMinimo(result.danoMinimo());
+        response.setDanoMaximo(result.danoMaximo());
+        response.setDanoAplicado(result.danoAplicado());
+        response.setFormula(result.formula());
+        response.setMultiplicadores(result.multiplicadores());
+        return response;
+    }
+
+    @Transactional
+    public Pokemon aplicarDano(String perfilId, PokemonBatalhaAplicarDanoRequestDto dto) {
+        Pokemon atacante = buscarPorIdEPerfil(dto.getAtacanteId(), perfilId);
+        Pokemon defensor = buscarPorIdEPerfil(dto.getDefensorId(), perfilId);
+
+        int hpAtual = hpAtualNormalizado(defensor);
+        int novoHp = Math.max(0, hpAtual - Math.max(0, dto.getDanoAplicado()));
+        defensor.setHpAtual(novoHp);
+        atacante.setEstado(EstadoPokemon.EM_BATALHA);
+
+        if (novoHp == 0) {
+            defensor.setEstado(EstadoPokemon.DERROTADO);
+        } else {
+            defensor.setEstado(EstadoPokemon.EM_BATALHA);
+        }
+
+        pokemonRepository.save(atacante);
+        return pokemonRepository.save(defensor);
+    }
+
+    @Transactional
+    public PokemonCapturaResponseDto tentarCaptura(String perfilId, String pokemonId, boolean sucesso) {
+        Pokemon pokemon = buscarPorIdEPerfil(pokemonId, perfilId);
+        if (sucesso) {
+            pokemon.setOrigem(OrigemPokemon.TREINADOR);
+            pokemon.setEstado(EstadoPokemon.ATIVO);
+            pokemon.setOrdemTime(null);
+        } else {
+            pokemon.setEstado(EstadoPokemon.CAPTURAVEL);
+        }
+        Pokemon salvo = pokemonRepository.save(pokemon);
+        return new PokemonCapturaResponseDto(sucesso, com.pokemonamethyst.web.dto.PokemonResponseDto.from(salvo));
+    }
+
+    @Transactional
+    public Pokemon atualizarEstado(String perfilId, String pokemonId, EstadoPokemon estado) {
+        Pokemon pokemon = buscarPorIdEPerfil(pokemonId, perfilId);
+        pokemon.setEstado(estado);
+        return pokemonRepository.save(pokemon);
+    }
+
     private List<Movimento> calcularMovimentosAprendidosEntreNiveis(Pokemon pokemon, int nivelAnterior, int nivelNovo) {
         if (pokemon == null || pokemon.getSpecies() == null) return List.of();
         if (nivelNovo <= nivelAnterior) return List.of();
@@ -271,10 +413,11 @@ public class PokemonService {
                 : pokemon.getMovimentosConhecidos().stream().map(Movimento::getId).collect(Collectors.toSet());
 
         PokemonSpecies species = pokemon.getSpecies();
-        List<PokemonSpeciesMovimento> entries = pokemonLearnsetService.listarLearnset(species.getId());
+        // Ordem canônica do learnset (nível, ordem na PokéAPI, id) — mesmo critério da importação e da criação.
+        List<PokemonSpeciesMovimento> entries = pokemonLearnsetService.listarLearnsetOrdenado(species.getId());
 
-        Map<String, Movimento> melhorMovimentoPorId = new HashMap<>();
-        Map<String, Integer> melhorNivelPorId = new HashMap<>();
+        List<Movimento> resultado = new ArrayList<>();
+        Set<String> jaIncluidosNestaFaixa = new LinkedHashSet<>();
 
         for (PokemonSpeciesMovimento e : entries) {
             if (e.getLearnMethod() != MoveLearnMethod.LEVEL_UP) continue;
@@ -285,22 +428,13 @@ public class PokemonService {
             Movimento mov = e.getMovimento();
             if (mov == null || mov.getId() == null) continue;
             if (conhecidos.contains(mov.getId())) continue;
+            if (jaIncluidosNestaFaixa.contains(mov.getId())) continue;
 
-            Integer melhorNivel = melhorNivelPorId.get(mov.getId());
-            if (melhorNivel == null || level < melhorNivel) {
-                melhorNivelPorId.put(mov.getId(), level);
-                melhorMovimentoPorId.put(mov.getId(), mov);
-            }
+            jaIncluidosNestaFaixa.add(mov.getId());
+            resultado.add(mov);
         }
 
-        return melhorMovimentoPorId.entrySet().stream()
-                .sorted(
-                        Comparator
-                                .comparing((Map.Entry<String, Movimento> en) -> melhorNivelPorId.getOrDefault(en.getKey(), Integer.MAX_VALUE))
-                                .thenComparing(en -> en.getValue().getId())
-                )
-                .map(Map.Entry::getValue)
-                .collect(Collectors.toList());
+        return resultado;
     }
 
     @Transactional
@@ -339,7 +473,7 @@ public class PokemonService {
 
         if (conhecidos.size() < MAX_MOVIMENTOS_POR_POKEMON) {
             conhecidos.add(novoMov);
-            pokemon.setMovimentosConhecidos(conhecidos);
+            pokemon.setMovimentosConhecidos(semMovimentosDuplicados(conhecidos));
             return pokemonRepository.save(pokemon);
         }
 
@@ -359,7 +493,7 @@ public class PokemonService {
                 .filter(m -> !alvoFinal.equals(m.getId()))
                 .collect(Collectors.toList());
         conhecidos.add(novoMov);
-        pokemon.setMovimentosConhecidos(conhecidos);
+        pokemon.setMovimentosConhecidos(semMovimentosDuplicados(conhecidos));
         return pokemonRepository.save(pokemon);
     }
 
@@ -394,6 +528,30 @@ public class PokemonService {
     public Pokemon removerDoTime(String pokemonId, String perfilId) {
         Pokemon pokemon = buscarPorIdEPerfil(pokemonId, perfilId);
         pokemon.setOrdemTime(null);
+        return pokemonRepository.save(pokemon);
+    }
+
+    /**
+     * Permite ao mestre alterar os tipos exibidos deste Pokémon (instância), sem mudar a espécie no catálogo.
+     */
+    @Transactional
+    public Pokemon mestreDefinirTiposPokemon(String pokemonId, Tipagem tipoPrimario,
+                                           Tipagem tipoSecundario, boolean resetParaEspecie) {
+        Pokemon pokemon = pokemonRepository.findById(pokemonId)
+                .orElseThrow(() -> new RecursoNaoEncontradoException("Pokémon não encontrado."));
+        if (resetParaEspecie) {
+            pokemon.setTipoPrimarioOverride(null);
+            pokemon.setTipoSecundarioOverride(null);
+            return pokemonRepository.save(pokemon);
+        }
+        if (tipoPrimario == null) {
+            throw new RegraNegocioException("tipoPrimario é obrigatório quando não se restaura os tipos da espécie.");
+        }
+        if (tipoSecundario != null && tipoSecundario == tipoPrimario) {
+            throw new RegraNegocioException("Tipo primário e secundário não podem ser iguais.");
+        }
+        pokemon.setTipoPrimarioOverride(tipoPrimario);
+        pokemon.setTipoSecundarioOverride(tipoSecundario);
         return pokemonRepository.save(pokemon);
     }
 
@@ -442,10 +600,45 @@ public class PokemonService {
             return List.of();
         }
         List<Movimento> movimentos = movimentoRepository.findAllById(ids);
-        if (movimentos.size() != ids.size()) {
-            throw new RecursoNaoEncontradoException("Um ou mais movimentos não foram encontrados.");
+        Map<String, Movimento> porId = new HashMap<>();
+        for (Movimento m : movimentos) {
+            porId.put(m.getId(), m);
         }
-        return movimentos;
+        List<Movimento> ordem = new ArrayList<>(ids.size());
+        for (String id : ids) {
+            Movimento m = porId.get(id);
+            if (m == null) {
+                throw new RecursoNaoEncontradoException("Um ou mais movimentos não foram encontrados.");
+            }
+            ordem.add(m);
+        }
+        return ordem;
+    }
+
+    private static List<String> deduplicarIdsPreservandoOrdem(List<String> ids) {
+        if (ids == null || ids.isEmpty()) {
+            return List.of();
+        }
+        LinkedHashSet<String> visto = new LinkedHashSet<>();
+        for (String id : ids) {
+            if (id != null && !id.isBlank()) {
+                visto.add(id);
+            }
+        }
+        return new ArrayList<>(visto);
+    }
+
+    private static List<Movimento> semMovimentosDuplicados(List<Movimento> movimentos) {
+        if (movimentos == null || movimentos.isEmpty()) {
+            return new ArrayList<>();
+        }
+        Map<String, Movimento> map = new LinkedHashMap<>();
+        for (Movimento m : movimentos) {
+            if (m != null && m.getId() != null) {
+                map.putIfAbsent(m.getId(), m);
+            }
+        }
+        return new ArrayList<>(map.values());
     }
 
     private void validarHabilidadeDaSpecies(PokemonSpecies species, String habilidadeId) {
@@ -454,5 +647,57 @@ public class PokemonService {
         if (!pertence) {
             throw new RegraNegocioException("Habilidade não pertence à espécie atual.");
         }
+    }
+
+    private int calcularHpMaximo(Pokemon pokemon) {
+        PokemonSpecies species = pokemon.getSpecies();
+        int baseHp = species != null ? species.getBaseHp() : 1;
+        return PokemonStatsCalculator.hpMaximo(baseHp, pokemon.getIvHp(), pokemon.getEvHp(), pokemon.getNivel());
+    }
+
+    private int hpAtualNormalizado(Pokemon pokemon) {
+        int hpMaximo = calcularHpMaximo(pokemon);
+        int hpAtual = pokemon.getHpAtual() == null ? hpMaximo : pokemon.getHpAtual();
+        return Math.max(0, Math.min(hpAtual, hpMaximo));
+    }
+
+    private int calcularAtaque(Pokemon pokemon) {
+        PokemonSpecies species = pokemon.getSpecies();
+        return PokemonStatsCalculator.statNaoHp(
+                species != null ? species.getBaseAtaque() : 1,
+                pokemon.getIvAtaque(),
+                pokemon.getEvAtaque(),
+                pokemon.getNivel()
+        );
+    }
+
+    private int calcularAtaqueEspecial(Pokemon pokemon) {
+        PokemonSpecies species = pokemon.getSpecies();
+        return PokemonStatsCalculator.statNaoHp(
+                species != null ? species.getBaseAtaqueEspecial() : 1,
+                pokemon.getIvAtaqueEspecial(),
+                pokemon.getEvAtaqueEspecial(),
+                pokemon.getNivel()
+        );
+    }
+
+    private int calcularDefesa(Pokemon pokemon) {
+        PokemonSpecies species = pokemon.getSpecies();
+        return PokemonStatsCalculator.statNaoHp(
+                species != null ? species.getBaseDefesa() : 1,
+                pokemon.getIvDefesa(),
+                pokemon.getEvDefesa(),
+                pokemon.getNivel()
+        );
+    }
+
+    private int calcularDefesaEspecial(Pokemon pokemon) {
+        PokemonSpecies species = pokemon.getSpecies();
+        return PokemonStatsCalculator.statNaoHp(
+                species != null ? species.getBaseDefesaEspecial() : 1,
+                pokemon.getIvDefesaEspecial(),
+                pokemon.getEvDefesaEspecial(),
+                pokemon.getNivel()
+        );
     }
 }

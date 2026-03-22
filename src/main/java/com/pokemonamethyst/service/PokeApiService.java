@@ -16,6 +16,7 @@ import com.pokemonamethyst.repository.PokemonSpeciesHabilidadeRepository;
 import com.pokemonamethyst.repository.PokemonSpeciesMovimentoRepository;
 import com.pokemonamethyst.repository.PokemonSpeciesRepository;
 import com.pokemonamethyst.exception.RecursoNaoEncontradoException;
+import com.pokemonamethyst.exception.RegraNegocioException;
 import com.pokemonamethyst.web.dto.PokeApiItemBuscaResponseDto;
 import com.pokemonamethyst.web.dto.PokeApiItemResumoDto;
 import com.pokemonamethyst.web.dto.PokeApiPokemonDetailDto;
@@ -23,13 +24,17 @@ import com.pokemonamethyst.web.dto.PokeApiPokemonSummaryDto;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.client.HttpClientErrorException;
+import org.springframework.web.client.RestClientException;
 import org.springframework.web.client.RestTemplate;
 
 import java.util.ArrayList;
 import java.util.Comparator;
+import java.util.HashSet;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
+import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.stream.Collectors;
 
@@ -168,6 +173,10 @@ public class PokeApiService {
     /**
      * Fluxo otimizado para criação: tenta local primeiro e só importa da PokéAPI no primeiro uso da espécie.
      * Usa lock por pokedexId para evitar importação duplicada em acessos concorrentes.
+     * <p>
+     * Ao importar, {@link #importarSpeciesDaPokeApi(int)} sincroniza habilidades (PokéAPI) + learnset completo
+     * (movimentos por nível/método), criando entradas no catálogo quando necessário.
+     * </p>
      */
     @Transactional
     public PokemonSpecies obterSpeciesParaCriacao(int pokedexId) {
@@ -246,7 +255,44 @@ public class PokeApiService {
             return saved;
         } catch (HttpClientErrorException.NotFound e) {
             throw new RecursoNaoEncontradoException("Pokémon não encontrado na PokéAPI: " + pokedexId);
+        } catch (RestClientException e) {
+            throw new RegraNegocioException("Falha ao consultar a PokéAPI (rede ou limite). Tente novamente em instantes. Detalhe: " + e.getMessage());
         }
+    }
+
+    /**
+     * Atualiza URLs de sprites (normal e shiny) da espécie a partir de {@code /pokemon/{id}} na PokéAPI.
+     */
+    @Transactional
+    public PokemonSpecies atualizarSpritesDaPokeApi(int pokedexId) {
+        try {
+            @SuppressWarnings("unchecked")
+            Map<String, Object> pokemonData = restTemplate.getForObject(BASE_URL + "/pokemon/" + pokedexId, Map.class);
+            if (pokemonData == null) {
+                throw new RecursoNaoEncontradoException("Pokémon não encontrado na PokéAPI: " + pokedexId);
+            }
+            PokemonSpecies species = pokemonSpeciesRepository.findByPokedexId(pokedexId)
+                    .orElseThrow(() -> new RecursoNaoEncontradoException("Espécie não encontrada localmente: " + pokedexId));
+            species.setImagemUrl(extrairImageUrl(pokemonData));
+            species.setSpriteShinyUrl(extrairShinyUrl(pokemonData));
+            return pokemonSpeciesRepository.save(species);
+        } catch (HttpClientErrorException.NotFound e) {
+            throw new RecursoNaoEncontradoException("Pokémon não encontrado na PokéAPI: " + pokedexId);
+        }
+    }
+
+    /**
+     * Garante que a espécie tenha URL de sprite shiny (consulta a API se ainda estiver vazia).
+     */
+    @Transactional
+    public PokemonSpecies garantirSpriteShinyNaEspecie(PokemonSpecies species) {
+        if (species == null) {
+            return null;
+        }
+        if (species.getSpriteShinyUrl() != null && !species.getSpriteShinyUrl().isBlank()) {
+            return species;
+        }
+        return atualizarSpritesDaPokeApi(species.getPokedexId());
     }
 
     private PokeApiPokemonSummaryDto toSummary(Map<String, Object> item) {
@@ -367,10 +413,13 @@ public class PokeApiService {
         if (abilities == null || abilities.isEmpty()) {
             return;
         }
-        List<PokemonSpeciesHabilidade> entities = new ArrayList<>();
+        // BD: PK (species_id, habilidade_id), UNIQUE(species_id, slot), CHECK(slot BETWEEN 1 AND 3).
+        List<PokemonSpeciesHabilidade> candidatos = new ArrayList<>();
+        Set<String> habilidadeIdsVistos = new HashSet<>();
         for (Map<String, Object> entry : abilities) {
             Number slotNumber = (Number) entry.get("slot");
             int slot = slotNumber != null ? slotNumber.intValue() : 1;
+            slot = Math.max(1, Math.min(3, slot));
             boolean hidden = Boolean.TRUE.equals(entry.get("is_hidden"));
             String abilityName = extrairNomeReferencia(entry.get("ability"));
             if (abilityName == null || abilityName.isBlank()) {
@@ -380,14 +429,25 @@ public class PokeApiService {
             if (habilidade == null) {
                 continue;
             }
+            if (!habilidadeIdsVistos.add(habilidade.getId())) {
+                continue;
+            }
             PokemonSpeciesHabilidade relation = new PokemonSpeciesHabilidade();
             relation.setSpecies(species);
             relation.setHabilidade(habilidade);
             relation.setSlot(slot);
             relation.setHidden(hidden);
-            entities.add(relation);
+            candidatos.add(relation);
         }
-        if (!entities.isEmpty()) {
+        Map<Integer, PokemonSpeciesHabilidade> porSlot = new LinkedHashMap<>();
+        for (PokemonSpeciesHabilidade rel : candidatos) {
+            porSlot.putIfAbsent(rel.getSlot(), rel);
+        }
+        if (!porSlot.isEmpty()) {
+            List<PokemonSpeciesHabilidade> entities = porSlot.entrySet().stream()
+                    .sorted(Map.Entry.comparingByKey())
+                    .map(Map.Entry::getValue)
+                    .toList();
             speciesHabilidadeRepository.saveAll(entities);
         }
     }
@@ -400,7 +460,9 @@ public class PokeApiService {
             return;
         }
         List<PokemonSpeciesMovimento> entities = new ArrayList<>();
-        for (Map<String, Object> moveEntry : moves) {
+        Set<String> chavesDedup = new HashSet<>();
+        for (int moveIndex = 0; moveIndex < moves.size(); moveIndex++) {
+            Map<String, Object> moveEntry = moves.get(moveIndex);
             String moveName = extrairNomeReferencia(moveEntry.get("move"));
             if (moveName == null || moveName.isBlank()) {
                 continue;
@@ -410,23 +472,59 @@ public class PokeApiService {
                 continue;
             }
             List<Map<String, Object>> details = (List<Map<String, Object>>) moveEntry.get("version_group_details");
-            Map<String, Object> latestDetail = selecionarDetalheMaisRecente(details);
-            if (latestDetail == null) {
+            if (details == null || details.isEmpty()) {
                 continue;
             }
-            String methodName = extrairNomeReferencia(latestDetail.get("move_learn_method"));
-            MoveLearnMethod learnMethod = MoveLearnMethod.fromPokeApi(methodName);
-            Number levelRaw = (Number) latestDetail.get("level_learned_at");
-            Integer level = levelRaw != null && levelRaw.intValue() > 0 ? levelRaw.intValue() : null;
+
+            Integer menorNivelLevelUp = null;
+            for (Map<String, Object> detail : details) {
+                String methodName = extrairNomeReferencia(detail.get("move_learn_method"));
+                if (MoveLearnMethod.fromPokeApi(methodName) != MoveLearnMethod.LEVEL_UP) {
+                    continue;
+                }
+                Number levelRaw = (Number) detail.get("level_learned_at");
+                if (levelRaw == null || levelRaw.intValue() <= 0) {
+                    continue;
+                }
+                int lv = levelRaw.intValue();
+                if (menorNivelLevelUp == null || lv < menorNivelLevelUp) {
+                    menorNivelLevelUp = lv;
+                }
+            }
 
             PokemonSpeciesMovimento relation = new PokemonSpeciesMovimento();
             relation.setSpecies(species);
             relation.setMovimento(movimento);
-            relation.setLearnMethod(learnMethod);
-            relation.setLevel(level);
+            relation.setOrdem(moveIndex);
+
+            if (menorNivelLevelUp != null) {
+                relation.setLearnMethod(MoveLearnMethod.LEVEL_UP);
+                relation.setLevel(menorNivelLevelUp);
+            } else {
+                Map<String, Object> latestDetail = selecionarDetalheMaisRecente(details);
+                if (latestDetail == null) {
+                    continue;
+                }
+                String methodName = extrairNomeReferencia(latestDetail.get("move_learn_method"));
+                MoveLearnMethod learnMethod = MoveLearnMethod.fromPokeApi(methodName);
+                Number levelRaw = (Number) latestDetail.get("level_learned_at");
+                Integer level = levelRaw != null && levelRaw.intValue() > 0 ? levelRaw.intValue() : null;
+                relation.setLearnMethod(learnMethod);
+                relation.setLevel(level);
+            }
+            String dedupeKey = movimento.getId()
+                    + "|" + relation.getLearnMethod()
+                    + "|" + (relation.getLevel() == null ? "n" : relation.getLevel());
+            if (!chavesDedup.add(dedupeKey)) {
+                continue;
+            }
             entities.add(relation);
         }
         if (!entities.isEmpty()) {
+            entities.sort(PokemonLearnsetService.COMPARATOR_LEARNSET);
+            for (int i = 0; i < entities.size(); i++) {
+                entities.get(i).setOrdem(i);
+            }
             speciesMovimentoRepository.saveAll(entities);
         }
     }
@@ -487,13 +585,92 @@ public class PokeApiService {
     private Movimento encontrarMovimentoPorNome(String moveName) {
         return movimentoRepository.findByNomeEnIgnoreCase(moveName)
                 .or(() -> movimentoRepository.findByNomeIgnoreCase(capitalizarNomeMove(moveName)))
-                .orElse(null);
+                .orElseGet(() -> importarMovimentoPorNomePokeApi(moveName));
     }
 
     private Habilidade encontrarHabilidadePorNome(String abilityName) {
         return habilidadeRepository.findByNomeEnIgnoreCase(abilityName)
                 .or(() -> habilidadeRepository.findByNomeIgnoreCase(capitalizarNomeMove(abilityName)))
-                .orElse(null);
+                .orElseGet(() -> importarHabilidadePorNomePokeApi(abilityName));
+    }
+
+    @SuppressWarnings("unchecked")
+    private Movimento importarMovimentoPorNomePokeApi(String moveName) {
+        if (moveName == null || moveName.isBlank()) {
+            return null;
+        }
+        try {
+            Map<String, Object> detail = restTemplate.getForObject(BASE_URL + "/move/" + moveName.trim(), Map.class);
+            if (detail == null) {
+                return null;
+            }
+            Number idRaw = (Number) detail.get("id");
+            Integer pokeapiId = idRaw != null ? idRaw.intValue() : null;
+            if (pokeapiId != null) {
+                Movimento existente = movimentoRepository.findByPokeapiId(pokeapiId).orElse(null);
+                if (existente != null) {
+                    return existente;
+                }
+            }
+            String nomePt = extrairNomeMovePt(detail);
+            String nomeEn = extrairNomeMoveEn(detail);
+            String nomeFinal = nomePt != null && !nomePt.isBlank()
+                    ? nomePt
+                    : (nomeEn != null ? capitalizarNomeMove(nomeEn) : capitalizarNomeMove(moveName));
+            Movimento movimento = new Movimento();
+            movimento.setPokeapiId(pokeapiId);
+            movimento.setNome(nomeFinal);
+            movimento.setNomeEn(nomeEn != null && !nomeEn.isBlank() ? capitalizarNomeMove(nomeEn) : null);
+            movimento.setTipo(extrairTipoMove(detail));
+            movimento.setCategoria(extrairCategoriaMove(detail));
+            movimento.setCustoStamina(0);
+            String descricao = extrairDescricaoMovePt(detail);
+            if (descricao == null || descricao.isBlank()) {
+                descricao = extrairDescricaoMoveEn(detail);
+            }
+            movimento.setDescricaoEfeito(descricao);
+            return movimentoRepository.save(movimento);
+        } catch (Exception ignored) {
+            return null;
+        }
+    }
+
+    @SuppressWarnings("unchecked")
+    private Habilidade importarHabilidadePorNomePokeApi(String abilityName) {
+        if (abilityName == null || abilityName.isBlank()) {
+            return null;
+        }
+        try {
+            Map<String, Object> detail = restTemplate.getForObject(BASE_URL + "/ability/" + abilityName.trim(), Map.class);
+            if (detail == null) {
+                return null;
+            }
+            Number idRaw = (Number) detail.get("id");
+            Integer pokeapiId = idRaw != null ? idRaw.intValue() : null;
+            if (pokeapiId != null) {
+                Habilidade existente = habilidadeRepository.findByPokeapiId(pokeapiId).orElse(null);
+                if (existente != null) {
+                    return existente;
+                }
+            }
+            String nomePt = extrairNomeHabilidadePt(detail);
+            String nomeEn = extrairNomeHabilidadeEn(detail);
+            String nomeFinal = nomePt != null && !nomePt.isBlank()
+                    ? nomePt
+                    : (nomeEn != null ? capitalizarNomeMove(nomeEn) : capitalizarNomeMove(abilityName));
+            Habilidade habilidade = new Habilidade();
+            habilidade.setPokeapiId(pokeapiId);
+            habilidade.setNome(nomeFinal);
+            habilidade.setNomeEn(nomeEn != null && !nomeEn.isBlank() ? capitalizarNomeMove(nomeEn) : null);
+            String descricao = extrairDescricaoHabilidadePt(detail);
+            if (descricao == null || descricao.isBlank()) {
+                descricao = extrairDescricaoHabilidadeEn(detail);
+            }
+            habilidade.setDescricao(descricao);
+            return habilidadeRepository.save(habilidade);
+        } catch (Exception ignored) {
+            return null;
+        }
     }
 
     private String extrairNomeReferencia(Object refObj) {

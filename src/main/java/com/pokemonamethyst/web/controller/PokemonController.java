@@ -8,6 +8,13 @@ import com.pokemonamethyst.service.PokemonLearnsetService;
 import com.pokemonamethyst.service.PokemonService;
 import com.pokemonamethyst.web.dto.MovimentoResponseDto;
 import com.pokemonamethyst.web.dto.PokemonAtualizarRequestDto;
+import com.pokemonamethyst.web.dto.PokemonBatalhaAplicarDanoRequestDto;
+import com.pokemonamethyst.web.dto.PokemonBatalhaCalculoRequestDto;
+import com.pokemonamethyst.web.dto.PokemonBatalhaCalculoResponseDto;
+import com.pokemonamethyst.web.dto.PokemonCapturaRequestDto;
+import com.pokemonamethyst.web.dto.PokemonCapturaResponseDto;
+import com.pokemonamethyst.web.dto.PokemonEstadoRequestDto;
+import com.pokemonamethyst.web.dto.PokemonGeracaoRequestDto;
 import com.pokemonamethyst.web.dto.PokemonGanharXpRequestDto;
 import com.pokemonamethyst.web.dto.PokemonGanharXpResponseDto;
 import com.pokemonamethyst.web.dto.PokemonRequestDto;
@@ -50,6 +57,14 @@ public class PokemonController {
         return ResponseEntity.ok(lista.stream().map(PokemonResponseDto::from).toList());
     }
 
+    @GetMapping("/selvagens")
+    @Transactional(readOnly = true)
+    public ResponseEntity<List<PokemonResponseDto>> listarSelvagens(@AuthenticationPrincipal UsuarioPrincipal principal) {
+        String perfilId = perfilId(principal);
+        List<Pokemon> lista = pokemonService.listarSelvagens(perfilId);
+        return ResponseEntity.ok(lista.stream().map(PokemonResponseDto::from).toList());
+    }
+
     @PostMapping
     @Transactional
     public ResponseEntity<PokemonResponseDto> criar(
@@ -67,6 +82,57 @@ public class PokemonController {
                 dto.getPersonalidadeId()
         );
         return ResponseEntity.status(HttpStatus.CREATED).body(PokemonResponseDto.from(pokemon));
+    }
+
+    @PostMapping("/gerar-selvagem")
+    @Transactional
+    public ResponseEntity<PokemonResponseDto> gerarSelvagem(
+            @AuthenticationPrincipal UsuarioPrincipal principal,
+            @Valid @RequestBody PokemonGeracaoRequestDto dto) {
+        String perfilId = perfilId(principal);
+        Pokemon pokemon = pokemonService.gerarSelvagem(perfilId, dto.getPokedexId(), dto.getNivel());
+        return ResponseEntity.status(HttpStatus.CREATED).body(PokemonResponseDto.from(pokemon));
+    }
+
+    @PostMapping("/batalha/calcular")
+    @Transactional(readOnly = true)
+    public ResponseEntity<PokemonBatalhaCalculoResponseDto> calcularDano(
+            @AuthenticationPrincipal UsuarioPrincipal principal,
+            @Valid @RequestBody PokemonBatalhaCalculoRequestDto dto) {
+        String perfilId = perfilId(principal);
+        return ResponseEntity.ok(pokemonService.calcularDano(perfilId, dto));
+    }
+
+    @PostMapping("/batalha/aplicar-dano")
+    @Transactional
+    public ResponseEntity<PokemonResponseDto> aplicarDano(
+            @AuthenticationPrincipal UsuarioPrincipal principal,
+            @Valid @RequestBody PokemonBatalhaAplicarDanoRequestDto dto) {
+        String perfilId = perfilId(principal);
+        Pokemon defensorAtualizado = pokemonService.aplicarDano(perfilId, dto);
+        return ResponseEntity.ok(PokemonResponseDto.from(defensorAtualizado));
+    }
+
+    @PostMapping("/{id}/captura")
+    @Transactional
+    public ResponseEntity<PokemonCapturaResponseDto> tentarCaptura(
+            @AuthenticationPrincipal UsuarioPrincipal principal,
+            @PathVariable String id,
+            @Valid @RequestBody PokemonCapturaRequestDto dto) {
+        String perfilId = perfilId(principal);
+        PokemonCapturaResponseDto response = pokemonService.tentarCaptura(perfilId, id, Boolean.TRUE.equals(dto.getSucesso()));
+        return ResponseEntity.ok(response);
+    }
+
+    @PutMapping("/{id}/estado")
+    @Transactional
+    public ResponseEntity<PokemonResponseDto> atualizarEstado(
+            @AuthenticationPrincipal UsuarioPrincipal principal,
+            @PathVariable String id,
+            @Valid @RequestBody PokemonEstadoRequestDto dto) {
+        String perfilId = perfilId(principal);
+        Pokemon pokemon = pokemonService.atualizarEstado(perfilId, id, dto.getEstado());
+        return ResponseEntity.ok(PokemonResponseDto.from(pokemon));
     }
 
     @PostMapping("/{id}/xp/ganhar")

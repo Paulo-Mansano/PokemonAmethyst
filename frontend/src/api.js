@@ -81,6 +81,72 @@ export async function getPokemons() {
   return res.json();
 }
 
+export async function getPokemonsSelvagens() {
+  const res = await request('/perfis/meu/pokemons/selvagens')
+  if (!res.ok) throw new Error('Erro ao carregar Pokémon selvagens')
+  return res.json()
+}
+
+export async function gerarPokemonSelvagem(body) {
+  const res = await request('/perfis/meu/pokemons/gerar-selvagem', {
+    method: 'POST',
+    body: JSON.stringify(body || {}),
+  })
+  if (!res.ok) {
+    const data = await res.json().catch(() => ({}))
+    throw new Error(data.mensagem || 'Erro ao gerar Pokémon selvagem')
+  }
+  return res.json()
+}
+
+export async function calcularDanoBatalha(body) {
+  const res = await request('/perfis/meu/pokemons/batalha/calcular', {
+    method: 'POST',
+    body: JSON.stringify(body),
+  })
+  if (!res.ok) {
+    const data = await res.json().catch(() => ({}))
+    throw new Error(data.mensagem || 'Erro ao calcular dano')
+  }
+  return res.json()
+}
+
+export async function aplicarDanoBatalha(body) {
+  const res = await request('/perfis/meu/pokemons/batalha/aplicar-dano', {
+    method: 'POST',
+    body: JSON.stringify(body),
+  })
+  if (!res.ok) {
+    const data = await res.json().catch(() => ({}))
+    throw new Error(data.mensagem || 'Erro ao aplicar dano')
+  }
+  return res.json()
+}
+
+export async function atualizarEstadoPokemon(id, estado) {
+  const res = await request(`/perfis/meu/pokemons/${id}/estado`, {
+    method: 'PUT',
+    body: JSON.stringify({ estado }),
+  })
+  if (!res.ok) {
+    const data = await res.json().catch(() => ({}))
+    throw new Error(data.mensagem || 'Erro ao atualizar estado do Pokémon')
+  }
+  return res.json()
+}
+
+export async function tentarCapturaPokemon(id, sucesso) {
+  const res = await request(`/perfis/meu/pokemons/${id}/captura`, {
+    method: 'POST',
+    body: JSON.stringify({ sucesso: !!sucesso }),
+  })
+  if (!res.ok) {
+    const data = await res.json().catch(() => ({}))
+    throw new Error(data.mensagem || 'Erro ao resolver captura')
+  }
+  return res.json()
+}
+
 export async function criarPokemon(body) {
   const res = await request('/perfis/meu/pokemons', {
     method: 'POST',
@@ -149,6 +215,19 @@ export async function recusarMovimentoAprendido(id, movimentoId) {
     throw new Error(data.mensagem || 'Erro ao recusar novo ataque');
   }
   return res.json();
+}
+
+/** Apenas conta Mestre (ROLE_MESTRE). Altera tipos da instância ou restaura os da espécie. */
+export async function mestreDefinirTiposPokemon(pokemonId, body) {
+  const res = await request(`/mestre/pokemons/${pokemonId}/tipos`, {
+    method: 'PUT',
+    body: JSON.stringify(body),
+  });
+  if (!res.ok) {
+    const data = await res.json().catch(() => ({}));
+    throw new Error(data.mensagem || 'Erro ao definir tipos')
+  }
+  return res.json()
 }
 
 export async function getMovimentosDisponiveisPokemon(id) {
@@ -386,6 +465,64 @@ export async function atualizarImagensItens() {
     throw new Error(data.mensagem || 'Erro ao atualizar imagens');
   }
   return res.json();
+}
+
+export async function listarSpeciesMestre(params = {}) {
+  const search = new URLSearchParams()
+  if (params.nome) search.set('nome', String(params.nome).trim())
+  if (params.pokedexId != null && params.pokedexId !== '') search.set('pokedexId', String(params.pokedexId))
+  if (params.limit != null) search.set('limit', String(params.limit))
+  const q = search.toString()
+  const res = await request(`/mestre/species${q ? `?${q}` : ''}`)
+  if (!res.ok) {
+    const data = await res.json().catch(() => ({}))
+    throw new Error(data.mensagem || 'Erro ao listar espécies')
+  }
+  return res.json()
+}
+
+export async function getSpeciesConfigMestre(speciesId) {
+  const res = await request(`/mestre/species/${encodeURIComponent(speciesId)}/config`)
+  if (!res.ok) {
+    const data = await res.json().catch(() => ({}))
+    throw new Error(data.mensagem || 'Erro ao carregar configuração da espécie')
+  }
+  return res.json()
+}
+
+export async function salvarSpeciesConfigMestre(speciesId, body) {
+  const res = await request(`/mestre/species/${encodeURIComponent(speciesId)}/config`, {
+    method: 'PUT',
+    body: JSON.stringify(body || {}),
+  })
+  if (!res.ok) {
+    const data = await res.json().catch(() => ({}))
+    throw new Error(data.mensagem || 'Erro ao salvar configuração da espécie')
+  }
+  return res.json()
+}
+
+export async function resincronizarSpeciesPokeApiMestre(speciesId) {
+  const res = await request(`/mestre/species/${encodeURIComponent(speciesId)}/resincronizar-pokeapi`, {
+    method: 'POST',
+  })
+  if (!res.ok) {
+    const data = await res.json().catch(() => ({}))
+    throw new Error(data.mensagem || 'Erro ao resincronizar espécie')
+  }
+  return res.json()
+}
+
+/** Reatribui ordem 0..n do learnset (nível → ordem PokéAPI). */
+export async function normalizarOrdemLearnsetMestre(speciesId) {
+  const res = await request(`/mestre/species/${encodeURIComponent(speciesId)}/learnset/normalizar-ordem`, {
+    method: 'POST',
+  })
+  if (!res.ok) {
+    const data = await res.json().catch(() => ({}))
+    throw new Error(data.mensagem || 'Erro ao normalizar ordem do learnset')
+  }
+  return res.json()
 }
 
 export async function getPokeApiList(limit = 20, offset = 0, nome = '', pokedexId = null) {

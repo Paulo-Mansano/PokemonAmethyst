@@ -1,6 +1,7 @@
 package com.pokemonamethyst.repository;
 
 import com.pokemonamethyst.domain.Pokemon;
+import com.pokemonamethyst.domain.OrigemPokemon;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
 
@@ -67,4 +68,18 @@ public interface PokemonRepository extends JpaRepository<Pokemon, String> {
             ORDER BY p.ordemTime ASC
             """)
     List<Pokemon> findByPerfilIdComRelacionamentos(String perfilId);
+
+    @Query("""
+            SELECT DISTINCT p
+            FROM Pokemon p
+            LEFT JOIN FETCH p.species
+            LEFT JOIN FETCH p.habilidadeAtiva
+            LEFT JOIN FETCH p.personalidade
+            LEFT JOIN FETCH p.itemSegurado
+            LEFT JOIN FETCH p.movimentosConhecidos
+            WHERE p.perfil.id = :perfilId
+              AND p.origem = :origem
+            ORDER BY p.ordemTime ASC
+            """)
+    List<Pokemon> findByPerfilIdAndOrigemComRelacionamentos(String perfilId, OrigemPokemon origem);
 }

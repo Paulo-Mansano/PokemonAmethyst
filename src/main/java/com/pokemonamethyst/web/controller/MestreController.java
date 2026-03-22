@@ -10,6 +10,7 @@ import com.pokemonamethyst.repository.PerfilJogadorRepository;
 import com.pokemonamethyst.service.CatalogoService;
 import com.pokemonamethyst.service.PokeApiService;
 import com.pokemonamethyst.service.PokemonService;
+import com.pokemonamethyst.service.PokemonSpeciesConfigService;
 import com.pokemonamethyst.web.dto.HabilidadeAtualizarRequestDto;
 import com.pokemonamethyst.web.dto.HabilidadeResponseDto;
 import com.pokemonamethyst.web.dto.ItemAtualizarRequestDto;
@@ -19,6 +20,11 @@ import com.pokemonamethyst.web.dto.MovimentoResponseDto;
 import com.pokemonamethyst.web.dto.PerfilJogadorResponseDto;
 import com.pokemonamethyst.web.dto.PersonalidadeRequestDto;
 import com.pokemonamethyst.web.dto.PersonalidadeResponseDto;
+import com.pokemonamethyst.web.dto.PokemonResponseDto;
+import com.pokemonamethyst.web.dto.PokemonSpeciesConfigResponseDto;
+import com.pokemonamethyst.web.dto.PokemonSpeciesConfigUpdateRequestDto;
+import com.pokemonamethyst.web.dto.PokemonSpeciesResumoDto;
+import com.pokemonamethyst.web.dto.PokemonTiposMestreRequestDto;
 import com.pokemonamethyst.web.dto.PokeApiItemBuscaResponseDto;
 import com.pokemonamethyst.web.dto.PokeApiItemResumoDto;
 import org.springframework.http.ResponseEntity;
@@ -43,13 +49,16 @@ public class MestreController {
     private final PokemonService pokemonService;
     private final PokeApiService pokeApiService;
     private final CatalogoService catalogoService;
+    private final PokemonSpeciesConfigService speciesConfigService;
 
     public MestreController(PerfilJogadorRepository perfilRepository, PokemonService pokemonService,
-                            PokeApiService pokeApiService, CatalogoService catalogoService) {
+                            PokeApiService pokeApiService, CatalogoService catalogoService,
+                            PokemonSpeciesConfigService speciesConfigService) {
         this.perfilRepository = perfilRepository;
         this.pokemonService = pokemonService;
         this.pokeApiService = pokeApiService;
         this.catalogoService = catalogoService;
+        this.speciesConfigService = speciesConfigService;
     }
 
     @PostMapping("/pokeapi/importar-movimentos")
@@ -79,6 +88,48 @@ public class MestreController {
                 "pokedexId", species.getPokedexId(),
                 "nome", species.getNome()
         ));
+    }
+
+    @GetMapping("/species")
+    @Transactional(readOnly = true)
+    public ResponseEntity<List<PokemonSpeciesResumoDto>> listarSpecies(
+            @RequestParam(value = "nome", required = false) String nome,
+            @RequestParam(value = "pokedexId", required = false) Integer pokedexId,
+            @RequestParam(value = "limit", required = false) Integer limit
+    ) {
+        return ResponseEntity.ok(speciesConfigService.listarSpecies(nome, pokedexId, limit));
+    }
+
+    @GetMapping("/species/{speciesId}/config")
+    @Transactional(readOnly = true)
+    public ResponseEntity<PokemonSpeciesConfigResponseDto> buscarConfigSpecies(@PathVariable String speciesId) {
+        return ResponseEntity.ok(speciesConfigService.buscarConfig(speciesId));
+    }
+
+    @PutMapping("/species/{speciesId}/config")
+    @Transactional
+    public ResponseEntity<PokemonSpeciesConfigResponseDto> atualizarConfigSpecies(
+            @PathVariable String speciesId,
+            @RequestBody PokemonSpeciesConfigUpdateRequestDto dto
+    ) {
+        return ResponseEntity.ok(speciesConfigService.atualizarConfig(speciesId, dto));
+    }
+
+    @PostMapping("/species/{speciesId}/resincronizar-pokeapi")
+    public ResponseEntity<Map<String, Object>> resincronizarSpeciesDaPokeApi(@PathVariable String speciesId) {
+        PokemonSpecies species = speciesConfigService.buscarSpeciesPorId(speciesId);
+        PokemonSpecies atualizado = pokeApiService.importarSpeciesDaPokeApi(species.getPokedexId());
+        return ResponseEntity.ok(Map.of(
+                "speciesId", atualizado.getId(),
+                "pokedexId", atualizado.getPokedexId(),
+                "nome", atualizado.getNome()
+        ));
+    }
+
+    @PostMapping("/species/{speciesId}/learnset/normalizar-ordem")
+    @Transactional
+    public ResponseEntity<PokemonSpeciesConfigResponseDto> normalizarOrdemLearnset(@PathVariable String speciesId) {
+        return ResponseEntity.ok(speciesConfigService.normalizarOrdemLearnset(speciesId));
     }
 
     @GetMapping("/pokeapi/itens/listar")
@@ -216,6 +267,22 @@ public class MestreController {
             @RequestBody PersonalidadeRequestDto dto) {
         Personalidade p = catalogoService.atualizarPersonalidade(id, dto.getNome());
         return ResponseEntity.ok(PersonalidadeResponseDto.from(p));
+    }
+
+    @PutMapping("/pokemons/{pokemonId}/tipos")
+    @Transactional
+    public ResponseEntity<PokemonResponseDto> mestreDefinirTiposPokemon(
+            @PathVariable String pokemonId,
+            @RequestBody PokemonTiposMestreRequestDto dto) {
+        if (dto == null) {
+            return ResponseEntity.badRequest().build();
+        }
+        var pokemon = pokemonService.mestreDefinirTiposPokemon(
+                pokemonId,
+                dto.getTipoPrimario(),
+                dto.getTipoSecundario(),
+                dto.isResetTiposParaEspecie());
+        return ResponseEntity.ok(PokemonResponseDto.from(pokemon));
     }
 
     @GetMapping("/jogadores")

@@ -7,10 +7,14 @@ const SIDEBAR_WIDTH_COLLAPSED = 56
 const navItems = [
   { to: '/', end: true, label: 'Ficha', title: 'Ficha do personagem', icon: IconUser },
   { to: '/pokemons', end: false, label: 'Pokémon', title: 'Pokémon', icon: IconPokemon },
+  { to: '/geracao', end: false, label: 'Geração', title: 'Gerar Pokémon', icon: IconSpark },
+  { to: '/batalha', end: false, label: 'Batalha', title: 'Sistema de batalha', icon: IconBattle },
+  { to: '/captura', end: false, label: 'Captura', title: 'Sistema de captura', icon: IconCatch },
   { to: '/mochila', end: false, label: 'Mochila', title: 'Mochila', icon: IconBag },
 ]
 
 const navItemsMestre = [
+  { to: '/species', end: false, label: 'Espécies', title: 'Learnset e habilidades por espécie', icon: IconPokemon },
   { to: '/itens', end: false, label: 'Itens', title: 'Catálogo de itens', icon: IconBox },
   { to: '/habilidades', end: false, label: 'Habilidades', title: 'Catálogo de habilidades', icon: IconSpark },
   { to: '/movimentos', end: false, label: 'Ataques/Movimentos', title: 'Catálogo de ataques e movimentos', icon: IconMove },
@@ -79,6 +83,26 @@ function IconSmile() {
       <path d="M8 14s1.5 2 4 2 4-2 4-2" />
       <line x1="9" y1="9" x2="9.01" y2="9" />
       <line x1="15" y1="9" x2="15.01" y2="9" />
+    </svg>
+  )
+}
+
+function IconBattle() {
+  return (
+    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
+      <path d="M12 2v20" />
+      <path d="M2 12h20" />
+      <circle cx="12" cy="12" r="3" />
+    </svg>
+  )
+}
+
+function IconCatch() {
+  return (
+    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
+      <circle cx="12" cy="12" r="9" />
+      <line x1="3" y1="12" x2="21" y2="12" />
+      <circle cx="12" cy="12" r="2.5" />
     </svg>
   )
 }

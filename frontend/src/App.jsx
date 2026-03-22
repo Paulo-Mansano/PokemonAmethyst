@@ -9,6 +9,10 @@ import ItensCatalogo from './pages/ItensCatalogo'
 import HabilidadesCatalogo from './pages/HabilidadesCatalogo'
 import MovimentosCatalogo from './pages/MovimentosCatalogo'
 import PersonalidadesCatalogo from './pages/PersonalidadesCatalogo'
+import Geracao from './pages/Geracao'
+import Batalha from './pages/Batalha'
+import Captura from './pages/Captura'
+import MestreSpecies from './pages/MestreSpecies'
 import { getUsuario } from './api'
 
 export default function App() {
@@ -41,6 +45,10 @@ export default function App() {
         <Route path="habilidades" element={<HabilidadesCatalogo />} />
         <Route path="movimentos" element={<MovimentosCatalogo />} />
         <Route path="personalidades" element={<PersonalidadesCatalogo />} />
+        <Route path="species" element={<MestreSpecies />} />
+        <Route path="geracao" element={<Geracao />} />
+        <Route path="batalha" element={<Batalha />} />
+        <Route path="captura" element={<Captura />} />
       </Route>
       <Route path="*" element={<Navigate to={user ? '/' : '/login'} replace />} />
     </Routes>

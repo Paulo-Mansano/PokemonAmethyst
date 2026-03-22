@@ -1052,35 +1052,81 @@ input, select, textarea {
 
 .pokemon-movimento-card {
   display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 16px;
-  padding: 10px 12px;
+  align-items: stretch;
+  gap: 12px;
+  padding: 12px 14px;
   background: var(--surface);
   border: 1px solid var(--border);
   border-radius: var(--radius);
   width: 100%;
 }
 
-.pokemon-movimento-card:hover {
-  background: rgba(255, 255, 255, 0.04);
+.pokemon-movimento-card--typed {
+  border-color: rgba(255, 255, 255, 0.12);
 }
 
-.pokemon-movimento-card-main {
+.pokemon-movimento-card-inner {
+  flex: 1;
+  min-width: 0;
   display: flex;
-  align-items: baseline;
-  gap: 0.75rem;
+  flex-direction: column;
+  gap: 0.65rem;
+}
+
+.pokemon-movimento-card-header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 10px;
+}
+
+.pokemon-movimento-card-title-block {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.5rem;
   min-width: 0;
 }
 
 .pokemon-movimento-nome {
   font-weight: 600;
   color: var(--text);
+  line-height: 1.3;
 }
 
-.pokemon-movimento-tipo {
-  font-size: 0.9rem;
-  color: var(--accent);
+.pokemon-movimento-card-body {
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+  font-size: 0.88rem;
+}
+
+.pokemon-movimento-stat-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.35rem 1rem;
+  align-items: baseline;
+}
+
+.pokemon-movimento-stat-label {
+  color: var(--text-muted);
+  font-weight: 500;
+  min-width: 7.5rem;
+}
+
+.pokemon-movimento-desc {
+  margin-top: 0.15rem;
+}
+
+.pokemon-movimento-desc .pokemon-movimento-stat-label {
+  display: block;
+  margin-bottom: 0.2rem;
+}
+
+.pokemon-movimento-desc p {
+  margin: 0;
+  line-height: 1.45;
+  color: var(--text);
 }
 
 .pokemon-movimento-add {
@@ -1102,8 +1148,9 @@ input, select, textarea {
 .pokemon-movimento-disponivel {
   display: flex;
   align-items: center;
-  gap: 0.75rem;
-  padding: 0.5rem 0.75rem;
+  flex-wrap: wrap;
+  gap: 0.5rem 0.75rem;
+  padding: 0.55rem 0.75rem;
   border-bottom: 1px solid var(--border);
 }
 
@@ -1130,43 +1177,47 @@ input, select, textarea {
   color: var(--text-muted);
 }
 
-/* Card de movimento expandido (detalhes somente leitura) */
-.pokemon-movimento-card.is-expanded {
-  flex-wrap: wrap;
-}
-
-.pokemon-movimento-card-main {
-  cursor: pointer;
-}
-
-.pokemon-movimento-card-detail {
-  width: 100%;
-  padding: 1rem;
-  margin-top: 0.5rem;
-  background: var(--bg);
-  border-radius: var(--radius);
-  border: 1px solid var(--border);
-}
-
-.pokemon-movimento-detail-note {
-  font-size: 0.85rem;
-  color: var(--text-muted);
-  margin: 0 0 0.75rem;
-}
-
-.pokemon-movimento-detail-dl {
+.battle-selectors {
   display: grid;
-  grid-template-columns: auto 1fr;
-  gap: 0.25rem 1.5rem;
-  margin: 0;
+  grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+  gap: 1rem;
+}
+
+.battle-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
+  gap: 1rem;
+}
+
+.batalha-card {
+  margin-bottom: 0;
+}
+
+.battle-mod-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+  gap: 0.75rem 1rem;
+}
+
+.battle-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  align-items: center;
+}
+
+.battle-breakdown {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.75rem;
+  color: var(--text-muted);
   font-size: 0.9rem;
 }
 
-.pokemon-movimento-detail-dl dt {
-  color: var(--text-muted);
-  font-weight: 500;
+.battle-history {
+  margin: 0;
+  padding-left: 1.25rem;
+  display: grid;
+  gap: 0.4rem;
 }
 
-.pokemon-movimento-detail-dl dd {
-  margin: 0;
-}

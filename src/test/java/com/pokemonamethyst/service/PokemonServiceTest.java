@@ -1,7 +1,9 @@
 package com.pokemonamethyst.service;
 
 import com.pokemonamethyst.domain.Genero;
+import com.pokemonamethyst.domain.EstadoPokemon;
 import com.pokemonamethyst.domain.Habilidade;
+import com.pokemonamethyst.domain.OrigemPokemon;
 import com.pokemonamethyst.domain.PerfilJogador;
 import com.pokemonamethyst.domain.Pokemon;
 import com.pokemonamethyst.domain.PokemonSpecies;
@@ -106,7 +108,7 @@ class PokemonServiceTest {
         when(perfilRepository.save(any(PerfilJogador.class))).thenAnswer(invocation -> invocation.getArgument(0));
         when(pokeApiService.obterSpeciesParaCriacao(1)).thenReturn(species);
         when(pokemonAbilityService.sortearHabilidadeAtiva(species)).thenReturn(ability);
-        when(pokemonLearnsetService.listarMovimentosIniciais(species, 1, 8)).thenReturn(List.of());
+        when(pokemonLearnsetService.escolherMovimentosAoCriarPokemon(species, 1)).thenReturn(List.of());
 
         Pokemon criado = service.criar(
                 "perfil-1",
@@ -132,5 +134,8 @@ class PokemonServiceTest {
         assertThat(salvo.getIvAtaqueEspecial()).isBetween(0, 31);
         assertThat(salvo.getIvDefesaEspecial()).isBetween(0, 31);
         assertThat(salvo.getIvSpeed()).isBetween(0, 31);
+        assertThat(salvo.getHpAtual()).isNotNull().isPositive();
+        assertThat(salvo.getOrigem()).isEqualTo(OrigemPokemon.TREINADOR);
+        assertThat(salvo.getEstado()).isEqualTo(EstadoPokemon.ATIVO);
     }
 }

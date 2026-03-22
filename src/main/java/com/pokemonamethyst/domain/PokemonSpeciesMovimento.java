@@ -35,6 +35,10 @@ public class PokemonSpeciesMovimento {
     @Column(name = "level")
     private Integer level;
 
+    /** Índice no array {@code moves} da PokéAPI; usado para ordenar moves iniciais quando o nível empata. */
+    @Column(name = "ordem")
+    private Integer ordem;
+
     public Long getId() {
         return id;
     }
@@ -69,5 +73,13 @@ public class PokemonSpeciesMovimento {
 
     public void setLevel(Integer level) {
         this.level = level;
+    }
+
+    public Integer getOrdem() {
+        return ordem;
+    }
+
+    public void setOrdem(Integer ordem) {
+        this.ordem = ordem;
     }
 }
