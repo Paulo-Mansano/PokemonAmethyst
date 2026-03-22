@@ -31,3 +31,8 @@ server:
   port: 8080
   servlet:
     context-path: /
+    session:
+      cookie:
+        # Produção (Netlify + Render): cross-site precisa None + Secure. No Render defina SESSION_COOKIE_SAME_SITE=none e SESSION_COOKIE_SECURE=true
+        same-site: ${SESSION_COOKIE_SAME_SITE:lax}
+        secure: ${SESSION_COOKIE_SECURE:false}

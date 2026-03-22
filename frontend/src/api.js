@@ -1,4 +1,11 @@
-const BASE = import.meta.env.VITE_API_BASE || '/api';
+/** Base da API: em dev usa /api (proxy Vite). Em prod, VITE_API_BASE pode ser só o host — garantimos sufixo /api. */
+function apiBase() {
+  const raw = import.meta.env.VITE_API_BASE;
+  if (!raw) return '/api';
+  const trimmed = String(raw).replace(/\/+$/, '');
+  return trimmed.endsWith('/api') ? trimmed : `${trimmed}/api`;
+}
+const BASE = apiBase();
 
 function request(path, options = {}) {
   const url = path.startsWith('http') ? path : `${BASE}${path}`;
