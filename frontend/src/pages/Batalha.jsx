@@ -6,6 +6,7 @@ import {
   calcularDanoBatalha,
   getPokemons,
 } from '../api'
+import { usePlayerTarget } from '../context/PlayerTargetContext'
 
 const TIPO_OPCOES = [0, 0.25, 0.5, 1, 2, 4]
 
@@ -19,6 +20,7 @@ function parsePowerFromMove(movimento) {
 }
 
 export default function Batalha() {
+  const { playerId, readyForPlayerApi } = usePlayerTarget()
   const navigate = useNavigate()
   const [loading, setLoading] = useState(true)
   const [erro, setErro] = useState('')
@@ -47,10 +49,11 @@ export default function Batalha() {
   })
 
   const carregar = async () => {
+    if (!readyForPlayerApi) return
     setLoading(true)
     setErro('')
     try {
-      const lista = await getPokemons()
+      const lista = await getPokemons(playerId)
       setPokemons(lista || [])
     } catch (e) {
       setErro(e.message || 'Erro ao carregar Pokémon')
@@ -61,7 +64,7 @@ export default function Batalha() {
 
   useEffect(() => {
     carregar()
-  }, [])
+  }, [playerId, readyForPlayerApi])
 
   useEffect(() => {
     localStorage.setItem('battleHistory', JSON.stringify(historico))
@@ -114,7 +117,7 @@ export default function Batalha() {
         randomMax: Number(randomMax) || 1,
         randomValue: Number(randomValue) || 1,
       }
-      const data = await calcularDanoBatalha(payload)
+      const data = await calcularDanoBatalha(payload, playerId)
       setResultado(data)
     } catch (e) {
       setErro(e.message || 'Erro ao calcular dano')
@@ -129,7 +132,7 @@ export default function Batalha() {
         atacanteId,
         defensorId,
         danoAplicado: resultado.danoAplicado,
-      })
+      }, playerId)
       const registro = {
         id: `${Date.now()}`,
         atacante: atacante?.apelido || atacante?.especie,
@@ -161,7 +164,7 @@ export default function Batalha() {
   const irParaCaptura = async () => {
     if (!defensorId) return
     try {
-      await atualizarEstadoPokemon(defensorId, 'CAPTURAVEL')
+      await atualizarEstadoPokemon(defensorId, 'CAPTURAVEL', playerId)
       localStorage.setItem('capturePokemonId', defensorId)
       navigate('/captura')
     } catch (e) {
@@ -171,8 +174,8 @@ export default function Batalha() {
 
   const encerrarBatalha = async () => {
     try {
-      if (atacanteId) await atualizarEstadoPokemon(atacanteId, 'ATIVO')
-      if (defensorId) await atualizarEstadoPokemon(defensorId, 'ATIVO')
+      if (atacanteId) await atualizarEstadoPokemon(atacanteId, 'ATIVO', playerId)
+      if (defensorId) await atualizarEstadoPokemon(defensorId, 'ATIVO', playerId)
       setResultado(null)
     } catch (e) {
       setErro(e.message || 'Erro ao encerrar batalha')
@@ -184,6 +187,15 @@ export default function Batalha() {
     setHistorico([])
     setMovimentoId('')
     localStorage.removeItem('battleHistory')
+  }
+
+  if (!readyForPlayerApi) {
+    return (
+      <div className="container container--wide">
+        <h1>Batalha</h1>
+        <p>Carregando…</p>
+      </div>
+    )
   }
 
   return (

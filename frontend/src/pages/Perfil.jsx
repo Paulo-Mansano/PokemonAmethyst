@@ -1,11 +1,13 @@
 import { useState, useEffect } from 'react'
 import { useLocation } from 'react-router-dom'
 import { getMeuPerfil, salvarPerfil } from '../api'
+import { usePlayerTarget } from '../context/PlayerTargetContext'
 
 const CLASSES = ['CIVIL', 'TREINADOR', 'COMPETIDOR', 'CACADOR', 'MEDICO', 'PESQUISADOR']
 
 export default function Perfil() {
   const location = useLocation()
+  const { playerId, readyForPlayerApi } = usePlayerTarget()
   const [perfil, setPerfil] = useState(null)
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
@@ -23,7 +25,10 @@ export default function Perfil() {
   })
 
   useEffect(() => {
-    getMeuPerfil()
+    if (!readyForPlayerApi) return
+    setLoading(true)
+    setErro('')
+    getMeuPerfil(playerId)
       .then((p) => {
         setPerfil(p)
         if (p) {
@@ -51,7 +56,7 @@ export default function Perfil() {
       })
       .catch(() => setErro('Erro ao carregar perfil'))
       .finally(() => setLoading(false))
-  }, [])
+  }, [playerId, readyForPlayerApi])
 
   const handleChange = (field, value) => {
     setForm((f) => ({ ...f, [field]: value }))
@@ -71,7 +76,7 @@ export default function Perfil() {
     setErro('')
     setSaving(true)
     try {
-      const saved = await salvarPerfil(form)
+      const saved = await salvarPerfil(form, playerId)
       setPerfil(saved)
     } catch (err) {
       setErro(err.message)
@@ -80,7 +85,7 @@ export default function Perfil() {
     }
   }
 
-  if (loading) return <div className="container container--wide">Carregando perfil...</div>
+  if (!readyForPlayerApi || loading) return <div className="container container--wide">Carregando perfil...</div>
   if (erro && !perfil) return <div className="container container--wide"><p style={{ color: 'var(--danger)' }}>{erro}</p></div>
 
   const avisoSemPerfil = location.state?.semPerfil && !perfil

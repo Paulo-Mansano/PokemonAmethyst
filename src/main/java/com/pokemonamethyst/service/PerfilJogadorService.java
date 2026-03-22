@@ -2,7 +2,9 @@ package com.pokemonamethyst.service;
 
 import com.pokemonamethyst.domain.*;
 import com.pokemonamethyst.exception.RecursoNaoEncontradoException;
+import com.pokemonamethyst.exception.RegraNegocioException;
 import com.pokemonamethyst.repository.PerfilJogadorRepository;
+import com.pokemonamethyst.security.UsuarioPrincipal;
 import com.pokemonamethyst.repository.UsuarioRepository;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -55,6 +57,24 @@ public class PerfilJogadorService {
     public PerfilJogador buscarPorId(String id) {
         return perfilRepository.findById(id)
                 .orElseThrow(() -> new RecursoNaoEncontradoException("Perfil do jogador não encontrado."));
+    }
+
+    /**
+     * Resolve qual perfil está em contexto: jogador sempre o próprio; mestre exige {@code playerId} (id do perfil alvo).
+     * Valores de {@code playerIdFromRequest} vindos de não-mestres são ignorados.
+     */
+    public PerfilJogador obterPerfilAlvo(UsuarioPrincipal principal, String playerIdFromRequest) {
+        if (!principal.isMestre()) {
+            return buscarMeuPerfil(principal.getId());
+        }
+        if (playerIdFromRequest == null || playerIdFromRequest.isBlank()) {
+            throw new RegraNegocioException("Mestre precisa informar playerId.");
+        }
+        return buscarPorId(playerIdFromRequest.trim());
+    }
+
+    public String resolvePerfilId(UsuarioPrincipal principal, String playerIdFromRequest) {
+        return obterPerfilAlvo(principal, playerIdFromRequest).getId();
     }
 
     /**

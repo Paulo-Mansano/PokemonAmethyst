@@ -12,6 +12,13 @@ function request(path, options = {}) {
   });
 }
 
+/** Anexa ?playerId= ou &playerId= ao path (id do perfil_jogador alvo; só para mestre). */
+function withPlayerQuery(path, playerId) {
+  if (!playerId) return path;
+  const sep = path.includes('?') ? '&' : '?';
+  return `${path}${sep}playerId=${encodeURIComponent(playerId)}`;
+}
+
 export async function login(nomeUsuario, senha) {
   const res = await request('/auth/login', {
     method: 'POST',
@@ -46,20 +53,21 @@ export async function getUsuario() {
   return res.json();
 }
 
-export async function getMeuPerfil() {
-  const res = await request('/perfis/meu');
+export async function getMeuPerfil(playerId) {
+  const res = await request(withPlayerQuery('/perfis/meu', playerId));
   if (!res.ok) {
     if (res.status === 404) return null;
     if (res.status === 401 || res.status === 403) {
       throw new Error('Sessão inválida ou expirada. Faça login novamente.');
     }
-    throw new Error('Erro ao carregar perfil');
+    const data = await res.json().catch(() => ({}));
+    throw new Error(data.mensagem || 'Erro ao carregar perfil');
   }
   return res.json();
 }
 
-export async function salvarPerfil(body) {
-  const res = await request('/perfis/meu', {
+export async function salvarPerfil(body, playerId) {
+  const res = await request(withPlayerQuery('/perfis/meu', playerId), {
     method: 'PUT',
     body: JSON.stringify(body),
   });
@@ -72,8 +80,17 @@ export async function salvarPerfil(body) {
 
 const MSG_SEM_PERFIL = 'Crie seu perfil na Ficha primeiro.';
 
-export async function getPokemons() {
-  const res = await request('/perfis/meu/pokemons');
+export async function getMestreJogadores() {
+  const res = await request('/mestre/jogadores');
+  if (!res.ok) {
+    const data = await res.json().catch(() => ({}));
+    throw new Error(data.mensagem || 'Erro ao listar jogadores');
+  }
+  return res.json();
+}
+
+export async function getPokemons(playerId) {
+  const res = await request(withPlayerQuery('/perfis/meu/pokemons', playerId));
   if (!res.ok) {
     if (res.status === 404) throw new Error(MSG_SEM_PERFIL);
     throw new Error('Erro ao carregar Pokémon');
@@ -81,14 +98,14 @@ export async function getPokemons() {
   return res.json();
 }
 
-export async function getPokemonsSelvagens() {
-  const res = await request('/perfis/meu/pokemons/selvagens')
+export async function getPokemonsSelvagens(playerId) {
+  const res = await request(withPlayerQuery('/perfis/meu/pokemons/selvagens', playerId))
   if (!res.ok) throw new Error('Erro ao carregar Pokémon selvagens')
   return res.json()
 }
 
-export async function gerarPokemonSelvagem(body) {
-  const res = await request('/perfis/meu/pokemons/gerar-selvagem', {
+export async function gerarPokemonSelvagem(body, playerId) {
+  const res = await request(withPlayerQuery('/perfis/meu/pokemons/gerar-selvagem', playerId), {
     method: 'POST',
     body: JSON.stringify(body || {}),
   })
@@ -99,8 +116,8 @@ export async function gerarPokemonSelvagem(body) {
   return res.json()
 }
 
-export async function calcularDanoBatalha(body) {
-  const res = await request('/perfis/meu/pokemons/batalha/calcular', {
+export async function calcularDanoBatalha(body, playerId) {
+  const res = await request(withPlayerQuery('/perfis/meu/pokemons/batalha/calcular', playerId), {
     method: 'POST',
     body: JSON.stringify(body),
   })
@@ -111,8 +128,8 @@ export async function calcularDanoBatalha(body) {
   return res.json()
 }
 
-export async function aplicarDanoBatalha(body) {
-  const res = await request('/perfis/meu/pokemons/batalha/aplicar-dano', {
+export async function aplicarDanoBatalha(body, playerId) {
+  const res = await request(withPlayerQuery('/perfis/meu/pokemons/batalha/aplicar-dano', playerId), {
     method: 'POST',
     body: JSON.stringify(body),
   })
@@ -123,8 +140,8 @@ export async function aplicarDanoBatalha(body) {
   return res.json()
 }
 
-export async function atualizarEstadoPokemon(id, estado) {
-  const res = await request(`/perfis/meu/pokemons/${id}/estado`, {
+export async function atualizarEstadoPokemon(id, estado, playerId) {
+  const res = await request(withPlayerQuery(`/perfis/meu/pokemons/${id}/estado`, playerId), {
     method: 'PUT',
     body: JSON.stringify({ estado }),
   })
@@ -135,8 +152,8 @@ export async function atualizarEstadoPokemon(id, estado) {
   return res.json()
 }
 
-export async function tentarCapturaPokemon(id, sucesso) {
-  const res = await request(`/perfis/meu/pokemons/${id}/captura`, {
+export async function tentarCapturaPokemon(id, sucesso, playerId) {
+  const res = await request(withPlayerQuery(`/perfis/meu/pokemons/${id}/captura`, playerId), {
     method: 'POST',
     body: JSON.stringify({ sucesso: !!sucesso }),
   })
@@ -147,8 +164,8 @@ export async function tentarCapturaPokemon(id, sucesso) {
   return res.json()
 }
 
-export async function criarPokemon(body) {
-  const res = await request('/perfis/meu/pokemons', {
+export async function criarPokemon(body, playerId) {
+  const res = await request(withPlayerQuery('/perfis/meu/pokemons', playerId), {
     method: 'POST',
     body: JSON.stringify(body),
   });
@@ -161,8 +178,8 @@ export async function criarPokemon(body) {
   return res.json();
 }
 
-export async function getPokemon(id) {
-  const res = await request(`/perfis/meu/pokemons/${id}`);
+export async function getPokemon(id, playerId) {
+  const res = await request(withPlayerQuery(`/perfis/meu/pokemons/${id}`, playerId));
   if (!res.ok) {
     if (res.status === 404) throw new Error(MSG_SEM_PERFIL);
     throw new Error('Erro ao carregar Pokémon');
@@ -170,8 +187,8 @@ export async function getPokemon(id) {
   return res.json();
 }
 
-export async function atualizarPokemon(id, body) {
-  const res = await request(`/perfis/meu/pokemons/${id}`, {
+export async function atualizarPokemon(id, body, playerId) {
+  const res = await request(withPlayerQuery(`/perfis/meu/pokemons/${id}`, playerId), {
     method: 'PUT',
     body: JSON.stringify(body),
   });
@@ -182,8 +199,8 @@ export async function atualizarPokemon(id, body) {
   return res.json();
 }
 
-export async function ganharXpPokemon(id, xpGanho) {
-  const res = await request(`/perfis/meu/pokemons/${id}/xp/ganhar`, {
+export async function ganharXpPokemon(id, xpGanho, playerId) {
+  const res = await request(withPlayerQuery(`/perfis/meu/pokemons/${id}/xp/ganhar`, playerId), {
     method: 'POST',
     body: JSON.stringify({ xpGanho }),
   });
@@ -194,8 +211,8 @@ export async function ganharXpPokemon(id, xpGanho) {
   return res.json();
 }
 
-export async function aceitarMovimentoAprendido(id, movimentoId, substituirMovimentoId) {
-  const res = await request(`/perfis/meu/pokemons/${id}/movimentos-aprendendo/aceitar`, {
+export async function aceitarMovimentoAprendido(id, movimentoId, substituirMovimentoId, playerId) {
+  const res = await request(withPlayerQuery(`/perfis/meu/pokemons/${id}/movimentos-aprendendo/aceitar`, playerId), {
     method: 'POST',
     body: JSON.stringify({ movimentoId, substituirMovimentoId: substituirMovimentoId || null }),
   });
@@ -206,8 +223,8 @@ export async function aceitarMovimentoAprendido(id, movimentoId, substituirMovim
   return res.json();
 }
 
-export async function recusarMovimentoAprendido(id, movimentoId) {
-  const res = await request(`/perfis/meu/pokemons/${id}/movimentos-aprendendo/recusar`, {
+export async function recusarMovimentoAprendido(id, movimentoId, playerId) {
+  const res = await request(withPlayerQuery(`/perfis/meu/pokemons/${id}/movimentos-aprendendo/recusar`, playerId), {
     method: 'POST',
     body: JSON.stringify({ movimentoId }),
   });
@@ -231,8 +248,8 @@ export async function mestreDefinirTiposPokemon(pokemonId, body) {
   return res.json()
 }
 
-export async function getMovimentosDisponiveisPokemon(id) {
-  const res = await request(`/perfis/meu/pokemons/${id}/movimentos-disponiveis`);
+export async function getMovimentosDisponiveisPokemon(id, playerId) {
+  const res = await request(withPlayerQuery(`/perfis/meu/pokemons/${id}/movimentos-disponiveis`, playerId));
   if (!res.ok) {
     const data = await res.json().catch(() => ({}));
     throw new Error(data.mensagem || 'Erro ao carregar movimentos disponíveis');
@@ -240,8 +257,8 @@ export async function getMovimentosDisponiveisPokemon(id) {
   return res.json();
 }
 
-export async function colocarNoTime(id, ordem = 1) {
-  const res = await request(`/perfis/meu/pokemons/${id}/time`, {
+export async function colocarNoTime(id, ordem = 1, playerId) {
+  const res = await request(withPlayerQuery(`/perfis/meu/pokemons/${id}/time`, playerId), {
     method: 'PUT',
     body: JSON.stringify({ ordem }),
   });
@@ -252,8 +269,8 @@ export async function colocarNoTime(id, ordem = 1) {
   return res.json();
 }
 
-export async function removerDoTime(id) {
-  const res = await request(`/perfis/meu/pokemons/${id}/time`, { method: 'DELETE' });
+export async function removerDoTime(id, playerId) {
+  const res = await request(withPlayerQuery(`/perfis/meu/pokemons/${id}/time`, playerId), { method: 'DELETE' });
   if (!res.ok) {
     const data = await res.json().catch(() => ({}));
     throw new Error(data.mensagem || 'Erro ao remover do time');
@@ -261,22 +278,22 @@ export async function removerDoTime(id) {
   return res.json();
 }
 
-export async function excluirPokemon(id) {
-  const res = await request(`/perfis/meu/pokemons/${id}`, { method: 'DELETE' });
+export async function excluirPokemon(id, playerId) {
+  const res = await request(withPlayerQuery(`/perfis/meu/pokemons/${id}`, playerId), { method: 'DELETE' });
   if (!res.ok) {
     const data = await res.json().catch(() => ({}));
     throw new Error(data.mensagem || 'Erro ao excluir Pokémon');
   }
 }
 
-export async function getMochila() {
-  const res = await request('/perfis/meu/mochila');
+export async function getMochila(playerId) {
+  const res = await request(withPlayerQuery('/perfis/meu/mochila', playerId));
   if (!res.ok) throw new Error('Erro ao carregar mochila');
   return res.json();
 }
 
-export async function adicionarItemMochila(itemId, quantidade) {
-  const res = await request('/perfis/meu/mochila/itens', {
+export async function adicionarItemMochila(itemId, quantidade, playerId) {
+  const res = await request(withPlayerQuery('/perfis/meu/mochila/itens', playerId), {
     method: 'PUT',
     body: JSON.stringify({ itemId, quantidade }),
   });
@@ -287,8 +304,9 @@ export async function adicionarItemMochila(itemId, quantidade) {
   return res.json();
 }
 
-export async function removerItemMochila(itemId, quantidade = 1) {
-  const res = await request(`/perfis/meu/mochila/itens/${itemId}?quantidade=${quantidade}`, {
+export async function removerItemMochila(itemId, quantidade = 1, playerId) {
+  const base = `/perfis/meu/mochila/itens/${itemId}?quantidade=${quantidade}`;
+  const res = await request(withPlayerQuery(base, playerId), {
     method: 'DELETE',
   });
   if (!res.ok) {

@@ -1,8 +1,10 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useCallback } from 'react'
 import { Link } from 'react-router-dom'
 import { getMeuPerfil, getMochila, getItens, adicionarItemMochila, removerItemMochila } from '../api'
+import { usePlayerTarget } from '../context/PlayerTargetContext'
 
 export default function Mochila() {
+  const { playerId, readyForPlayerApi } = usePlayerTarget()
   const [perfil, setPerfil] = useState(null)
   const [mochila, setMochila] = useState(null)
   const [itens, setItens] = useState([])
@@ -12,26 +14,31 @@ export default function Mochila() {
   const [addQtd, setAddQtd] = useState(1)
   const [adding, setAdding] = useState(false)
 
-  const load = () => {
-    getMeuPerfil()
+  const load = useCallback(() => {
+    if (!readyForPlayerApi) return Promise.resolve()
+    setLoading(true)
+    return getMeuPerfil(playerId)
       .then((p) => {
         setPerfil(p)
-        if (!p) return
-        return Promise.all([getMochila(), getItens()])
+        if (!p) return null
+        return Promise.all([getMochila(playerId), getItens()])
       })
       .then((result) => {
         if (result) {
           const [m, list] = result
           setMochila(m)
           setItens(list)
-          if (list.length > 0 && !addItemId) setAddItemId(list[0]?.id ?? '')
+          setAddItemId((prev) => prev || list[0]?.id || '')
         }
       })
       .catch(() => setErro('Erro ao carregar'))
       .finally(() => setLoading(false))
-  }
+  }, [readyForPlayerApi, playerId])
 
-  useEffect(() => load(), [])
+  useEffect(() => {
+    if (!readyForPlayerApi) return
+    load()
+  }, [readyForPlayerApi, playerId, load])
 
   const handleAdicionar = async (e) => {
     e.preventDefault()
@@ -39,8 +46,8 @@ export default function Mochila() {
     setErro('')
     setAdding(true)
     try {
-      await adicionarItemMochila(addItemId, addQtd)
-      load()
+      await adicionarItemMochila(addItemId, addQtd, playerId)
+      await load()
     } catch (err) {
       setErro(err.message)
     } finally {
@@ -50,12 +57,14 @@ export default function Mochila() {
 
   const handleRemover = async (itemId, qtd) => {
     try {
-      await removerItemMochila(itemId, qtd)
-      load()
+      await removerItemMochila(itemId, qtd, playerId)
+      await load()
     } catch (err) {
       setErro(err.message)
     }
   }
+
+  if (!readyForPlayerApi) return <div className="container">Carregando mochila...</div>
 
   if (loading) return <div className="container">Carregando mochila...</div>
 

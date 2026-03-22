@@ -30,11 +30,13 @@ public class PerfilJogadorController {
 
     @GetMapping("/meu")
     @Transactional(readOnly = true)
-    public ResponseEntity<PerfilJogadorResponseDto> meuPerfil(@AuthenticationPrincipal UsuarioPrincipal principal) {
+    public ResponseEntity<PerfilJogadorResponseDto> meuPerfil(
+            @AuthenticationPrincipal UsuarioPrincipal principal,
+            @RequestParam(value = "playerId", required = false) String playerId) {
         if (principal == null) {
             return ResponseEntity.status(HttpStatus.UNAUTHORIZED).build();
         }
-        PerfilJogador perfil = perfilService.buscarMeuPerfil(principal.getId());
+        PerfilJogador perfil = perfilService.obterPerfilAlvo(principal, playerId);
         List<com.pokemonamethyst.domain.Pokemon> time = pokemonService.listarTimePrincipal(perfil.getId());
         List<com.pokemonamethyst.domain.Pokemon> box = pokemonService.listarBox(perfil.getId());
         return ResponseEntity.ok(PerfilJogadorResponseDto.from(perfil, time, box));
@@ -44,10 +46,12 @@ public class PerfilJogadorController {
     @Transactional
     public ResponseEntity<PerfilJogadorResponseDto> criarOuAtualizar(
             @AuthenticationPrincipal UsuarioPrincipal principal,
+            @RequestParam(value = "playerId", required = false) String playerId,
             @Valid @RequestBody PerfilJogadorRequestDto dto) {
         Atributos atr = dto.getAtributos() != null ? dto.getAtributos().toEntity() : null;
+        PerfilJogador alvo = perfilService.obterPerfilAlvo(principal, playerId);
         PerfilJogador perfil = perfilService.criarOuAtualizar(
-                principal.getId(),
+                alvo.getUsuario().getId(),
                 dto.getNomePersonagem(),
                 dto.getClasse(),
                 dto.getPokedolares(),

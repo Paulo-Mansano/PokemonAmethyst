@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { login, registro, getMeuPerfil } from '../api'
+import { login, registro, getMeuPerfil, getMestreJogadores } from '../api'
 
 export default function Login({ onLogin }) {
   const navigate = useNavigate()
@@ -21,7 +21,15 @@ export default function Login({ onLogin }) {
       }
       const user = await login(nomeUsuario, senha)
       onLogin(user)
-      const perfil = await getMeuPerfil()
+      let perfil = null
+      if (user.mestre) {
+        const jogadores = await getMestreJogadores()
+        if (jogadores.length) {
+          perfil = await getMeuPerfil(jogadores[0].id)
+        }
+      } else {
+        perfil = await getMeuPerfil()
+      }
       navigate('/', { state: perfil ? undefined : { semPerfil: true } })
     } catch (err) {
       setErro(err.message || 'Erro ao processar')

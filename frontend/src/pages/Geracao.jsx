@@ -6,8 +6,10 @@ import {
   getPokemonsSelvagens,
   atualizarEstadoPokemon,
 } from '../api'
+import { usePlayerTarget } from '../context/PlayerTargetContext'
 
 export default function Geracao() {
+  const { playerId, readyForPlayerApi } = usePlayerTarget()
   const navigate = useNavigate()
   const [loading, setLoading] = useState(true)
   const [erro, setErro] = useState('')
@@ -18,10 +20,11 @@ export default function Geracao() {
   const [selvagens, setSelvagens] = useState([])
 
   const carregar = async () => {
+    if (!readyForPlayerApi) return
     setLoading(true)
     setErro('')
     try {
-      const lista = await getPokemonsSelvagens()
+      const lista = await getPokemonsSelvagens(playerId)
       setSelvagens(lista || [])
     } catch (e) {
       setErro(e.message || 'Erro ao carregar Pokémon selvagens')
@@ -32,7 +35,7 @@ export default function Geracao() {
 
   useEffect(() => {
     carregar()
-  }, [])
+  }, [playerId, readyForPlayerApi])
 
   const onGerar = async () => {
     setGerando(true)
@@ -41,7 +44,7 @@ export default function Geracao() {
       const pokemon = await gerarPokemonSelvagem({
         pokedexId: pokedexId ? Number(pokedexId) : null,
         nivel: Number(nivel) || 5,
-      })
+      }, playerId)
       setGerado(pokemon)
       setSelvagens((prev) => [pokemon, ...prev.filter((p) => p.id !== pokemon.id)])
     } catch (e) {
@@ -53,7 +56,7 @@ export default function Geracao() {
 
   const enviarParaBatalha = async (pokemon) => {
     try {
-      await atualizarEstadoPokemon(pokemon.id, 'EM_BATALHA')
+      await atualizarEstadoPokemon(pokemon.id, 'EM_BATALHA', playerId)
       localStorage.setItem('battleDefensorId', pokemon.id)
       localStorage.setItem('capturePokemonId', pokemon.id)
       navigate('/batalha')
@@ -64,7 +67,7 @@ export default function Geracao() {
 
   const enviarParaCaptura = async (pokemon) => {
     try {
-      await atualizarEstadoPokemon(pokemon.id, 'CAPTURAVEL')
+      await atualizarEstadoPokemon(pokemon.id, 'CAPTURAVEL', playerId)
       localStorage.setItem('capturePokemonId', pokemon.id)
       navigate('/captura')
     } catch (e) {
@@ -74,7 +77,7 @@ export default function Geracao() {
 
   const salvarParaDepois = async (pokemon) => {
     try {
-      await atualizarEstadoPokemon(pokemon.id, 'ATIVO')
+      await atualizarEstadoPokemon(pokemon.id, 'ATIVO', playerId)
       await carregar()
     } catch (e) {
       setErro(e.message || 'Erro ao salvar Pokémon')
@@ -83,7 +86,7 @@ export default function Geracao() {
 
   const deletar = async (pokemon) => {
     try {
-      await excluirPokemon(pokemon.id)
+      await excluirPokemon(pokemon.id, playerId)
       if (gerado?.id === pokemon.id) {
         setGerado(null)
       }
@@ -108,6 +111,14 @@ export default function Geracao() {
       </div>
     </div>
   )
+
+  if (!readyForPlayerApi) {
+    return (
+      <div className="container container--wide">
+        <p>Carregando…</p>
+      </div>
+    )
+  }
 
   return (
     <div className="container container--wide">

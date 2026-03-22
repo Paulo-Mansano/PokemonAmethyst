@@ -1,6 +1,5 @@
 package com.pokemonamethyst.web.controller;
 
-import com.pokemonamethyst.domain.PerfilJogador;
 import com.pokemonamethyst.domain.Pokemon;
 import com.pokemonamethyst.security.UsuarioPrincipal;
 import com.pokemonamethyst.service.PerfilJogadorService;
@@ -45,22 +44,22 @@ public class PokemonController {
         this.pokemonLearnsetService = pokemonLearnsetService;
     }
 
-    private String perfilId(UsuarioPrincipal principal) {
-        return perfilService.buscarMeuPerfil(principal.getId()).getId();
-    }
-
     @GetMapping
     @Transactional(readOnly = true)
-    public ResponseEntity<List<PokemonResponseDto>> listar(@AuthenticationPrincipal UsuarioPrincipal principal) {
-        String perfilId = perfilId(principal);
+    public ResponseEntity<List<PokemonResponseDto>> listar(
+            @AuthenticationPrincipal UsuarioPrincipal principal,
+            @RequestParam(value = "playerId", required = false) String playerId) {
+        String perfilId = perfilService.resolvePerfilId(principal, playerId);
         List<Pokemon> lista = pokemonService.listarPorPerfil(perfilId);
         return ResponseEntity.ok(lista.stream().map(PokemonResponseDto::from).toList());
     }
 
     @GetMapping("/selvagens")
     @Transactional(readOnly = true)
-    public ResponseEntity<List<PokemonResponseDto>> listarSelvagens(@AuthenticationPrincipal UsuarioPrincipal principal) {
-        String perfilId = perfilId(principal);
+    public ResponseEntity<List<PokemonResponseDto>> listarSelvagens(
+            @AuthenticationPrincipal UsuarioPrincipal principal,
+            @RequestParam(value = "playerId", required = false) String playerId) {
+        String perfilId = perfilService.resolvePerfilId(principal, playerId);
         List<Pokemon> lista = pokemonService.listarSelvagens(perfilId);
         return ResponseEntity.ok(lista.stream().map(PokemonResponseDto::from).toList());
     }
@@ -69,8 +68,9 @@ public class PokemonController {
     @Transactional
     public ResponseEntity<PokemonResponseDto> criar(
             @AuthenticationPrincipal UsuarioPrincipal principal,
+            @RequestParam(value = "playerId", required = false) String playerId,
             @Valid @RequestBody PokemonRequestDto dto) {
-        String perfilId = perfilId(principal);
+        String perfilId = perfilService.resolvePerfilId(principal, playerId);
         Pokemon pokemon = pokemonService.criar(
                 perfilId,
                 dto.getPokedexId(),
@@ -88,8 +88,9 @@ public class PokemonController {
     @Transactional
     public ResponseEntity<PokemonResponseDto> gerarSelvagem(
             @AuthenticationPrincipal UsuarioPrincipal principal,
+            @RequestParam(value = "playerId", required = false) String playerId,
             @Valid @RequestBody PokemonGeracaoRequestDto dto) {
-        String perfilId = perfilId(principal);
+        String perfilId = perfilService.resolvePerfilId(principal, playerId);
         Pokemon pokemon = pokemonService.gerarSelvagem(perfilId, dto.getPokedexId(), dto.getNivel());
         return ResponseEntity.status(HttpStatus.CREATED).body(PokemonResponseDto.from(pokemon));
     }
@@ -98,8 +99,9 @@ public class PokemonController {
     @Transactional(readOnly = true)
     public ResponseEntity<PokemonBatalhaCalculoResponseDto> calcularDano(
             @AuthenticationPrincipal UsuarioPrincipal principal,
+            @RequestParam(value = "playerId", required = false) String playerId,
             @Valid @RequestBody PokemonBatalhaCalculoRequestDto dto) {
-        String perfilId = perfilId(principal);
+        String perfilId = perfilService.resolvePerfilId(principal, playerId);
         return ResponseEntity.ok(pokemonService.calcularDano(perfilId, dto));
     }
 
@@ -107,8 +109,9 @@ public class PokemonController {
     @Transactional
     public ResponseEntity<PokemonResponseDto> aplicarDano(
             @AuthenticationPrincipal UsuarioPrincipal principal,
+            @RequestParam(value = "playerId", required = false) String playerId,
             @Valid @RequestBody PokemonBatalhaAplicarDanoRequestDto dto) {
-        String perfilId = perfilId(principal);
+        String perfilId = perfilService.resolvePerfilId(principal, playerId);
         Pokemon defensorAtualizado = pokemonService.aplicarDano(perfilId, dto);
         return ResponseEntity.ok(PokemonResponseDto.from(defensorAtualizado));
     }
@@ -118,8 +121,9 @@ public class PokemonController {
     public ResponseEntity<PokemonCapturaResponseDto> tentarCaptura(
             @AuthenticationPrincipal UsuarioPrincipal principal,
             @PathVariable String id,
+            @RequestParam(value = "playerId", required = false) String playerId,
             @Valid @RequestBody PokemonCapturaRequestDto dto) {
-        String perfilId = perfilId(principal);
+        String perfilId = perfilService.resolvePerfilId(principal, playerId);
         PokemonCapturaResponseDto response = pokemonService.tentarCaptura(perfilId, id, Boolean.TRUE.equals(dto.getSucesso()));
         return ResponseEntity.ok(response);
     }
@@ -129,8 +133,9 @@ public class PokemonController {
     public ResponseEntity<PokemonResponseDto> atualizarEstado(
             @AuthenticationPrincipal UsuarioPrincipal principal,
             @PathVariable String id,
+            @RequestParam(value = "playerId", required = false) String playerId,
             @Valid @RequestBody PokemonEstadoRequestDto dto) {
-        String perfilId = perfilId(principal);
+        String perfilId = perfilService.resolvePerfilId(principal, playerId);
         Pokemon pokemon = pokemonService.atualizarEstado(perfilId, id, dto.getEstado());
         return ResponseEntity.ok(PokemonResponseDto.from(pokemon));
     }
@@ -140,8 +145,9 @@ public class PokemonController {
     public ResponseEntity<PokemonGanharXpResponseDto> ganharXp(
             @AuthenticationPrincipal UsuarioPrincipal principal,
             @PathVariable String id,
+            @RequestParam(value = "playerId", required = false) String playerId,
             @Valid @RequestBody PokemonGanharXpRequestDto dto) {
-        String perfilId = perfilId(principal);
+        String perfilId = perfilService.resolvePerfilId(principal, playerId);
         PokemonGanharXpResponseDto response = pokemonService.ganharXp(id, perfilId, dto.getXpGanho());
         return ResponseEntity.ok(response);
     }
@@ -151,8 +157,9 @@ public class PokemonController {
     public ResponseEntity<PokemonResponseDto> aceitarMovimentoAprendido(
             @AuthenticationPrincipal UsuarioPrincipal principal,
             @PathVariable String id,
+            @RequestParam(value = "playerId", required = false) String playerId,
             @Valid @RequestBody PokemonMovimentoAprendidoRequestDto dto) {
-        String perfilId = perfilId(principal);
+        String perfilId = perfilService.resolvePerfilId(principal, playerId);
         Pokemon pokemon = pokemonService.aceitarMovimentoAprendido(id, perfilId, dto.getMovimentoId(), dto.getSubstituirMovimentoId());
         return ResponseEntity.ok(PokemonResponseDto.from(pokemon));
     }
@@ -162,8 +169,9 @@ public class PokemonController {
     public ResponseEntity<PokemonResponseDto> recusarMovimentoAprendido(
             @AuthenticationPrincipal UsuarioPrincipal principal,
             @PathVariable String id,
+            @RequestParam(value = "playerId", required = false) String playerId,
             @Valid @RequestBody PokemonMovimentoAprendidoRequestDto dto) {
-        String perfilId = perfilId(principal);
+        String perfilId = perfilService.resolvePerfilId(principal, playerId);
         Pokemon pokemon = pokemonService.recusarMovimentoAprendido(id, perfilId, dto.getMovimentoId());
         return ResponseEntity.ok(PokemonResponseDto.from(pokemon));
     }
@@ -172,8 +180,9 @@ public class PokemonController {
     @Transactional(readOnly = true)
     public ResponseEntity<PokemonResponseDto> buscar(
             @AuthenticationPrincipal UsuarioPrincipal principal,
-            @PathVariable String id) {
-        String perfilId = perfilId(principal);
+            @PathVariable String id,
+            @RequestParam(value = "playerId", required = false) String playerId) {
+        String perfilId = perfilService.resolvePerfilId(principal, playerId);
         Pokemon pokemon = pokemonService.buscarPorIdEPerfil(id, perfilId);
         return ResponseEntity.ok(PokemonResponseDto.from(pokemon));
     }
@@ -183,8 +192,9 @@ public class PokemonController {
     public ResponseEntity<PokemonAtualizarComAprendizagemResponseDto> atualizar(
             @AuthenticationPrincipal UsuarioPrincipal principal,
             @PathVariable String id,
+            @RequestParam(value = "playerId", required = false) String playerId,
             @RequestBody PokemonAtualizarRequestDto dto) {
-        String perfilId = perfilId(principal);
+        String perfilId = perfilService.resolvePerfilId(principal, playerId);
         PokemonAtualizarComAprendizagemResponseDto resultado = pokemonService.atualizar(
                 id, perfilId,
                 dto.getPokedexId(),
@@ -202,8 +212,9 @@ public class PokemonController {
     @Transactional(readOnly = true)
     public ResponseEntity<List<MovimentoResponseDto>> listarMovimentosDisponiveis(
             @AuthenticationPrincipal UsuarioPrincipal principal,
-            @PathVariable String id) {
-        String perfilId = perfilId(principal);
+            @PathVariable String id,
+            @RequestParam(value = "playerId", required = false) String playerId) {
+        String perfilId = perfilService.resolvePerfilId(principal, playerId);
         Pokemon pokemon = pokemonService.buscarPorIdEPerfil(id, perfilId);
         List<MovimentoResponseDto> movimentos = pokemonLearnsetService
                 .listarMovimentosDisponiveis(pokemon.getSpecies(), pokemon.getNivel(), null)
@@ -218,8 +229,9 @@ public class PokemonController {
     public ResponseEntity<PokemonResponseDto> colocarNoTime(
             @AuthenticationPrincipal UsuarioPrincipal principal,
             @PathVariable String id,
+            @RequestParam(value = "playerId", required = false) String playerId,
             @RequestBody Map<String, Integer> body) {
-        String perfilId = perfilId(principal);
+        String perfilId = perfilService.resolvePerfilId(principal, playerId);
         Integer ordem = body != null ? body.get("ordem") : null;
         if (ordem == null) ordem = 1;
         Pokemon pokemon = pokemonService.colocarNoTime(id, perfilId, ordem);
@@ -230,8 +242,9 @@ public class PokemonController {
     @Transactional
     public ResponseEntity<PokemonResponseDto> removerDoTime(
             @AuthenticationPrincipal UsuarioPrincipal principal,
-            @PathVariable String id) {
-        String perfilId = perfilId(principal);
+            @PathVariable String id,
+            @RequestParam(value = "playerId", required = false) String playerId) {
+        String perfilId = perfilService.resolvePerfilId(principal, playerId);
         Pokemon pokemon = pokemonService.removerDoTime(id, perfilId);
         return ResponseEntity.ok(PokemonResponseDto.from(pokemon));
     }
@@ -239,8 +252,9 @@ public class PokemonController {
     @DeleteMapping("/{id}")
     public ResponseEntity<Void> excluir(
             @AuthenticationPrincipal UsuarioPrincipal principal,
-            @PathVariable String id) {
-        String perfilId = perfilId(principal);
+            @PathVariable String id,
+            @RequestParam(value = "playerId", required = false) String playerId) {
+        String perfilId = perfilService.resolvePerfilId(principal, playerId);
         pokemonService.excluir(id, perfilId);
         return ResponseEntity.noContent().build();
     }

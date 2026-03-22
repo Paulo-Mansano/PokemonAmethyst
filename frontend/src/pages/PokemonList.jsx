@@ -1,6 +1,7 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useCallback } from 'react'
 import { Link } from 'react-router-dom'
 import { getMeuPerfil, getUsuario, criarPokemon, getPokemon, atualizarPokemon, colocarNoTime, removerDoTime, excluirPokemon, getPokeApiList, getPokeApiPokemon, getMovimentos, getMovimentosDisponiveisPokemon, getPersonalidades, getItens, getHabilidades, ganharXpPokemon, aceitarMovimentoAprendido, recusarMovimentoAprendido, mestreDefinirTiposPokemon } from '../api'
+import { usePlayerTarget } from '../context/PlayerTargetContext'
 
 const PAGE_SIZE = 20
 function capitalize(str) {
@@ -678,6 +679,7 @@ function ExpandedForm({
 }
 
 export default function PokemonList() {
+  const { playerId, readyForPlayerApi } = usePlayerTarget()
   const [perfil, setPerfil] = useState(null)
   const [loading, setLoading] = useState(true)
   const [erro, setErro] = useState('')
@@ -710,14 +712,18 @@ export default function PokemonList() {
 
   const popupAprendizagemAberta = ofertasAprendizagem.length > 0 && ofertaIdx < ofertasAprendizagem.length
 
-  const load = () => {
-    getMeuPerfil()
+  const load = useCallback(() => {
+    if (!readyForPlayerApi) return
+    setLoading(true)
+    getMeuPerfil(playerId)
       .then(setPerfil)
       .catch(() => setErro('Erro ao carregar'))
       .finally(() => setLoading(false))
-  }
+  }, [playerId, readyForPlayerApi])
 
-  useEffect(() => load(), [])
+  useEffect(() => {
+    load()
+  }, [load])
 
   useEffect(() => {
     getUsuario()
@@ -751,7 +757,7 @@ export default function PokemonList() {
 
   const handleColocarNoTime = async (id, ordem) => {
     try {
-      await colocarNoTime(id, ordem)
+      await colocarNoTime(id, ordem, playerId)
       load()
     } catch (err) {
       setErro(err.message)
@@ -760,7 +766,7 @@ export default function PokemonList() {
 
   const handleRemoverDoTime = async (id) => {
     try {
-      await removerDoTime(id)
+      await removerDoTime(id, playerId)
       load()
       if (expandedId === id) setExpandedId(null)
     } catch (err) {
@@ -774,7 +780,7 @@ export default function PokemonList() {
     setNivelSubiuMsg('')
     setXpLoading(true)
     try {
-      const response = await ganharXpPokemon(pokemonId, xpGanho)
+      const response = await ganharXpPokemon(pokemonId, xpGanho, playerId)
       if (response?.nivelSubiu) {
         setNivelSubiuMsg(`Nível do Pokémon subiu para Lv. ${response.nivelDepois}!`)
         if (response.movimentosAprendendo && response.movimentosAprendendo.length > 0) {
@@ -811,11 +817,11 @@ export default function PokemonList() {
     setExpandedId(p.id)
     setExpandedLoading(true)
     setExpandedPokemon(null)
-    getPokemon(p.id)
+    getPokemon(p.id, playerId)
       .then(async (pokemon) => {
         setExpandedPokemon(pokemon)
         try {
-          const disponiveis = await getMovimentosDisponiveisPokemon(p.id)
+          const disponiveis = await getMovimentosDisponiveisPokemon(p.id, playerId)
           setListaMovimentosDisponiveis(disponiveis || [])
         } catch {
           setListaMovimentosDisponiveis(listaMovimentos)
@@ -835,7 +841,7 @@ export default function PokemonList() {
   const handleExcluir = async (id) => {
     if (!window.confirm('Excluir este Pokémon?')) return
     try {
-      await excluirPokemon(id)
+      await excluirPokemon(id, playerId)
       load()
       if (expandedId === id) setExpandedId(null)
     } catch (err) {
@@ -880,12 +886,12 @@ export default function PokemonList() {
       const detail = await getPokeApiPokemon(id)
       if (catalogoModo === 'create') {
         setFormLoading(true)
-        const created = await criarPokemon({ pokedexId: detail.id })
+        const created = await criarPokemon({ pokedexId: detail.id }, playerId)
         await load()
         setExpandedId(created.id)
         setExpandedLoading(true)
         setExpandedPokemon(null)
-        const full = await getPokemon(created.id)
+        const full = await getPokemon(created.id, playerId)
         setExpandedPokemon(full)
       } else {
         setExpandedEdit((e) => (e ? {
@@ -912,7 +918,7 @@ export default function PokemonList() {
     setErro('')
     setXpLoading(true)
     try {
-      await recusarMovimentoAprendido(expandedPokemon.id, oferta.id)
+      await recusarMovimentoAprendido(expandedPokemon.id, oferta.id, playerId)
       const proximo = ofertaIdx + 1
       if (proximo >= ofertasAprendizagem.length) {
         setOfertasAprendizagem([])
@@ -942,7 +948,7 @@ export default function PokemonList() {
         // Garante que a substituição use a lista atual (pode mudar conforme pop-ups anteriores).
         substituto = idsAtuais.includes(substituirMovimentoId) ? substituirMovimentoId : (idsAtuais[0] || null)
       }
-      const atualizado = await aceitarMovimentoAprendido(expandedPokemon.id, oferta.id, substituto)
+      const atualizado = await aceitarMovimentoAprendido(expandedPokemon.id, oferta.id, substituto, playerId)
       if (atualizado) setExpandedPokemon(atualizado)
 
       const proximo = ofertaIdx + 1
@@ -979,7 +985,7 @@ export default function PokemonList() {
     setSavingPokemon(true)
     try {
       await mestreDefinirTiposPokemon(expandedPokemon.id, { resetTiposParaEspecie: true })
-      const updated = await getPokemon(expandedPokemon.id)
+      const updated = await getPokemon(expandedPokemon.id, playerId)
       setExpandedPokemon(updated)
       await load()
     } catch (err) {
@@ -1026,11 +1032,11 @@ export default function PokemonList() {
         habilidadeId: expandedEdit.habilidadeId || null,
         statusAtuais: expandedEdit.statusAtuais?.length ? expandedEdit.statusAtuais : null,
         movimentoIds: expandedEdit.movimentoIds?.length ? expandedEdit.movimentoIds : [],
-      })
+      }, playerId)
       if (resultado?.pokemon) {
         setExpandedPokemon(resultado.pokemon)
       } else {
-        const updated = await getPokemon(expandedPokemon.id)
+        const updated = await getPokemon(expandedPokemon.id, playerId)
         setExpandedPokemon(updated)
       }
       await load()
@@ -1058,6 +1064,8 @@ export default function PokemonList() {
 
   const timePrincipal = perfil?.timePrincipal ?? []
   const naBox = perfil?.box ?? []
+
+  if (!readyForPlayerApi) return <div className="container">Carregando...</div>
 
   if (loading) return <div className="container">Carregando...</div>
 

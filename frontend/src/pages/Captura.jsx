@@ -1,8 +1,10 @@
 import { useEffect, useMemo, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { getPokemons, tentarCapturaPokemon, atualizarEstadoPokemon } from '../api'
+import { usePlayerTarget } from '../context/PlayerTargetContext'
 
 export default function Captura() {
+  const { playerId, readyForPlayerApi } = usePlayerTarget()
   const navigate = useNavigate()
   const [loading, setLoading] = useState(true)
   const [erro, setErro] = useState('')
@@ -11,10 +13,11 @@ export default function Captura() {
   const [pokemonId, setPokemonId] = useState(localStorage.getItem('capturePokemonId') || '')
 
   const carregar = async () => {
+    if (!readyForPlayerApi) return
     setLoading(true)
     setErro('')
     try {
-      const lista = await getPokemons()
+      const lista = await getPokemons(playerId)
       setPokemons(lista || [])
     } catch (e) {
       setErro(e.message || 'Erro ao carregar Pokémon')
@@ -25,7 +28,7 @@ export default function Captura() {
 
   useEffect(() => {
     carregar()
-  }, [])
+  }, [playerId, readyForPlayerApi])
 
   useEffect(() => {
     if (pokemonId) {
@@ -47,7 +50,7 @@ export default function Captura() {
     if (!pokemonId) return
     setErro('')
     try {
-      const resposta = await tentarCapturaPokemon(pokemonId, sucesso)
+      const resposta = await tentarCapturaPokemon(pokemonId, sucesso, playerId)
       const atualizado = resposta.pokemon
       setPokemons((prev) => prev.map((p) => (p.id === atualizado.id ? atualizado : p)))
       if (sucesso) {
@@ -63,12 +66,21 @@ export default function Captura() {
   const voltarParaBatalha = async () => {
     if (!pokemonId) return
     try {
-      await atualizarEstadoPokemon(pokemonId, 'EM_BATALHA')
+      await atualizarEstadoPokemon(pokemonId, 'EM_BATALHA', playerId)
       localStorage.setItem('battleDefensorId', pokemonId)
       navigate('/batalha')
     } catch (e) {
       setErro(e.message || 'Erro ao voltar para batalha')
     }
+  }
+
+  if (!readyForPlayerApi) {
+    return (
+      <div className="container container--wide">
+        <h1>Captura</h1>
+        <p>Carregando…</p>
+      </div>
+    )
   }
 
   return (

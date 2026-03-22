@@ -38,7 +38,7 @@ export default function App() {
     <Routes>
       <Route path="/login" element={user ? <Navigate to="/" replace /> : <Login onLogin={setUser} />} />
       <Route path="/" element={user ? <Layout user={user} onLogout={() => setUser(null)} /> : <Navigate to="/login" replace />}>
-        <Route index element={<Perfil user={user} />} />
+        <Route index element={<Perfil />} />
         <Route path="pokemons" element={<PokemonList />} />
         <Route path="mochila" element={<Mochila />} />
         <Route path="itens" element={<ItensCatalogo />} />
@@ -48,7 +48,7 @@ export default function App() {
         <Route path="species" element={<MestreSpecies />} />
         <Route path="geracao" element={<Geracao />} />
         <Route path="batalha" element={<Batalha />} />
-        <Route path="captura" element={<Captura />} />
+        <Route path="captura" element={user?.mestre ? <Captura /> : <Navigate to="/" replace />} />
       </Route>
       <Route path="*" element={<Navigate to={user ? '/' : '/login'} replace />} />
     </Routes>

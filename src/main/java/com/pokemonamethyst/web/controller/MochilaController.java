@@ -26,8 +26,10 @@ public class MochilaController {
 
     @GetMapping
     @Transactional(readOnly = true)
-    public ResponseEntity<MochilaResponseDto> buscar(@AuthenticationPrincipal UsuarioPrincipal principal) {
-        String perfilId = perfilService.buscarMeuPerfil(principal.getId()).getId();
+    public ResponseEntity<MochilaResponseDto> buscar(
+            @AuthenticationPrincipal UsuarioPrincipal principal,
+            @RequestParam(value = "playerId", required = false) String playerId) {
+        String perfilId = perfilService.resolvePerfilId(principal, playerId);
         Mochila mochila = mochilaService.buscarPorPerfil(perfilId);
         return ResponseEntity.ok(MochilaResponseDto.from(mochila));
     }
@@ -36,8 +38,9 @@ public class MochilaController {
     @Transactional
     public ResponseEntity<MochilaResponseDto> adicionarItem(
             @AuthenticationPrincipal UsuarioPrincipal principal,
+            @RequestParam(value = "playerId", required = false) String playerId,
             @Valid @RequestBody MochilaItemRequestDto dto) {
-        String perfilId = perfilService.buscarMeuPerfil(principal.getId()).getId();
+        String perfilId = perfilService.resolvePerfilId(principal, playerId);
         Mochila mochila = mochilaService.adicionarItem(perfilId, dto.getItemId(), dto.getQuantidade());
         return ResponseEntity.ok(MochilaResponseDto.from(mochila));
     }
@@ -47,8 +50,9 @@ public class MochilaController {
     public ResponseEntity<MochilaResponseDto> removerItem(
             @AuthenticationPrincipal UsuarioPrincipal principal,
             @PathVariable String itemId,
-            @RequestParam(defaultValue = "1") int quantidade) {
-        String perfilId = perfilService.buscarMeuPerfil(principal.getId()).getId();
+            @RequestParam(defaultValue = "1") int quantidade,
+            @RequestParam(value = "playerId", required = false) String playerId) {
+        String perfilId = perfilService.resolvePerfilId(principal, playerId);
         Mochila mochila = mochilaService.removerItem(perfilId, itemId, quantidade);
         return ResponseEntity.ok(MochilaResponseDto.from(mochila));
     }

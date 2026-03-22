@@ -129,7 +129,10 @@ export default function Sidebar({ user, onLogout, expanded, onToggle }) {
     onLogout()
   }
 
-  const items = [...navItems, ...(user?.mestre ? navItemsMestre : [])]
+  const items = [
+    ...navItems.filter((item) => user?.mestre || item.to !== '/captura'),
+    ...(user?.mestre ? navItemsMestre : []),
+  ]
 
   return (
     <aside className={`app-sidebar ${expanded ? 'app-sidebar--expanded' : 'app-sidebar--collapsed'}`}>
