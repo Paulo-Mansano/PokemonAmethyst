@@ -1,0 +1,11 @@
+# Publish é relativo ao base directory (docs Netlify): base=frontend → publish=dist
+[build]
+  base = "frontend"
+  command = "npm run build"
+  publish = "dist"
+
+# React Router: qualquer rota serve o index.html (evita 404 em /login, etc.)
+[[redirects]]
+  from = "/*"
+  to = "/index.html"
+  status = 200
