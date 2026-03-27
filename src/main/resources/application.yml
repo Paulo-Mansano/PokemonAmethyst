@@ -41,3 +41,8 @@ server:
 pokemon:
   runtime:
     strict-local: ${POKEMON_RUNTIME_STRICT_LOCAL:true}
+  auth:
+    # Sessão quando "Lembrar de mim" está marcado no login (cookie de sessão HTTP).
+    remember-me-session: ${SESSION_REMEMBER_ME:30d}
+    # Chave HMAC dos cookies remember-me (obrigatória em produção: defina REMEMBER_ME_KEY).
+    remember-me-key: ${REMEMBER_ME_KEY:dev-only-substitua-em-producao-por-segredo-longo-e-aleatorio}

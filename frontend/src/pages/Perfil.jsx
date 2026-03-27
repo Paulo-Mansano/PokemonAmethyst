@@ -6,6 +6,7 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { queryKeys } from '../query/queryKeys'
 
 const CLASSES = ['CIVIL', 'TREINADOR', 'COMPETIDOR', 'CACADOR', 'MEDICO', 'PESQUISADOR']
+const SEM_PERFIL_SESSION_KEY = 'pokemonamethyst:login-sem-perfil'
 
 export default function Perfil() {
   const location = useLocation()
@@ -63,6 +64,15 @@ export default function Perfil() {
     })
   }, [readyForPlayerApi, perfilQuery.data, perfilQuery.isError])
 
+  useEffect(() => {
+    if (!perfil) return
+    try {
+      sessionStorage.removeItem(SEM_PERFIL_SESSION_KEY)
+    } catch {
+      /* ignore */
+    }
+  }, [perfil])
+
   const salvarPerfilMutation = useMutation({
     mutationFn: (payload) => salvarPerfil(payload, playerId),
     onSuccess: (saved) => {
@@ -95,7 +105,10 @@ export default function Perfil() {
   if (!readyForPlayerApi || perfilQuery.isLoading) return <div className="container container--wide">Carregando perfil...</div>
   if (erro && !perfil) return <div className="container container--wide"><p style={{ color: 'var(--danger)' }}>{erro}</p></div>
 
-  const avisoSemPerfil = location.state?.semPerfil && !perfil
+  const avisoSemPerfil =
+    !perfil &&
+    (location.state?.semPerfil ||
+      (typeof sessionStorage !== 'undefined' && sessionStorage.getItem(SEM_PERFIL_SESSION_KEY) === '1'))
   const ATRIBUTOS = ['forca', 'speed', 'inteligencia', 'tecnica', 'sabedoria', 'percepcao', 'dominio', 'respeito']
 
   return (

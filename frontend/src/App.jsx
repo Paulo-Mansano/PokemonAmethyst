@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react'
-import { Routes, Route, Navigate } from 'react-router-dom'
+import { Routes, Route, Navigate, useLocation } from 'react-router-dom'
 import Layout from './Layout'
 import Login from './pages/Login'
 import Perfil from './pages/Perfil'
@@ -14,6 +14,17 @@ import Batalha from './pages/Batalha'
 import Captura from './pages/Captura'
 import MestreSpecies from './pages/MestreSpecies'
 import { getUsuario } from './api'
+
+function RedirectToLogin() {
+  const location = useLocation()
+  return <Navigate to="/login" state={{ from: location }} replace />
+}
+
+function FallbackRoute({ user }) {
+  const location = useLocation()
+  if (user) return <Navigate to="/" replace />
+  return <Navigate to="/login" state={{ from: location }} replace />
+}
 
 export default function App() {
   const [user, setUser] = useState(null)
@@ -43,7 +54,7 @@ export default function App() {
   return (
     <Routes>
       <Route path="/login" element={user ? <Navigate to="/" replace /> : <Login onLogin={setUser} />} />
-      <Route path="/" element={user ? <Layout user={user} onLogout={() => setUser(null)} /> : <Navigate to="/login" replace />}>
+      <Route path="/" element={user ? <Layout user={user} onLogout={() => setUser(null)} /> : <RedirectToLogin />}>
         <Route index element={<Perfil />} />
         <Route path="pokemons" element={<PokemonList />} />
         <Route path="mochila" element={<Mochila />} />
@@ -56,7 +67,7 @@ export default function App() {
         <Route path="batalha" element={<Batalha />} />
         <Route path="captura" element={user?.mestre ? <Captura /> : <Navigate to="/" replace />} />
       </Route>
-      <Route path="*" element={<Navigate to={user ? '/' : '/login'} replace />} />
+      <Route path="*" element={<FallbackRoute user={user} />} />
     </Routes>
   )
 }

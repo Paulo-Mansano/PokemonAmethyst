@@ -8,6 +8,21 @@ function apiBase() {
 const BASE = apiBase();
 const AUTH_EXPIRED_EVENT = 'pokemonamethyst:auth-expired';
 
+/** Corpo JSON de erro da API: mensagem única ou mapa `erros` (validação). */
+function mensagemErroApi(data) {
+  if (!data || typeof data !== 'object') return null;
+  if (data.erros && typeof data.erros === 'object') {
+    const ordem = ['nomeUsuario', 'senha', 'mestre'];
+    for (const key of ordem) {
+      const msg = data.erros[key];
+      if (msg) return msg;
+    }
+    const first = Object.values(data.erros).find((v) => typeof v === 'string' && v);
+    if (first) return first;
+  }
+  return data.mensagem || null;
+}
+
 function notifyAuthExpired() {
   if (typeof window !== 'undefined') {
     window.dispatchEvent(new Event(AUTH_EXPIRED_EVENT));
@@ -39,14 +54,16 @@ function withPlayerQuery(path, playerId) {
   return `${path}${sep}playerId=${encodeURIComponent(playerId)}`;
 }
 
-export async function login(nomeUsuario, senha) {
+export async function login(nomeUsuario, senha, lembrar = false) {
   const res = await request('/auth/login', {
     method: 'POST',
-    body: JSON.stringify({ nomeUsuario, senha, mestre: false }),
+    body: JSON.stringify({ nomeUsuario, senha, mestre: false, lembrar: !!lembrar }),
   });
   if (!res.ok) {
     const data = await res.json().catch(() => ({}));
-    throw new Error(data.mensagem || 'Falha no login');
+    throw new Error(
+      mensagemErroApi(data) || (res.status === 401 ? 'Nome de usuário ou senha inválidos.' : 'Falha no login'),
+    );
   }
   return res.json();
 }
@@ -58,7 +75,7 @@ export async function registro(nomeUsuario, senha, mestre = false) {
   });
   if (!res.ok) {
     const data = await res.json().catch(() => ({}));
-    throw new Error(data.mensagem || 'Falha no registro');
+    throw new Error(mensagemErroApi(data) || 'Falha no registro');
   }
   return res.json();
 }
