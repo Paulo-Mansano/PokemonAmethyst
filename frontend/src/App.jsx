@@ -31,10 +31,15 @@ export default function App() {
   const [loading, setLoading] = useState(true)
 
   useEffect(() => {
-    getUsuario()
+    const ctrl = new AbortController()
+    const tid = setTimeout(() => ctrl.abort(), 15000)
+    getUsuario({ signal: ctrl.signal })
       .then(setUser)
       .catch(() => setUser(null))
-      .finally(() => setLoading(false))
+      .finally(() => {
+        clearTimeout(tid)
+        setLoading(false)
+      })
   }, [])
 
   useEffect(() => {

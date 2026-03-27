@@ -31,12 +31,13 @@ function notifyAuthExpired() {
 
 async function request(path, options = {}) {
   const url = path.startsWith('http') ? path : `${BASE}${path}`;
+  const { headers: extraHeaders, ...fetchRest } = options;
   const res = await fetch(url, {
-    ...options,
+    ...fetchRest,
     credentials: 'include',
     headers: {
       'Content-Type': 'application/json',
-      ...options.headers,
+      ...extraHeaders,
     },
   });
   const safePath = String(path || '');
@@ -84,8 +85,9 @@ export async function logout() {
   await request('/auth/logout', { method: 'POST' });
 }
 
-export async function getUsuario() {
-  const res = await request('/usuarios/eu');
+/** @param {{ signal?: AbortSignal }} [options] — use `signal` para timeout no bootstrap (evita “Carregando…” infinito). */
+export async function getUsuario(options = {}) {
+  const res = await request('/usuarios/eu', { signal: options.signal });
   if (!res.ok) throw new Error('Não autenticado');
   return res.json();
 }

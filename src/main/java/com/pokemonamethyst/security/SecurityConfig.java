@@ -52,7 +52,7 @@ public class SecurityConfig {
                 .authorizeHttpRequests(auth -> auth
                         .requestMatchers(HttpMethod.OPTIONS, "/**").permitAll()
                         .requestMatchers("/api/auth/**").permitAll()
-                        // UptimeRobot costuma usar HEAD para health checks; GET continua liberado.
+                        // Health: GET/HEAD liberados (monitoramento costuma usar HEAD).
                         .requestMatchers(HttpMethod.GET, "/api/health").permitAll()
                         .requestMatchers(HttpMethod.HEAD, "/api/health").permitAll()
                         .requestMatchers(HttpMethod.GET, "/api/movimentos", "/api/habilidades", "/api/itens", "/api/personalidades").permitAll()
