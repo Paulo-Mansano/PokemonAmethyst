@@ -54,10 +54,10 @@ function withPlayerQuery(path, playerId) {
   return `${path}${sep}playerId=${encodeURIComponent(playerId)}`;
 }
 
-export async function login(nomeUsuario, senha, lembrar = false) {
+export async function login(nomeUsuario, senha) {
   const res = await request('/auth/login', {
     method: 'POST',
-    body: JSON.stringify({ nomeUsuario, senha, mestre: false, lembrar: !!lembrar }),
+    body: JSON.stringify({ nomeUsuario, senha, mestre: false }),
   });
   if (!res.ok) {
     const data = await res.json().catch(() => ({}));

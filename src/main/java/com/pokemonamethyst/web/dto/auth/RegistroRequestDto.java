@@ -15,9 +15,6 @@ public class RegistroRequestDto {
 
     private boolean mestre;
 
-    /** Só usado no login: estende o tempo da sessão HTTP (não persiste senha no cliente). */
-    private boolean lembrar;
-
     public RegistroRequestDto() {}
     public RegistroRequestDto(String nomeUsuario, String senha, boolean mestre) {
         this.nomeUsuario = nomeUsuario;
@@ -30,6 +27,4 @@ public class RegistroRequestDto {
     public void setSenha(String senha) { this.senha = senha; }
     public boolean isMestre() { return mestre; }
     public void setMestre(boolean mestre) { this.mestre = mestre; }
-    public boolean isLembrar() { return lembrar; }
-    public void setLembrar(boolean lembrar) { this.lembrar = lembrar; }
 }

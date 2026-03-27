@@ -4,7 +4,6 @@ import { login, registro, getMeuPerfil, getMestreJogadores } from '../api'
 
 const TAB_KEY = 'pokemonamethyst:login-tab'
 const SEM_PERFIL_KEY = 'pokemonamethyst:login-sem-perfil'
-const LEMBRAR_PREF_KEY = 'pokemonamethyst:pref-lembrar'
 
 function isSafeRedirectPath(pathname) {
   if (typeof pathname !== 'string' || !pathname.startsWith('/') || pathname.startsWith('//')) return false
@@ -81,13 +80,6 @@ export default function Login({ onLogin }) {
   const [senha, setSenha] = useState('')
   const [mostrarSenha, setMostrarSenha] = useState(false)
   const [mestre, setMestre] = useState(false)
-  const [lembrar, setLembrar] = useState(() => {
-    try {
-      return localStorage.getItem(LEMBRAR_PREF_KEY) === '1'
-    } catch {
-      return false
-    }
-  })
   const [erro, setErro] = useState('')
   const [loading, setLoading] = useState(false)
 
@@ -101,7 +93,7 @@ export default function Login({ onLogin }) {
       if (tab === 'registro') {
         await registro(nome, senha, mestre)
       }
-      const user = await login(nome, senha, lembrar)
+      const user = await login(nome, senha)
       onLogin(user)
       let perfil = null
       if (user.mestre) {
@@ -213,23 +205,6 @@ export default function Login({ onLogin }) {
               <label htmlFor="mestre" style={{ marginBottom: 0 }}>Conta de Mestre</label>
             </div>
           )}
-          <div className="form-group" style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-            <input
-              type="checkbox"
-              id="lembrar"
-              checked={lembrar}
-              onChange={(e) => {
-                const v = e.target.checked
-                setLembrar(v)
-                try {
-                  localStorage.setItem(LEMBRAR_PREF_KEY, v ? '1' : '0')
-                } catch {
-                  /* ignore */
-                }
-              }}
-            />
-            <label htmlFor="lembrar" style={{ marginBottom: 0 }}>Lembrar de mim neste dispositivo</label>
-          </div>
           {erro && (
             <p role="alert" style={{ color: 'var(--danger)', marginBottom: '1rem', fontSize: '0.9rem' }}>
               {erro}
