@@ -696,6 +696,7 @@ export default function PokemonList() {
   const [catalogoErro, setCatalogoErro] = useState('')
   const [catalogoBusca, setCatalogoBusca] = useState('')
   const [catalogoModo, setCatalogoModo] = useState('edit')
+  const [catalogoNivelCriacao, setCatalogoNivelCriacao] = useState(5)
   const [speciesCatalogoLista, setSpeciesCatalogoLista] = useState([])
   const [speciesCatalogoVersion, setSpeciesCatalogoVersion] = useState('')
   const [savingPokemon, setSavingPokemon] = useState(false)
@@ -900,7 +901,7 @@ export default function PokemonList() {
       .then(async (pokemon) => {
         setExpandedPokemon(pokemon)
         try {
-          const disponiveis = await getMovimentosDisponiveisPokemon(p.id, playerId)
+          const disponiveis = await getMovimentosDisponiveisPokemon(p.id, playerId, { includeMetodosExtras: !!usuarioMestre?.mestre })
           setListaMovimentosDisponiveis(disponiveis || [])
         } catch {
           setListaMovimentosDisponiveis(listaMovimentos)
@@ -1014,6 +1015,7 @@ export default function PokemonList() {
     setModal('catalogo')
     setCatalogoOffset(0)
     setCatalogoBusca('')
+    setCatalogoNivelCriacao(5)
     loadCatalogo(0, '', true)
   }
 
@@ -1033,7 +1035,7 @@ export default function PokemonList() {
       if (!species) return
       if (catalogoModo === 'create') {
         setFormLoading(true)
-        const created = await criarPokemon({ pokedexId: species.pokedexId }, playerId)
+        const created = await criarPokemon({ pokedexId: species.pokedexId, nivel: Number(catalogoNivelCriacao) || 5 }, playerId)
         await load()
         setExpandedId(created.id)
         setExpandedLoading(true)
@@ -1441,6 +1443,18 @@ export default function PokemonList() {
                 ? 'Busque por nome ou número da Pokédex. Clique em uma espécie para criar o Pokémon.'
                 : 'Busque por nome ou número da Pokédex. Clique em uma espécie para preencher espécie, tipos e imagem no card expandido.'}
             </p>
+            {catalogoModo === 'create' && (
+              <div className="form-group" style={{ marginBottom: '0.75rem', maxWidth: 220 }}>
+                <label>Nível inicial do Pokémon</label>
+                <input
+                  type="number"
+                  min={1}
+                  max={100}
+                  value={catalogoNivelCriacao}
+                  onChange={(e) => setCatalogoNivelCriacao(Math.max(1, Math.min(100, parseInt(e.target.value, 10) || 1)))}
+                />
+              </div>
+            )}
             <div style={{ display: 'flex', gap: '0.5rem', marginBottom: '1rem', flexWrap: 'wrap' }}>
               <input
                 type="text"

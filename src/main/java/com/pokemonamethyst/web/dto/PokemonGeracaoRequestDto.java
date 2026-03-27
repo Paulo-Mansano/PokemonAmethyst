@@ -5,6 +5,7 @@ import jakarta.validation.constraints.Min;
 
 public class PokemonGeracaoRequestDto {
     private Integer pokedexId;
+    private String idOuNome;
 
     @Min(1)
     @Max(100)
@@ -16,6 +17,14 @@ public class PokemonGeracaoRequestDto {
 
     public void setPokedexId(Integer pokedexId) {
         this.pokedexId = pokedexId;
+    }
+
+    public String getIdOuNome() {
+        return idOuNome;
+    }
+
+    public void setIdOuNome(String idOuNome) {
+        this.idOuNome = idOuNome;
     }
 
     public Integer getNivel() {

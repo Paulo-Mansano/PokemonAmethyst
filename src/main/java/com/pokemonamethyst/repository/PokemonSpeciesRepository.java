@@ -9,6 +9,8 @@ import java.util.Optional;
 
 public interface PokemonSpeciesRepository extends JpaRepository<PokemonSpecies, String> {
     Optional<PokemonSpecies> findByPokedexId(int pokedexId);
+    Optional<PokemonSpecies> findFirstByNomeIgnoreCase(String nome);
+    List<PokemonSpecies> findTop20ByNomeContainingIgnoreCaseOrderByPokedexIdAsc(String nome);
     List<PokemonSpecies> findAllByOrderByPokedexIdAsc();
     List<PokemonSpecies> findTop200ByOrderByPokedexIdAsc();
     List<PokemonSpecies> findTop200ByNomeContainingIgnoreCaseOrderByPokedexIdAsc(String nome);
@@ -18,7 +20,7 @@ public interface PokemonSpeciesRepository extends JpaRepository<PokemonSpecies, 
 
     @Query(value = """
             SELECT COALESCE(
-                md5(string_agg(concat_ws('|', id, pokedex_id::text, nome, COALESCE(imagem_url, '')), '||' ORDER BY pokedex_id)),
+                md5(string_agg(concat_ws('|', id, CAST(pokedex_id AS text), nome, COALESCE(imagem_url, '')), '||' ORDER BY pokedex_id)),
                 'empty'
             )
             FROM pokemon_species

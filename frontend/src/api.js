@@ -6,10 +6,17 @@ function apiBase() {
   return trimmed.endsWith('/api') ? trimmed : `${trimmed}/api`;
 }
 const BASE = apiBase();
+const AUTH_EXPIRED_EVENT = 'pokemonamethyst:auth-expired';
 
-function request(path, options = {}) {
+function notifyAuthExpired() {
+  if (typeof window !== 'undefined') {
+    window.dispatchEvent(new Event(AUTH_EXPIRED_EVENT));
+  }
+}
+
+async function request(path, options = {}) {
   const url = path.startsWith('http') ? path : `${BASE}${path}`;
-  return fetch(url, {
+  const res = await fetch(url, {
     ...options,
     credentials: 'include',
     headers: {
@@ -17,6 +24,12 @@ function request(path, options = {}) {
       ...options.headers,
     },
   });
+  const safePath = String(path || '');
+  const isAuthEndpoint = safePath.startsWith('/auth/login') || safePath.startsWith('/auth/registro');
+  if ((res.status === 401 || res.status === 403) && !isAuthEndpoint) {
+    notifyAuthExpired();
+  }
+  return res;
 }
 
 /** Anexa ?playerId= ou &playerId= ao path (id do perfil_jogador alvo; só para mestre). */
@@ -255,8 +268,11 @@ export async function mestreDefinirTiposPokemon(pokemonId, body) {
   return res.json()
 }
 
-export async function getMovimentosDisponiveisPokemon(id, playerId) {
-  const res = await request(withPlayerQuery(`/perfis/meu/pokemons/${id}/movimentos-disponiveis`, playerId));
+export async function getMovimentosDisponiveisPokemon(id, playerId, options = {}) {
+  const search = new URLSearchParams()
+  if (options?.includeMetodosExtras) search.set('includeMetodosExtras', 'true')
+  const base = `/perfis/meu/pokemons/${id}/movimentos-disponiveis${search.toString() ? `?${search.toString()}` : ''}`
+  const res = await request(withPlayerQuery(base, playerId));
   if (!res.ok) {
     const data = await res.json().catch(() => ({}));
     throw new Error(data.mensagem || 'Erro ao carregar movimentos disponíveis');

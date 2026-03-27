@@ -16,7 +16,7 @@ export default function Geracao() {
   const queryClient = useQueryClient()
   const [erro, setErro] = useState('')
   const [gerando, setGerando] = useState(false)
-  const [pokedexId, setPokedexId] = useState('')
+  const [speciesBusca, setSpeciesBusca] = useState('')
   const [nivel, setNivel] = useState(5)
   const [gerado, setGerado] = useState(null)
   const selvagensQuery = useQuery({
@@ -32,14 +32,24 @@ export default function Geracao() {
     setErro('')
     try {
       const pokemon = await gerarPokemonSelvagem({
-        pokedexId: pokedexId ? Number(pokedexId) : null,
+        idOuNome: speciesBusca?.trim() ? speciesBusca.trim() : null,
         nivel: Number(nivel) || 5,
       }, playerId)
       setGerado(pokemon)
       queryClient.setQueryData(queryKeys.pokemonsSelvagens(playerId), (prev = []) =>
         [pokemon, ...prev.filter((p) => p.id !== pokemon.id)]
       )
-      queryClient.invalidateQueries({ queryKey: queryKeys.perfil(playerId) })
+      queryClient.setQueryData(queryKeys.pokemons(playerId), (prev = []) => {
+        const lista = Array.isArray(prev) ? prev : []
+        if (lista.some((p) => p.id === pokemon.id)) {
+          return lista.map((p) => (p.id === pokemon.id ? pokemon : p))
+        }
+        return [pokemon, ...lista]
+      })
+      await Promise.all([
+        queryClient.invalidateQueries({ queryKey: queryKeys.perfil(playerId) }),
+        queryClient.invalidateQueries({ queryKey: queryKeys.pokemons(playerId) }),
+      ])
     } catch (e) {
       setErro(e.message || 'Erro ao gerar Pokémon')
     } finally {
@@ -49,8 +59,17 @@ export default function Geracao() {
 
   const enviarParaBatalha = async (pokemon) => {
     try {
-      await atualizarEstadoPokemon(pokemon.id, 'EM_BATALHA', playerId)
-      queryClient.invalidateQueries({ queryKey: queryKeys.pokemonsSelvagens(playerId) })
+      const atualizado = await atualizarEstadoPokemon(pokemon.id, 'EM_BATALHA', playerId)
+      queryClient.setQueryData(queryKeys.pokemonsSelvagens(playerId), (prev = []) =>
+        (Array.isArray(prev) ? prev : []).map((p) => (p.id === atualizado.id ? atualizado : p))
+      )
+      queryClient.setQueryData(queryKeys.pokemons(playerId), (prev = []) =>
+        (Array.isArray(prev) ? prev : []).map((p) => (p.id === atualizado.id ? atualizado : p))
+      )
+      await Promise.all([
+        queryClient.invalidateQueries({ queryKey: queryKeys.pokemonsSelvagens(playerId) }),
+        queryClient.invalidateQueries({ queryKey: queryKeys.pokemons(playerId) }),
+      ])
       localStorage.setItem('battleDefensorId', pokemon.id)
       localStorage.setItem('capturePokemonId', pokemon.id)
       navigate('/batalha')
@@ -61,8 +80,17 @@ export default function Geracao() {
 
   const enviarParaCaptura = async (pokemon) => {
     try {
-      await atualizarEstadoPokemon(pokemon.id, 'CAPTURAVEL', playerId)
-      queryClient.invalidateQueries({ queryKey: queryKeys.pokemonsSelvagens(playerId) })
+      const atualizado = await atualizarEstadoPokemon(pokemon.id, 'CAPTURAVEL', playerId)
+      queryClient.setQueryData(queryKeys.pokemonsSelvagens(playerId), (prev = []) =>
+        (Array.isArray(prev) ? prev : []).map((p) => (p.id === atualizado.id ? atualizado : p))
+      )
+      queryClient.setQueryData(queryKeys.pokemons(playerId), (prev = []) =>
+        (Array.isArray(prev) ? prev : []).map((p) => (p.id === atualizado.id ? atualizado : p))
+      )
+      await Promise.all([
+        queryClient.invalidateQueries({ queryKey: queryKeys.pokemonsSelvagens(playerId) }),
+        queryClient.invalidateQueries({ queryKey: queryKeys.pokemons(playerId) }),
+      ])
       localStorage.setItem('capturePokemonId', pokemon.id)
       navigate('/captura')
     } catch (e) {
@@ -72,8 +100,17 @@ export default function Geracao() {
 
   const salvarParaDepois = async (pokemon) => {
     try {
-      await atualizarEstadoPokemon(pokemon.id, 'ATIVO', playerId)
-      queryClient.invalidateQueries({ queryKey: queryKeys.pokemonsSelvagens(playerId) })
+      const atualizado = await atualizarEstadoPokemon(pokemon.id, 'ATIVO', playerId)
+      queryClient.setQueryData(queryKeys.pokemonsSelvagens(playerId), (prev = []) =>
+        (Array.isArray(prev) ? prev : []).map((p) => (p.id === atualizado.id ? atualizado : p))
+      )
+      queryClient.setQueryData(queryKeys.pokemons(playerId), (prev = []) =>
+        (Array.isArray(prev) ? prev : []).map((p) => (p.id === atualizado.id ? atualizado : p))
+      )
+      await Promise.all([
+        queryClient.invalidateQueries({ queryKey: queryKeys.pokemonsSelvagens(playerId) }),
+        queryClient.invalidateQueries({ queryKey: queryKeys.pokemons(playerId) }),
+      ])
     } catch (e) {
       setErro(e.message || 'Erro ao salvar Pokémon')
     }
@@ -88,7 +125,13 @@ export default function Geracao() {
       queryClient.setQueryData(queryKeys.pokemonsSelvagens(playerId), (prev = []) =>
         prev.filter((p) => p.id !== pokemon.id)
       )
-      queryClient.invalidateQueries({ queryKey: queryKeys.perfil(playerId) })
+      queryClient.setQueryData(queryKeys.pokemons(playerId), (prev = []) =>
+        (Array.isArray(prev) ? prev : []).filter((p) => p.id !== pokemon.id)
+      )
+      await Promise.all([
+        queryClient.invalidateQueries({ queryKey: queryKeys.perfil(playerId) }),
+        queryClient.invalidateQueries({ queryKey: queryKeys.pokemons(playerId) }),
+      ])
     } catch (e) {
       setErro(e.message || 'Erro ao deletar Pokémon')
     }
@@ -96,10 +139,27 @@ export default function Geracao() {
 
   const renderPokemon = (pokemon) => (
     <div className="card batalha-card" key={pokemon.id}>
-      <h3 style={{ marginTop: 0 }}>{pokemon.apelido || pokemon.especie}</h3>
-      <p style={{ margin: '0 0 0.25rem' }}>Nível {pokemon.nivel}</p>
+      <div style={{ display: 'flex', gap: '0.75rem', alignItems: 'center', marginBottom: '0.5rem' }}>
+        {pokemon.imagemUrl ? (
+          <img src={pokemon.imagemUrl} alt={pokemon.apelido || pokemon.especie} style={{ width: 64, height: 64, objectFit: 'contain' }} />
+        ) : (
+          <div style={{ width: 64, height: 64, borderRadius: 8, background: 'var(--border)' }} />
+        )}
+        <div>
+          <h3 style={{ marginTop: 0, marginBottom: '0.25rem' }}>{pokemon.apelido || pokemon.especie}</h3>
+          <p style={{ margin: 0, color: 'var(--text-muted)' }}>
+            #{pokemon.pokedexId} | Nível {pokemon.nivel} | {pokemon.tipoPrimario}{pokemon.tipoSecundario ? `/${pokemon.tipoSecundario}` : ''}
+          </p>
+        </div>
+      </div>
       <p style={{ margin: '0 0 0.5rem', color: 'var(--text-muted)' }}>
-        HP {pokemon.hpAtual}/{pokemon.hpMaximo} | Estado: {pokemon.estado || 'ATIVO'}
+        HP {pokemon.hpAtual}/{pokemon.hpMaximo} | Estado: {pokemon.estado || 'ATIVO'} | Origem: {pokemon.origem || 'SELVAGEM'}
+      </p>
+      <p style={{ margin: '0 0 0.5rem', color: 'var(--text-muted)' }}>
+        Habilidade: {pokemon.habilidadeAtivaNome || '—'}
+      </p>
+      <p style={{ margin: '0 0 0.75rem', color: 'var(--text-muted)' }}>
+        Ataques: {(pokemon.movimentosConhecidos || []).map((m) => m.nome).join(', ') || '—'}
       </p>
       <div className="battle-actions">
         <button className="btn btn-primary" onClick={() => enviarParaBatalha(pokemon)}>Enviar para batalha</button>
@@ -124,8 +184,8 @@ export default function Geracao() {
       <div className="card">
         <div className="grid-2">
           <div className="form-group">
-            <label>Pokédex ID (opcional)</label>
-            <input type="number" min="1" value={pokedexId} onChange={(e) => setPokedexId(e.target.value)} />
+            <label>Nome ou Pokédex ID (opcional)</label>
+            <input type="text" value={speciesBusca} onChange={(e) => setSpeciesBusca(e.target.value)} placeholder="Ex.: Pikachu ou 25" />
           </div>
           <div className="form-group">
             <label>Level</label>

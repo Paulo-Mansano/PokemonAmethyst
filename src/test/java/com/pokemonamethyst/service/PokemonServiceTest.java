@@ -13,6 +13,7 @@ import com.pokemonamethyst.repository.MovimentoRepository;
 import com.pokemonamethyst.repository.PerfilJogadorRepository;
 import com.pokemonamethyst.repository.PersonalidadeRepository;
 import com.pokemonamethyst.repository.PokemonRepository;
+import com.pokemonamethyst.repository.PokemonSpeciesRepository;
 import org.junit.jupiter.api.Test;
 import org.mockito.ArgumentCaptor;
 
@@ -38,6 +39,7 @@ class PokemonServiceTest {
         PokeApiService pokeApiService = mock(PokeApiService.class);
         PokemonAbilityService pokemonAbilityService = mock(PokemonAbilityService.class);
         PokemonLearnsetService pokemonLearnsetService = mock(PokemonLearnsetService.class);
+        PokemonSpeciesRepository pokemonSpeciesRepository = mock(PokemonSpeciesRepository.class);
 
         PokemonService service = new PokemonService(
                 pokemonRepository,
@@ -49,6 +51,7 @@ class PokemonServiceTest {
                 pokeApiService,
                 pokemonAbilityService,
                 pokemonLearnsetService,
+                pokemonSpeciesRepository,
                 100,
                 false
         );
@@ -60,6 +63,7 @@ class PokemonServiceTest {
                 null,
                 null,
                 10,
+                null,
                 null,
                 null
         )).isInstanceOf(com.pokemonamethyst.exception.RegraNegocioException.class)
@@ -77,6 +81,7 @@ class PokemonServiceTest {
         PokeApiService pokeApiService = mock(PokeApiService.class);
         PokemonAbilityService pokemonAbilityService = mock(PokemonAbilityService.class);
         PokemonLearnsetService pokemonLearnsetService = mock(PokemonLearnsetService.class);
+        PokemonSpeciesRepository pokemonSpeciesRepository = mock(PokemonSpeciesRepository.class);
 
         PokemonService service = new PokemonService(
                 pokemonRepository,
@@ -88,6 +93,7 @@ class PokemonServiceTest {
                 pokeApiService,
                 pokemonAbilityService,
                 pokemonLearnsetService,
+                pokemonSpeciesRepository,
                 100,
                 false
         );
@@ -119,6 +125,7 @@ class PokemonServiceTest {
                 null,
                 null,
                 10,
+                null,
                 null,
                 null
         );

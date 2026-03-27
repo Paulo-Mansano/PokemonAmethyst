@@ -29,6 +29,9 @@ import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
+import java.util.EnumSet;
+import com.pokemonamethyst.domain.MoveLearnMethod;
 
 @RestController
 @RequestMapping("/api/perfis/meu/pokemons")
@@ -79,7 +82,8 @@ public class PokemonController {
                 dto.getPokebolaCaptura(),
                 dto.getStaminaMaximaOrDefault(),
                 dto.getMovimentoIds(),
-                dto.getPersonalidadeId()
+                dto.getPersonalidadeId(),
+                dto.getNivel()
         );
         return ResponseEntity.status(HttpStatus.CREATED).body(PokemonResponseDto.from(pokemon));
     }
@@ -91,7 +95,7 @@ public class PokemonController {
             @RequestParam(value = "playerId", required = false) String playerId,
             @Valid @RequestBody PokemonGeracaoRequestDto dto) {
         String perfilId = perfilService.resolvePerfilId(principal, playerId);
-        Pokemon pokemon = pokemonService.gerarSelvagem(perfilId, dto.getPokedexId(), dto.getNivel());
+        Pokemon pokemon = pokemonService.gerarSelvagem(perfilId, dto.getPokedexId(), dto.getIdOuNome(), dto.getNivel());
         return ResponseEntity.status(HttpStatus.CREATED).body(PokemonResponseDto.from(pokemon));
     }
 
@@ -203,7 +207,7 @@ public class PokemonController {
                 dto.getEspecializacao(), dto.getBerryFavorita(), dto.getNivelDeVinculo(),
                 dto.getNivel(), dto.getXpAtual(), dto.getPokebolaCaptura(), dto.getItemSeguradoId(),
                 dto.getTecnica(), dto.getRespeito(), dto.getStatusAtuais(),
-                dto.getMovimentoIds(), dto.getHabilidadeId()
+                dto.getMovimentoIds(), dto.getHabilidadeId(), principal.isMestre()
         );
         return ResponseEntity.ok(resultado);
     }
@@ -213,11 +217,15 @@ public class PokemonController {
     public ResponseEntity<List<MovimentoResponseDto>> listarMovimentosDisponiveis(
             @AuthenticationPrincipal UsuarioPrincipal principal,
             @PathVariable String id,
-            @RequestParam(value = "playerId", required = false) String playerId) {
+            @RequestParam(value = "playerId", required = false) String playerId,
+            @RequestParam(value = "includeMetodosExtras", required = false, defaultValue = "false") boolean includeMetodosExtras) {
         String perfilId = perfilService.resolvePerfilId(principal, playerId);
         Pokemon pokemon = pokemonService.buscarPorIdEPerfil(id, perfilId);
+        Set<MoveLearnMethod> metodos = (includeMetodosExtras && principal.isMestre())
+                ? EnumSet.of(MoveLearnMethod.LEVEL_UP, MoveLearnMethod.EGG, MoveLearnMethod.MACHINE, MoveLearnMethod.TUTOR)
+                : EnumSet.of(MoveLearnMethod.LEVEL_UP);
         List<MovimentoResponseDto> movimentos = pokemonLearnsetService
-                .listarMovimentosDisponiveis(pokemon.getSpecies(), pokemon.getNivel(), null)
+                .listarMovimentosDisponiveis(pokemon.getSpecies(), pokemon.getNivel(), metodos)
                 .stream()
                 .map(MovimentoResponseDto::from)
                 .toList();

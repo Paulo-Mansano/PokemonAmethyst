@@ -9,6 +9,7 @@ import com.pokemonamethyst.repository.MovimentoRepository;
 import com.pokemonamethyst.repository.PersonalidadeRepository;
 import com.pokemonamethyst.repository.PokemonRepository;
 import com.pokemonamethyst.repository.PerfilJogadorRepository;
+import com.pokemonamethyst.repository.PokemonSpeciesRepository;
 import com.pokemonamethyst.web.dto.PokemonBatalhaAplicarDanoRequestDto;
 import com.pokemonamethyst.web.dto.PokemonBatalhaCalculoRequestDto;
 import com.pokemonamethyst.web.dto.PokemonBatalhaCalculoResponseDto;
@@ -45,6 +46,7 @@ public class PokemonService {
     private final PokeApiService pokeApiService;
     private final PokemonAbilityService pokemonAbilityService;
     private final PokemonLearnsetService pokemonLearnsetService;
+    private final PokemonSpeciesRepository pokemonSpeciesRepository;
     private final int shinyChancePercent;
     private final boolean strictLocalRuntime;
 
@@ -54,6 +56,7 @@ public class PokemonService {
                           PersonalidadeRepository personalidadeRepository, PokeApiService pokeApiService,
                           PokemonAbilityService pokemonAbilityService,
                           PokemonLearnsetService pokemonLearnsetService,
+                          PokemonSpeciesRepository pokemonSpeciesRepository,
                           @Value("${pokemon.shiny-chance-percent:1}") int shinyChancePercent,
                           @Value("${pokemon.runtime.strict-local:true}") boolean strictLocalRuntime) {
         this.pokemonRepository = pokemonRepository;
@@ -65,6 +68,7 @@ public class PokemonService {
         this.pokeApiService = pokeApiService;
         this.pokemonAbilityService = pokemonAbilityService;
         this.pokemonLearnsetService = pokemonLearnsetService;
+        this.pokemonSpeciesRepository = pokemonSpeciesRepository;
         this.shinyChancePercent = Math.max(0, Math.min(100, shinyChancePercent));
         this.strictLocalRuntime = strictLocalRuntime;
     }
@@ -74,11 +78,11 @@ public class PokemonService {
     }
 
     public List<Pokemon> listarTimePrincipal(String perfilId) {
-        return pokemonRepository.findTimePrincipalByPerfilId(perfilId);
+        return pokemonRepository.findTimePrincipalByPerfilIdAndOrigem(perfilId, OrigemPokemon.TREINADOR);
     }
 
     public List<Pokemon> listarBox(String perfilId) {
-        return pokemonRepository.findBoxByPerfilId(perfilId);
+        return pokemonRepository.findBoxByPerfilIdAndOrigem(perfilId, OrigemPokemon.TREINADOR);
     }
 
     public List<Pokemon> listarSelvagens(String perfilId) {
@@ -91,11 +95,16 @@ public class PokemonService {
     }
 
     @Transactional
-    public Pokemon gerarSelvagem(String perfilId, Integer pokedexId, Integer nivel) {
+    public Pokemon gerarSelvagem(String perfilId, Integer pokedexId, String idOuNome, Integer nivel) {
         int nivelFinal = Math.max(1, Math.min(100, nivel == null ? 5 : nivel));
-        int pokedexEscolhido = pokedexId != null && pokedexId > 0
-                ? pokedexId
-                : ThreadLocalRandom.current().nextInt(POKEDEX_MIN, POKEDEX_MAX + 1);
+        int pokedexEscolhido;
+        if (pokedexId != null && pokedexId > 0) {
+            pokedexEscolhido = pokedexId;
+        } else if (idOuNome != null && !idOuNome.isBlank()) {
+            pokedexEscolhido = resolverPokedexIdPorIdOuNome(idOuNome);
+        } else {
+            pokedexEscolhido = ThreadLocalRandom.current().nextInt(POKEDEX_MIN, POKEDEX_MAX + 1);
+        }
         Pokemon pokemon = criar(
                 perfilId,
                 pokedexEscolhido,
@@ -104,11 +113,9 @@ public class PokemonService {
                 Pokebola.POKEBALL,
                 100,
                 null,
-                null
+                null,
+                nivelFinal
         );
-        pokemon.setNivel(nivelFinal);
-        GrowthRate curva = GrowthRate.fromSpecies(pokemon.getSpecies());
-        pokemon.setXpAtual(PokemonExperience.getTotalXpForLevel(nivelFinal, curva));
         pokemon.setOrigem(OrigemPokemon.SELVAGEM);
         pokemon.setEstado(EstadoPokemon.ATIVO);
         pokemon.setOrdemTime(null);
@@ -122,7 +129,7 @@ public class PokemonService {
     @Transactional
     public Pokemon criar(String perfilId, Integer pokedexId, String apelido, Genero genero, Pokebola pokebolaCaptura,
                          int staminaMaxima, List<String> movimentoIds,
-                         String personalidadeId) {
+                         String personalidadeId, Integer nivelInicial) {
         if (pokedexId == null || pokedexId <= 0) {
             throw new RegraNegocioException("Para criar um Pokémon, informe um pokedexId válido da PokéAPI.");
         }
@@ -156,8 +163,10 @@ public class PokemonService {
         pokemon.setPokebolaCaptura(pokebolaCaptura != null ? pokebolaCaptura : Pokebola.POKEBALL);
         pokemon.setApelido(apelido);
         pokemon.setStaminaMaxima(staminaMaxima);
-        pokemon.setNivel(NIVEL_INICIAL);
-        pokemon.setXpAtual(0);
+        int nivelBase = Math.max(1, Math.min(100, nivelInicial == null ? NIVEL_INICIAL : nivelInicial));
+        pokemon.setNivel(nivelBase);
+        GrowthRate curva = GrowthRate.fromSpecies(pokemon.getSpecies());
+        pokemon.setXpAtual(PokemonExperience.getTotalXpForLevel(nivelBase, curva));
         pokemon.setOrigem(OrigemPokemon.TREINADOR);
         pokemon.setEstado(EstadoPokemon.ATIVO);
         preencherIvsAleatorios(pokemon);
@@ -170,13 +179,18 @@ public class PokemonService {
             if (movimentoIdsUnicos.size() > MAX_MOVIMENTOS_POR_POKEMON) {
                 throw new RegraNegocioException("Máximo de " + MAX_MOVIMENTOS_POR_POKEMON + " ataques por Pokémon.");
             }
-            pokemonLearnsetService.validarMovimentosPermitidos(pokemon.getSpecies(), pokemon.getNivel(), movimentoIdsUnicos);
+            pokemonLearnsetService.validarMovimentosPermitidos(
+                    pokemon.getSpecies(),
+                    pokemon.getNivel(),
+                    movimentoIdsUnicos,
+                    Set.of(MoveLearnMethod.LEVEL_UP)
+            );
             List<Movimento> movimentos = semMovimentosDuplicados(buscarMovimentosPorIds(movimentoIdsUnicos));
             pokemon.setMovimentosConhecidos(movimentos);
         } else {
             pokemon.setMovimentosConhecidos(
                     new ArrayList<>(pokemonLearnsetService.escolherMovimentosAoCriarPokemon(
-                            pokemon.getSpecies(), NIVEL_INICIAL))
+                            pokemon.getSpecies(), nivelBase))
             );
         }
 
@@ -196,7 +210,7 @@ public class PokemonService {
                             Especializacao especializacao, String berryFavorita, Integer nivelDeVinculo,
                             Integer nivel, Integer xpAtual, Pokebola pokebolaCaptura, String itemSeguradoId,
                             Integer tecnica, Integer respeito, List<CondicaoStatus> statusAtuais,
-                            List<String> movimentoIds, String habilidadeId) {
+                            List<String> movimentoIds, String habilidadeId, boolean permitirMetodosExtrasNoLearnset) {
         Pokemon pokemon = buscarPorIdEPerfil(pokemonId, perfilId);
         int nivelAtual = pokemon.getNivel();
         if (xpAtual != null && xpAtual < 0) {
@@ -262,7 +276,15 @@ public class PokemonService {
             if (movimentoIdsUnicos.size() > MAX_MOVIMENTOS_POR_POKEMON) {
                 throw new RegraNegocioException("Máximo de " + MAX_MOVIMENTOS_POR_POKEMON + " ataques por Pokémon.");
             }
-            pokemonLearnsetService.validarMovimentosPermitidos(pokemon.getSpecies(), pokemon.getNivel(), movimentoIdsUnicos);
+            Set<MoveLearnMethod> metodosPermitidos = permitirMetodosExtrasNoLearnset
+                    ? Set.of(MoveLearnMethod.LEVEL_UP, MoveLearnMethod.EGG, MoveLearnMethod.MACHINE, MoveLearnMethod.TUTOR)
+                    : Set.of(MoveLearnMethod.LEVEL_UP);
+            pokemonLearnsetService.validarMovimentosPermitidos(
+                    pokemon.getSpecies(),
+                    pokemon.getNivel(),
+                    movimentoIdsUnicos,
+                    metodosPermitidos
+            );
             List<Movimento> movimentos = semMovimentosDuplicados(buscarMovimentosPorIds(movimentoIdsUnicos));
             pokemon.getMovimentosConhecidos().clear();
             pokemon.getMovimentosConhecidos().addAll(movimentos);
@@ -529,6 +551,9 @@ public class PokemonService {
             throw new RegraNegocioException("Ordem no time deve ser entre 1 e " + MAX_POKEMONS_NO_TIME + ".");
         }
         Pokemon pokemon = buscarPorIdEPerfil(pokemonId, perfilId);
+        if (pokemon.getOrigem() != OrigemPokemon.TREINADOR) {
+            throw new RegraNegocioException("Somente Pokémon do treinador podem entrar no time.");
+        }
         int noTime = pokemonRepository.countTimePrincipalByPerfilId(perfilId);
         if (pokemon.getOrdemTime() == null || pokemon.getOrdemTime() == 0) {
             if (noTime >= MAX_POKEMONS_NO_TIME) {
@@ -721,5 +746,21 @@ public class PokemonService {
             return pokeApiService.obterSpeciesLocal(pokedexId);
         }
         return pokeApiService.obterSpeciesParaCriacao(pokedexId);
+    }
+
+    private int resolverPokedexIdPorIdOuNome(String idOuNome) {
+        String raw = idOuNome == null ? "" : idOuNome.trim();
+        if (raw.isBlank()) {
+            throw new RegraNegocioException("Informe um nome ou id de Pokédex válido.");
+        }
+        if (raw.chars().allMatch(Character::isDigit)) {
+            int value = Integer.parseInt(raw);
+            if (value <= 0) throw new RegraNegocioException("Pokédex ID inválido.");
+            return value;
+        }
+        return pokemonSpeciesRepository.findFirstByNomeIgnoreCase(raw)
+                .or(() -> pokemonSpeciesRepository.findTop20ByNomeContainingIgnoreCaseOrderByPokedexIdAsc(raw).stream().findFirst())
+                .map(PokemonSpecies::getPokedexId)
+                .orElseThrow(() -> new RecursoNaoEncontradoException("Espécie não encontrada pelo nome informado: " + raw));
     }
 }

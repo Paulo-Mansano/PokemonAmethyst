@@ -32,6 +32,7 @@ server:
   servlet:
     context-path: /
     session:
+      timeout: ${SESSION_TIMEOUT:8h}
       cookie:
         # Produção (Netlify + Render): cross-site precisa None + Secure. No Render defina SESSION_COOKIE_SAME_SITE=none e SESSION_COOKIE_SECURE=true
         same-site: ${SESSION_COOKIE_SAME_SITE:lax}

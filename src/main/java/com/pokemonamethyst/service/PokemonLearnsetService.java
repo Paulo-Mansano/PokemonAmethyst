@@ -178,13 +178,27 @@ public class PokemonLearnsetService {
     }
 
     public void validarMovimentosPermitidos(PokemonSpecies species, int nivel, Collection<String> movimentoIds) {
+        validarMovimentosPermitidos(
+                species,
+                nivel,
+                movimentoIds,
+                EnumSet.of(MoveLearnMethod.LEVEL_UP, MoveLearnMethod.MACHINE, MoveLearnMethod.TUTOR, MoveLearnMethod.EGG)
+        );
+    }
+
+    public void validarMovimentosPermitidos(
+            PokemonSpecies species,
+            int nivel,
+            Collection<String> movimentoIds,
+            Set<MoveLearnMethod> metodosPermitidos
+    ) {
         if (movimentoIds == null || movimentoIds.isEmpty()) {
             return;
         }
         Set<String> permitidos = listarMovimentosDisponiveis(
                 species,
                 nivel,
-                EnumSet.of(MoveLearnMethod.LEVEL_UP, MoveLearnMethod.MACHINE, MoveLearnMethod.TUTOR, MoveLearnMethod.EGG)
+                metodosPermitidos
         ).stream().map(Movimento::getId).collect(Collectors.toSet());
         for (String movimentoId : movimentoIds) {
             if (!permitidos.contains(movimentoId)) {

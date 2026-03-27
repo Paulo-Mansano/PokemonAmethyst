@@ -26,6 +26,12 @@ export default function App() {
       .finally(() => setLoading(false))
   }, [])
 
+  useEffect(() => {
+    const onAuthExpired = () => setUser(null)
+    window.addEventListener('pokemonamethyst:auth-expired', onAuthExpired)
+    return () => window.removeEventListener('pokemonamethyst:auth-expired', onAuthExpired)
+  }, [])
+
   if (loading) {
     return (
       <div className="container" style={{ paddingTop: '3rem', textAlign: 'center' }}>

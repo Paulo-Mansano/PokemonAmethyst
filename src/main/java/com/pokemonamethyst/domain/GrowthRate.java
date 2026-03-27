@@ -7,10 +7,10 @@ package com.pokemonamethyst.domain;
 public enum GrowthRate {
 
     SLOW("slow"),
-    /** PokéAPI: {@code medium} — curva "medium slow" nos jogos. */
-    MEDIUM_SLOW("medium"),
-    /** PokéAPI: {@code medium-slow} — curva "medium fast" nos jogos. */
-    MEDIUM_FAST("medium-slow", "medium-fast"),
+    /** PokéAPI: {@code medium-slow}. */
+    MEDIUM_SLOW("medium-slow"),
+    /** PokéAPI: {@code medium} (aka medium-fast). */
+    MEDIUM_FAST("medium", "medium-fast"),
     FAST("fast"),
     /** PokéAPI: {@code slow-then-very-fast}. */
     ERRATIC("slow-then-very-fast", "erratic"),
