@@ -12,6 +12,7 @@ import java.util.List;
 
 public interface PokemonSpeciesMovimentoRepository extends JpaRepository<PokemonSpeciesMovimento, Long> {
     List<PokemonSpeciesMovimento> findBySpeciesId(String speciesId);
+    boolean existsBySpeciesId(String speciesId);
 
     @Query("SELECT DISTINCT m FROM PokemonSpeciesMovimento m LEFT JOIN FETCH m.movimento WHERE m.species.id = :speciesId")
     List<PokemonSpeciesMovimento> findBySpeciesIdComMovimento(@Param("speciesId") String speciesId);

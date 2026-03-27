@@ -26,7 +26,7 @@ public class PokemonAbilityService {
     }
 
     public List<PokemonSpeciesHabilidade> listarDaSpecies(String speciesId) {
-        return speciesHabilidadeRepository.findBySpeciesId(speciesId);
+        return speciesHabilidadeRepository.findBySpeciesIdComHabilidade(speciesId);
     }
 
     public Habilidade sortearHabilidadeAtiva(PokemonSpecies species) {

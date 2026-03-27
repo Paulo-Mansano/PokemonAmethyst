@@ -1,10 +1,10 @@
 import { useEffect, useState } from 'react'
 import { getItens, importarItemPokeApi, listarItensPokeApi, atualizarItem, criarItem, atualizarImagensItens, getUsuario } from '../api'
+import { useQuery, useQueryClient } from '@tanstack/react-query'
+import { queryKeys } from '../query/queryKeys'
 
 export default function ItensCatalogo() {
-  const [user, setUser] = useState(null)
-  const [itens, setItens] = useState([])
-  const [loading, setLoading] = useState(true)
+  const queryClient = useQueryClient()
   const [erro, setErro] = useState('')
   const [info, setInfo] = useState('')
   const [searchQuery, setSearchQuery] = useState('')
@@ -19,22 +19,24 @@ export default function ItensCatalogo() {
   const [editErro, setEditErro] = useState('')
   const [atualizandoImagens, setAtualizandoImagens] = useState(false)
 
-  const load = () => {
-    setLoading(true)
-    setErro('')
-    getUsuario()
-      .then((u) => {
-        setUser(u)
-        return getItens()
-      })
-      .then(setItens)
-      .catch((e) => setErro(e.message || 'Erro ao carregar itens'))
-      .finally(() => setLoading(false))
-  }
+  const userQuery = useQuery({
+    queryKey: queryKeys.auth.usuario,
+    queryFn: getUsuario,
+    staleTime: 10 * 60 * 1000,
+  })
+
+  const itensQuery = useQuery({
+    queryKey: queryKeys.catalogo.itens,
+    queryFn: getItens,
+    staleTime: 15 * 60 * 1000,
+    gcTime: 24 * 60 * 60 * 1000,
+  })
 
   useEffect(() => {
-    load()
-  }, [])
+    if (userQuery.isError || itensQuery.isError) {
+      setErro('Erro ao carregar itens')
+    }
+  }, [userQuery.isError, itensQuery.isError])
 
   const handleBuscarItens = async (e) => {
     e?.preventDefault()
@@ -61,7 +63,7 @@ export default function ItensCatalogo() {
       await importarItemPokeApi(name)
       setInfo(`"${name}" importado com sucesso.`)
       setSearchResults((prev) => prev.map((i) => (i.name === name ? { ...i, jaCadastrado: true } : i)))
-      load()
+      queryClient.invalidateQueries({ queryKey: queryKeys.catalogo.itens })
     } catch (e) {
       setSearchErro(e.message || 'Erro ao importar item')
     } finally {
@@ -90,7 +92,7 @@ export default function ItensCatalogo() {
       const res = await atualizarImagensItens()
       const n = res?.atualizados ?? 0
       setInfo(`${n} itens tiveram a imagem atualizada pela PokéAPI.`)
-      load()
+      queryClient.invalidateQueries({ queryKey: queryKeys.catalogo.itens })
     } catch (e) {
       setErro(e.message || 'Erro ao atualizar imagens')
     } finally {
@@ -114,7 +116,7 @@ export default function ItensCatalogo() {
       })
       setInfo('Item atualizado com sucesso.')
       setEditingItem(null)
-      load()
+      queryClient.invalidateQueries({ queryKey: queryKeys.catalogo.itens })
     } catch (e) {
       setEditErro(e.message || 'Erro ao salvar')
     } finally {
@@ -147,7 +149,7 @@ export default function ItensCatalogo() {
       })
       setInfo('Item criado com sucesso.')
       setCreatingItem(false)
-      load()
+      queryClient.invalidateQueries({ queryKey: queryKeys.catalogo.itens })
     } catch (e) {
       setEditErro(e.message || 'Erro ao criar item')
     } finally {
@@ -155,9 +157,12 @@ export default function ItensCatalogo() {
     }
   }
 
-  if (loading) {
+  if (userQuery.isLoading || itensQuery.isLoading) {
     return <div className="container">Carregando catálogo de itens...</div>
   }
+
+  const user = userQuery.data
+  const itens = itensQuery.data || []
 
   if (!user?.mestre) {
     return (

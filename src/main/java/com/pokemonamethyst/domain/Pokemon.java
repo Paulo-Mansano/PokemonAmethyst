@@ -1,6 +1,7 @@
 package com.pokemonamethyst.domain;
 
 import jakarta.persistence.*;
+import org.hibernate.annotations.BatchSize;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -118,6 +119,7 @@ public class Pokemon {
     private int respeito;
 
     @ElementCollection(fetch = FetchType.LAZY)
+    @BatchSize(size = 32)
     @CollectionTable(name = "pokemon_instance_status", joinColumns = @JoinColumn(name = "pokemon_instance_id"))
     @Enumerated(EnumType.STRING)
     @Column(name = "condicao")

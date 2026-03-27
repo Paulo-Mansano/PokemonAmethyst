@@ -29,7 +29,7 @@ public class MochilaService {
     }
 
     public Mochila buscarPorPerfil(String perfilId) {
-        var perfil = perfilRepository.findByIdWithPokemons(perfilId)
+        var perfil = perfilRepository.findByIdWithMochila(perfilId)
                 .orElseThrow(() -> new RecursoNaoEncontradoException("Perfil não encontrado."));
         if (perfil.getMochila() == null) {
             throw new RecursoNaoEncontradoException("Mochila não encontrada.");

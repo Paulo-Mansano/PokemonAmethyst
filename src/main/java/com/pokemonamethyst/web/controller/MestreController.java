@@ -90,6 +90,16 @@ public class MestreController {
         ));
     }
 
+    @PostMapping("/pokeapi/importar-species-todas")
+    public ResponseEntity<Map<String, Object>> importarTodasSpecies() {
+        return ResponseEntity.ok(pokeApiService.importarTodasSpeciesDaPokeApi());
+    }
+
+    @PostMapping("/pokeapi/vincular-species-existentes")
+    public ResponseEntity<Map<String, Object>> vincularSpeciesExistentes() {
+        return ResponseEntity.ok(pokeApiService.vincularSpeciesExistentesComDadosDaPokeApi());
+    }
+
     @GetMapping("/species")
     @Transactional(readOnly = true)
     public ResponseEntity<List<PokemonSpeciesResumoDto>> listarSpecies(
@@ -98,6 +108,12 @@ public class MestreController {
             @RequestParam(value = "limit", required = false) Integer limit
     ) {
         return ResponseEntity.ok(speciesConfigService.listarSpecies(nome, pokedexId, limit));
+    }
+
+    @GetMapping("/species/catalog-version")
+    @Transactional(readOnly = true)
+    public ResponseEntity<Map<String, String>> obterVersaoCatalogoSpecies() {
+        return ResponseEntity.ok(Map.of("version", speciesConfigService.obterVersaoCatalogo()));
     }
 
     @GetMapping("/species/{speciesId}/config")

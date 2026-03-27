@@ -2,15 +2,16 @@ import { useState, useEffect } from 'react'
 import { useLocation } from 'react-router-dom'
 import { getMeuPerfil, salvarPerfil } from '../api'
 import { usePlayerTarget } from '../context/PlayerTargetContext'
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
+import { queryKeys } from '../query/queryKeys'
 
 const CLASSES = ['CIVIL', 'TREINADOR', 'COMPETIDOR', 'CACADOR', 'MEDICO', 'PESQUISADOR']
 
 export default function Perfil() {
   const location = useLocation()
   const { playerId, readyForPlayerApi } = usePlayerTarget()
+  const queryClient = useQueryClient()
   const [perfil, setPerfil] = useState(null)
-  const [loading, setLoading] = useState(true)
-  const [saving, setSaving] = useState(false)
   const [erro, setErro] = useState('')
   const [form, setForm] = useState({
     nomePersonagem: '',
@@ -24,39 +25,53 @@ export default function Perfil() {
     atributos: { forca: 1, speed: 1, inteligencia: 1, tecnica: 1, sabedoria: 1, percepcao: 1, dominio: 1, respeito: 1 },
   })
 
+  const perfilQuery = useQuery({
+    queryKey: queryKeys.perfil(playerId),
+    queryFn: () => getMeuPerfil(playerId),
+    enabled: readyForPlayerApi,
+    staleTime: 60 * 1000,
+  })
+
   useEffect(() => {
     if (!readyForPlayerApi) return
-    setLoading(true)
-    setErro('')
-    getMeuPerfil(playerId)
-      .then((p) => {
-        setPerfil(p)
-        if (p) {
-          setForm({
-            nomePersonagem: p.nomePersonagem ?? '',
-            classe: p.classe ?? 'TREINADOR',
-            pokedolares: p.pokedolares ?? 0,
-            nivel: p.nivel ?? 1,
-            xpAtual: p.xpAtual ?? 0,
-            hpMaximo: p.hpMaximo ?? 10,
-            staminaMaxima: p.staminaMaxima ?? 10,
-            habilidade: Math.max(1, p.habilidade ?? 1),
-            atributos: {
-              forca: Math.max(1, p.atributos?.forca ?? 1),
-              speed: Math.max(1, p.atributos?.speed ?? 1),
-              inteligencia: Math.max(1, p.atributos?.inteligencia ?? 1),
-              tecnica: Math.max(1, p.atributos?.tecnica ?? 1),
-              sabedoria: Math.max(1, p.atributos?.sabedoria ?? 1),
-              percepcao: Math.max(1, p.atributos?.percepcao ?? 1),
-              dominio: Math.max(1, p.atributos?.dominio ?? 1),
-              respeito: Math.max(1, p.atributos?.respeito ?? 1),
-            },
-          })
-        }
-      })
-      .catch(() => setErro('Erro ao carregar perfil'))
-      .finally(() => setLoading(false))
-  }, [playerId, readyForPlayerApi])
+    if (perfilQuery.isError) {
+      setErro('Erro ao carregar perfil')
+      return
+    }
+    const p = perfilQuery.data ?? null
+    setPerfil(p)
+    if (!p) return
+    setForm({
+      nomePersonagem: p.nomePersonagem ?? '',
+      classe: p.classe ?? 'TREINADOR',
+      pokedolares: p.pokedolares ?? 0,
+      nivel: p.nivel ?? 1,
+      xpAtual: p.xpAtual ?? 0,
+      hpMaximo: p.hpMaximo ?? 10,
+      staminaMaxima: p.staminaMaxima ?? 10,
+      habilidade: Math.max(1, p.habilidade ?? 1),
+      atributos: {
+        forca: Math.max(1, p.atributos?.forca ?? 1),
+        speed: Math.max(1, p.atributos?.speed ?? 1),
+        inteligencia: Math.max(1, p.atributos?.inteligencia ?? 1),
+        tecnica: Math.max(1, p.atributos?.tecnica ?? 1),
+        sabedoria: Math.max(1, p.atributos?.sabedoria ?? 1),
+        percepcao: Math.max(1, p.atributos?.percepcao ?? 1),
+        dominio: Math.max(1, p.atributos?.dominio ?? 1),
+        respeito: Math.max(1, p.atributos?.respeito ?? 1),
+      },
+    })
+  }, [readyForPlayerApi, perfilQuery.data, perfilQuery.isError])
+
+  const salvarPerfilMutation = useMutation({
+    mutationFn: (payload) => salvarPerfil(payload, playerId),
+    onSuccess: (saved) => {
+      setPerfil(saved)
+      queryClient.setQueryData(queryKeys.perfil(playerId), saved)
+      queryClient.invalidateQueries({ queryKey: queryKeys.perfil(playerId) })
+    },
+    onError: (err) => setErro(err?.message || 'Erro ao salvar perfil'),
+  })
 
   const handleChange = (field, value) => {
     setForm((f) => ({ ...f, [field]: value }))
@@ -74,18 +89,10 @@ export default function Perfil() {
   const handleSubmit = async (e) => {
     e.preventDefault()
     setErro('')
-    setSaving(true)
-    try {
-      const saved = await salvarPerfil(form, playerId)
-      setPerfil(saved)
-    } catch (err) {
-      setErro(err.message)
-    } finally {
-      setSaving(false)
-    }
+    await salvarPerfilMutation.mutateAsync(form)
   }
 
-  if (!readyForPlayerApi || loading) return <div className="container container--wide">Carregando perfil...</div>
+  if (!readyForPlayerApi || perfilQuery.isLoading) return <div className="container container--wide">Carregando perfil...</div>
   if (erro && !perfil) return <div className="container container--wide"><p style={{ color: 'var(--danger)' }}>{erro}</p></div>
 
   const avisoSemPerfil = location.state?.semPerfil && !perfil
@@ -168,8 +175,8 @@ export default function Perfil() {
 
         {erro && <p className="perfil-erro">{erro}</p>}
         <div className="perfil-actions">
-          <button type="submit" className="btn btn-primary" disabled={saving}>
-            {saving ? 'Salvando...' : 'Salvar ficha'}
+          <button type="submit" className="btn btn-primary" disabled={salvarPerfilMutation.isPending}>
+            {salvarPerfilMutation.isPending ? 'Salvando...' : 'Salvar ficha'}
           </button>
         </div>
       </form>

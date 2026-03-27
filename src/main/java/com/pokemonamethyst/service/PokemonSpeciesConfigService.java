@@ -20,7 +20,11 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.util.Comparator;
+import java.util.LinkedHashMap;
+import java.util.LinkedHashSet;
 import java.util.List;
+import java.util.Map;
+import java.util.Set;
 
 @Service
 public class PokemonSpeciesConfigService {
@@ -70,6 +74,20 @@ public class PokemonSpeciesConfigService {
     }
 
     @Transactional(readOnly = true)
+    public List<PokemonSpeciesResumoDto> listarCatalogoLocal() {
+        return speciesRepository.findAllByOrderByPokedexIdAsc()
+                .stream()
+                .map(PokemonSpeciesResumoDto::from)
+                .toList();
+    }
+
+    @Transactional(readOnly = true)
+    public String obterVersaoCatalogo() {
+        String versao = speciesRepository.obterVersaoCatalogoSpecies();
+        return (versao == null || versao.isBlank()) ? "empty" : versao;
+    }
+
+    @Transactional(readOnly = true)
     public PokemonSpeciesConfigResponseDto buscarConfig(String speciesId) {
         PokemonSpecies species = speciesRepository.findById(speciesId)
                 .orElseThrow(() -> new RecursoNaoEncontradoException("Espécie não encontrada."));
@@ -110,13 +128,30 @@ public class PokemonSpeciesConfigService {
 
         List<PokemonSpeciesConfigUpdateRequestDto.HabilidadeVinculoRequestDto> habilidades =
                 dto.getHabilidades() == null ? List.of() : dto.getHabilidades();
+        Set<String> habilidadeIds = new LinkedHashSet<>();
+        for (PokemonSpeciesConfigUpdateRequestDto.HabilidadeVinculoRequestDto item : habilidades) {
+            if (item != null && item.getHabilidadeId() != null && !item.getHabilidadeId().isBlank()) {
+                habilidadeIds.add(item.getHabilidadeId());
+            }
+        }
+        Map<String, Habilidade> habilidadePorId = new LinkedHashMap<>();
+        if (!habilidadeIds.isEmpty()) {
+            for (Habilidade habilidade : habilidadeRepository.findAllById(habilidadeIds)) {
+                habilidadePorId.put(habilidade.getId(), habilidade);
+            }
+            for (String habilidadeId : habilidadeIds) {
+                if (!habilidadePorId.containsKey(habilidadeId)) {
+                    throw new RecursoNaoEncontradoException("Habilidade não encontrada: " + habilidadeId);
+                }
+            }
+        }
+        List<PokemonSpeciesHabilidade> relacoesHabilidade = new java.util.ArrayList<>();
         for (int i = 0; i < habilidades.size(); i++) {
             PokemonSpeciesConfigUpdateRequestDto.HabilidadeVinculoRequestDto item = habilidades.get(i);
             if (item == null || item.getHabilidadeId() == null || item.getHabilidadeId().isBlank()) {
                 continue;
             }
-            Habilidade habilidade = habilidadeRepository.findById(item.getHabilidadeId())
-                    .orElseThrow(() -> new RecursoNaoEncontradoException("Habilidade não encontrada: " + item.getHabilidadeId()));
+            Habilidade habilidade = habilidadePorId.get(item.getHabilidadeId());
             int slot = item.getSlot() == null ? 1 : item.getSlot();
             if (slot <= 0) {
                 throw new RegraNegocioException("Slot de habilidade deve ser >= 1.");
@@ -126,18 +161,38 @@ public class PokemonSpeciesConfigService {
             rel.setHabilidade(habilidade);
             rel.setSlot(slot);
             rel.setHidden(Boolean.TRUE.equals(item.getHidden()));
-            speciesHabilidadeRepository.save(rel);
+            relacoesHabilidade.add(rel);
+        }
+        if (!relacoesHabilidade.isEmpty()) {
+            speciesHabilidadeRepository.saveAll(relacoesHabilidade);
         }
 
         List<PokemonSpeciesConfigUpdateRequestDto.LearnsetVinculoRequestDto> learnset =
                 dto.getLearnset() == null ? List.of() : dto.getLearnset();
+        Set<String> movimentoIds = new LinkedHashSet<>();
+        for (PokemonSpeciesConfigUpdateRequestDto.LearnsetVinculoRequestDto item : learnset) {
+            if (item != null && item.getMovimentoId() != null && !item.getMovimentoId().isBlank()) {
+                movimentoIds.add(item.getMovimentoId());
+            }
+        }
+        Map<String, Movimento> movimentoPorId = new LinkedHashMap<>();
+        if (!movimentoIds.isEmpty()) {
+            for (Movimento movimento : movimentoRepository.findAllById(movimentoIds)) {
+                movimentoPorId.put(movimento.getId(), movimento);
+            }
+            for (String movimentoId : movimentoIds) {
+                if (!movimentoPorId.containsKey(movimentoId)) {
+                    throw new RecursoNaoEncontradoException("Movimento não encontrado: " + movimentoId);
+                }
+            }
+        }
+        List<PokemonSpeciesMovimento> relacoesMovimento = new java.util.ArrayList<>();
         for (int i = 0; i < learnset.size(); i++) {
             PokemonSpeciesConfigUpdateRequestDto.LearnsetVinculoRequestDto item = learnset.get(i);
             if (item == null || item.getMovimentoId() == null || item.getMovimentoId().isBlank()) {
                 continue;
             }
-            Movimento movimento = movimentoRepository.findById(item.getMovimentoId())
-                    .orElseThrow(() -> new RecursoNaoEncontradoException("Movimento não encontrado: " + item.getMovimentoId()));
+            Movimento movimento = movimentoPorId.get(item.getMovimentoId());
             MoveLearnMethod method = item.getLearnMethod() == null ? MoveLearnMethod.LEVEL_UP : item.getLearnMethod();
             Integer level = item.getLevel();
             if (method == MoveLearnMethod.LEVEL_UP) {
@@ -154,7 +209,10 @@ public class PokemonSpeciesConfigService {
             rel.setLearnMethod(method);
             rel.setLevel(level);
             rel.setOrdem(item.getOrdem() != null ? item.getOrdem() : i);
-            speciesMovimentoRepository.save(rel);
+            relacoesMovimento.add(rel);
+        }
+        if (!relacoesMovimento.isEmpty()) {
+            speciesMovimentoRepository.saveAll(relacoesMovimento);
         }
 
         pokemonAbilityService.invalidarCacheSpecies(speciesId);

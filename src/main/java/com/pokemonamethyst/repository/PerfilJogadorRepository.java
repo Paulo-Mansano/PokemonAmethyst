@@ -13,6 +13,9 @@ public interface PerfilJogadorRepository extends JpaRepository<PerfilJogador, St
     @Query("SELECT p FROM PerfilJogador p LEFT JOIN FETCH p.mochila WHERE p.usuario.id = :usuarioId")
     Optional<PerfilJogador> findByUsuarioIdWithMochila(String usuarioId);
 
+    @Query("SELECT p FROM PerfilJogador p LEFT JOIN FETCH p.mochila WHERE p.id = :id")
+    Optional<PerfilJogador> findByIdWithMochila(String id);
+
     @Query("SELECT p FROM PerfilJogador p LEFT JOIN FETCH p.pokemons WHERE p.id = :id")
     Optional<PerfilJogador> findByIdWithPokemons(String id);
 }

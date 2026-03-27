@@ -1,10 +1,10 @@
 import { useEffect, useState } from 'react'
 import { getPersonalidades, criarPersonalidade, atualizarPersonalidade, getUsuario } from '../api'
+import { useQuery, useQueryClient } from '@tanstack/react-query'
+import { queryKeys } from '../query/queryKeys'
 
 export default function PersonalidadesCatalogo() {
-  const [user, setUser] = useState(null)
-  const [personalidades, setPersonalidades] = useState([])
-  const [loading, setLoading] = useState(true)
+  const queryClient = useQueryClient()
   const [erro, setErro] = useState('')
   const [info, setInfo] = useState('')
   const [editingItem, setEditingItem] = useState(null)
@@ -13,22 +13,24 @@ export default function PersonalidadesCatalogo() {
   const [savingEdit, setSavingEdit] = useState(false)
   const [editErro, setEditErro] = useState('')
 
-  const load = () => {
-    setLoading(true)
-    setErro('')
-    getUsuario()
-      .then((u) => {
-        setUser(u)
-        return getPersonalidades()
-      })
-      .then(setPersonalidades)
-      .catch((e) => setErro(e.message || 'Erro ao carregar personalidades'))
-      .finally(() => setLoading(false))
-  }
+  const userQuery = useQuery({
+    queryKey: queryKeys.auth.usuario,
+    queryFn: getUsuario,
+    staleTime: 10 * 60 * 1000,
+  })
+
+  const personalidadesQuery = useQuery({
+    queryKey: queryKeys.catalogo.personalidades,
+    queryFn: getPersonalidades,
+    staleTime: 15 * 60 * 1000,
+    gcTime: 24 * 60 * 60 * 1000,
+  })
 
   useEffect(() => {
-    load()
-  }, [])
+    if (userQuery.isError || personalidadesQuery.isError) {
+      setErro('Erro ao carregar personalidades')
+    }
+  }, [userQuery.isError, personalidadesQuery.isError])
 
   const handleEditar = (item) => {
     setEditingItem(item)
@@ -51,7 +53,7 @@ export default function PersonalidadesCatalogo() {
       await atualizarPersonalidade(editingItem.id, { nome: editForm.nome?.trim() || undefined })
       setInfo('Personalidade atualizada com sucesso.')
       setEditingItem(null)
-      load()
+      queryClient.invalidateQueries({ queryKey: queryKeys.catalogo.personalidades })
     } catch (e) {
       setEditErro(e.message || 'Erro ao salvar')
     } finally {
@@ -71,7 +73,7 @@ export default function PersonalidadesCatalogo() {
       await criarPersonalidade({ nome: editForm.nome.trim() })
       setInfo('Personalidade criada com sucesso.')
       setCreatingItem(false)
-      load()
+      queryClient.invalidateQueries({ queryKey: queryKeys.catalogo.personalidades })
     } catch (e) {
       setEditErro(e.message || 'Erro ao criar personalidade')
     } finally {
@@ -79,9 +81,12 @@ export default function PersonalidadesCatalogo() {
     }
   }
 
-  if (loading) {
+  if (userQuery.isLoading || personalidadesQuery.isLoading) {
     return <div className="container">Carregando personalidades...</div>
   }
+
+  const user = userQuery.data
+  const personalidades = personalidadesQuery.data || []
 
   if (!user?.mestre) {
     return (

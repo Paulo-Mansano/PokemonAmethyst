@@ -46,6 +46,7 @@ public class PokemonService {
     private final PokemonAbilityService pokemonAbilityService;
     private final PokemonLearnsetService pokemonLearnsetService;
     private final int shinyChancePercent;
+    private final boolean strictLocalRuntime;
 
     public PokemonService(PokemonRepository pokemonRepository, PerfilJogadorRepository perfilRepository,
                           ItemRepository itemRepository, MovimentoRepository movimentoRepository,
@@ -53,7 +54,8 @@ public class PokemonService {
                           PersonalidadeRepository personalidadeRepository, PokeApiService pokeApiService,
                           PokemonAbilityService pokemonAbilityService,
                           PokemonLearnsetService pokemonLearnsetService,
-                          @Value("${pokemon.shiny-chance-percent:1}") int shinyChancePercent) {
+                          @Value("${pokemon.shiny-chance-percent:1}") int shinyChancePercent,
+                          @Value("${pokemon.runtime.strict-local:true}") boolean strictLocalRuntime) {
         this.pokemonRepository = pokemonRepository;
         this.perfilRepository = perfilRepository;
         this.itemRepository = itemRepository;
@@ -64,6 +66,7 @@ public class PokemonService {
         this.pokemonAbilityService = pokemonAbilityService;
         this.pokemonLearnsetService = pokemonLearnsetService;
         this.shinyChancePercent = Math.max(0, Math.min(100, shinyChancePercent));
+        this.strictLocalRuntime = strictLocalRuntime;
     }
 
     public List<Pokemon> listarPorPerfil(String perfilId) {
@@ -131,7 +134,7 @@ public class PokemonService {
         Pokemon pokemon = new Pokemon();
         pokemon.setPerfil(perfil);
         pokemon.setOrdemTime(null);
-        pokemon.setSpecies(pokeApiService.obterSpeciesParaCriacao(pokedexIdVal));
+        pokemon.setSpecies(obterSpeciesRuntime(pokedexIdVal));
         // Importação de espécie usa deleteBySpeciesId (clearAutomatically=true) e limpa o contexto JPA;
         // o perfil carregado acima fica detached e a coleção lazy pokemons quebra (LazyInitializationException).
         perfil = perfilRepository.findById(perfilId)
@@ -139,7 +142,7 @@ public class PokemonService {
         pokemon.setPerfil(perfil);
         pokemon.setGenero(genero != null ? genero : definirGeneroAleatorio(pokemon.getSpecies()));
         pokemon.setShiny(sortearShiny());
-        if (pokemon.isShiny()) {
+        if (pokemon.isShiny() && !strictLocalRuntime) {
             try {
                 PokemonSpecies sp = pokeApiService.garantirSpriteShinyNaEspecie(pokemon.getSpecies());
                 if (sp != null) {
@@ -206,7 +209,7 @@ public class PokemonService {
             PokemonSpecies especieAtual = pokemon.getSpecies();
             int pokedexAtual = especieAtual != null ? especieAtual.getPokedexId() : -1;
             if (pokedexId != pokedexAtual) {
-                pokemon.setSpecies(pokeApiService.obterSpeciesParaCriacao(pokedexId));
+                pokemon.setSpecies(obterSpeciesRuntime(pokedexId));
                 pokemon.setGenero(definirGeneroAleatorio(pokemon.getSpecies()));
                 Habilidade novaHab = pokemonAbilityService.sortearHabilidadeAtivaOuNulo(pokemon.getSpecies());
                 if (novaHab == null) {
@@ -220,7 +223,7 @@ public class PokemonService {
         if (genero != null) pokemon.setGenero(genero);
         if (isShiny != null) {
             pokemon.setShiny(isShiny);
-            if (Boolean.TRUE.equals(isShiny)) {
+            if (Boolean.TRUE.equals(isShiny) && !strictLocalRuntime) {
                 try {
                     PokemonSpecies sp = pokeApiService.garantirSpriteShinyNaEspecie(pokemon.getSpecies());
                     if (sp != null) {
@@ -513,12 +516,11 @@ public class PokemonService {
     @Transactional
     public Pokemon recusarMovimentoAprendido(String pokemonId, String perfilId, String movimentoId) {
         // No-op: recusas não são persistidas; a próxima oferta é calculada apenas pelas faixas de nível cruzadas.
-        buscarPorIdEPerfil(pokemonId, perfilId);
+        Pokemon pokemon = buscarPorIdEPerfil(pokemonId, perfilId);
         if (movimentoId == null || movimentoId.isBlank()) {
             throw new RegraNegocioException("movimentoId é obrigatório.");
         }
-        return pokemonRepository.findByIdAndPerfilId(pokemonId, perfilId)
-                .orElseThrow(() -> new RecursoNaoEncontradoException("Pokémon não encontrado."));
+        return pokemon;
     }
 
     @Transactional
@@ -712,5 +714,12 @@ public class PokemonService {
                 pokemon.getEvDefesaEspecial(),
                 pokemon.getNivel()
         );
+    }
+
+    private PokemonSpecies obterSpeciesRuntime(int pokedexId) {
+        if (strictLocalRuntime) {
+            return pokeApiService.obterSpeciesLocal(pokedexId);
+        }
+        return pokeApiService.obterSpeciesParaCriacao(pokedexId);
     }
 }

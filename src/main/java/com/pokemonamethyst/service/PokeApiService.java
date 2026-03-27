@@ -23,6 +23,8 @@ import com.pokemonamethyst.web.dto.PokeApiPokemonDetailDto;
 import com.pokemonamethyst.web.dto.PokeApiPokemonSummaryDto;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.transaction.PlatformTransactionManager;
+import org.springframework.transaction.support.TransactionTemplate;
 import org.springframework.web.client.HttpClientErrorException;
 import org.springframework.web.client.RestClientException;
 import org.springframework.web.client.RestTemplate;
@@ -47,6 +49,7 @@ public class PokeApiService {
     private static final String SPRITE_BASE = "https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/%d.png";
     private static final int IMPORTAR_MOVIMENTOS_LIMITE = 2500;
     private static final int IMPORTAR_HABILIDADES_LIMITE = 500;
+    private static final int IMPORTAR_SPECIES_PAGE_SIZE = 300;
 
     private static final Map<String, CategoriaMovimento> DAMAGE_CLASS_MAP = Map.of(
             "physical", CategoriaMovimento.FISICO,
@@ -84,6 +87,7 @@ public class PokeApiService {
     private final PokemonSpeciesMovimentoRepository speciesMovimentoRepository;
     private final PokemonAbilityService pokemonAbilityService;
     private final PokemonLearnsetService pokemonLearnsetService;
+    private final TransactionTemplate transactionTemplate;
     private final Map<String, Integer> versionGroupOrderCache = new ConcurrentHashMap<>();
     private final Map<Integer, Object> speciesImportLocks = new ConcurrentHashMap<>();
 
@@ -93,7 +97,8 @@ public class PokeApiService {
                           PokemonSpeciesHabilidadeRepository speciesHabilidadeRepository,
                           PokemonSpeciesMovimentoRepository speciesMovimentoRepository,
                           PokemonAbilityService pokemonAbilityService,
-                          PokemonLearnsetService pokemonLearnsetService) {
+                          PokemonLearnsetService pokemonLearnsetService,
+                          PlatformTransactionManager transactionManager) {
         this.restTemplate = restTemplate;
         this.movimentoRepository = movimentoRepository;
         this.itemRepository = itemRepository;
@@ -103,6 +108,7 @@ public class PokeApiService {
         this.speciesMovimentoRepository = speciesMovimentoRepository;
         this.pokemonAbilityService = pokemonAbilityService;
         this.pokemonLearnsetService = pokemonLearnsetService;
+        this.transactionTemplate = new TransactionTemplate(transactionManager);
     }
 
     private static final int FETCH_SIZE_COM_FILTRO = 2000;
@@ -263,6 +269,169 @@ public class PokeApiService {
         } catch (RestClientException e) {
             throw new RegraNegocioException("Falha ao consultar a PokéAPI (rede ou limite). Tente novamente em instantes. Detalhe: " + e.getMessage());
         }
+    }
+
+    /**
+     * Importa todas as espécies existentes na PokéAPI que ainda não estão salvas localmente.
+     * Estratégia otimizada: faz diff por pokedexId e importa somente o que falta, com concorrência moderada.
+     */
+    public Map<String, Object> importarTodasSpeciesDaPokeApi() {
+        List<Integer> todosIdsPokeApi = listarTodosPokedexIdsDaPokeApi();
+        if (todosIdsPokeApi.isEmpty()) {
+            return Map.of(
+                    "totalPokeApi", 0,
+                    "jaExistentes", 0,
+                    "faltantes", 0,
+                    "importadas", 0,
+                    "falhas", 0,
+                    "idsComFalha", List.of()
+            );
+        }
+
+        Set<Integer> idsExistentes = new HashSet<>(pokemonSpeciesRepository.findAllPokedexIds());
+        List<Integer> idsFaltantes = todosIdsPokeApi.stream()
+                .filter(id -> id != null && id > 0)
+                .filter(id -> !idsExistentes.contains(id))
+                .sorted()
+                .toList();
+
+        if (idsFaltantes.isEmpty()) {
+            return Map.of(
+                    "totalPokeApi", todosIdsPokeApi.size(),
+                    "jaExistentes", idsExistentes.size(),
+                    "faltantes", 0,
+                    "importadas", 0,
+                    "falhas", 0,
+                    "idsComFalha", List.of()
+            );
+        }
+
+        int importadas = 0;
+        int falhas = 0;
+        List<Integer> idsComFalha = new ArrayList<>();
+        for (Integer id : idsFaltantes) {
+            try {
+                transactionTemplate.executeWithoutResult(status -> importarSpeciesDaPokeApi(id));
+                importadas++;
+            } catch (Exception ignored) {
+                falhas++;
+                if (idsComFalha.size() < 25) {
+                    idsComFalha.add(id);
+                }
+            }
+        }
+
+        return Map.of(
+                "totalPokeApi", todosIdsPokeApi.size(),
+                "jaExistentes", idsExistentes.size(),
+                "faltantes", idsFaltantes.size(),
+                "importadas", importadas,
+                "falhas", falhas,
+                "idsComFalha", idsComFalha
+        );
+    }
+
+    /**
+     * Preenche vínculos faltantes (habilidades e/ou learnset) das espécies já salvas localmente.
+     * Não altera espécies que já estão completas.
+     */
+    public Map<String, Object> vincularSpeciesExistentesComDadosDaPokeApi() {
+        List<PokemonSpecies> speciesList = pokemonSpeciesRepository.findAll().stream()
+                .filter(s -> s.getPokedexId() > 0)
+                .sorted(Comparator.comparingInt(PokemonSpecies::getPokedexId))
+                .toList();
+
+        int total = speciesList.size();
+        int completas = 0;
+        int vinculadas = 0;
+        int falhas = 0;
+        List<Integer> idsComFalha = new ArrayList<>();
+
+        for (PokemonSpecies species : speciesList) {
+            String speciesId = species.getId();
+            boolean temHabilidades = speciesHabilidadeRepository.existsBySpeciesId(speciesId);
+            boolean temLearnset = speciesMovimentoRepository.existsBySpeciesId(speciesId);
+            if (temHabilidades && temLearnset) {
+                completas++;
+                continue;
+            }
+            try {
+                transactionTemplate.executeWithoutResult(status ->
+                        vincularDadosFaltantesDaSpecies(species.getPokedexId(), !temHabilidades, !temLearnset)
+                );
+                vinculadas++;
+            } catch (Exception ignored) {
+                falhas++;
+                if (idsComFalha.size() < 25) {
+                    idsComFalha.add(species.getPokedexId());
+                }
+            }
+        }
+
+        return Map.of(
+                "totalSpeciesLocais", total,
+                "completasSemAlteracao", completas,
+                "vinculadas", vinculadas,
+                "falhas", falhas,
+                "idsComFalha", idsComFalha
+        );
+    }
+
+    @SuppressWarnings("unchecked")
+    private void vincularDadosFaltantesDaSpecies(int pokedexId, boolean sincronizarHabilidades, boolean sincronizarLearnset) {
+        if (!sincronizarHabilidades && !sincronizarLearnset) {
+            return;
+        }
+        PokemonSpecies species = pokemonSpeciesRepository.findByPokedexId(pokedexId)
+                .orElseThrow(() -> new RecursoNaoEncontradoException("Espécie não encontrada localmente: " + pokedexId));
+        Map<String, Object> pokemonData = restTemplate.getForObject(BASE_URL + "/pokemon/" + pokedexId, Map.class);
+        if (pokemonData == null) {
+            throw new RecursoNaoEncontradoException("Pokémon não encontrado na PokéAPI: " + pokedexId);
+        }
+        if (sincronizarHabilidades) {
+            sincronizarAbilitiesDaSpecies(species, pokemonData);
+        }
+        if (sincronizarLearnset) {
+            sincronizarLearnsetDaSpecies(species, pokemonData);
+        }
+        pokemonAbilityService.invalidarCacheSpecies(species.getId());
+        pokemonLearnsetService.invalidarCacheSpecies(species.getId());
+    }
+
+    @SuppressWarnings("unchecked")
+    private List<Integer> listarTodosPokedexIdsDaPokeApi() {
+        String countUrl = BASE_URL + "/pokemon?limit=1&offset=0";
+        Map<String, Object> primeiraPagina = restTemplate.getForObject(countUrl, Map.class);
+        if (primeiraPagina == null) {
+            return List.of();
+        }
+        Number totalRaw = (Number) primeiraPagina.get("count");
+        int total = totalRaw != null ? totalRaw.intValue() : 0;
+        if (total <= 0) {
+            return List.of();
+        }
+
+        List<Integer> ids = new ArrayList<>(total);
+        for (int offset = 0; offset < total; offset += IMPORTAR_SPECIES_PAGE_SIZE) {
+            int limite = Math.min(IMPORTAR_SPECIES_PAGE_SIZE, total - offset);
+            String pageUrl = BASE_URL + "/pokemon?limit=" + limite + "&offset=" + offset;
+            Map<String, Object> pagina = restTemplate.getForObject(pageUrl, Map.class);
+            if (pagina == null || !pagina.containsKey("results")) {
+                continue;
+            }
+            List<Map<String, Object>> results = (List<Map<String, Object>>) pagina.get("results");
+            if (results == null || results.isEmpty()) {
+                continue;
+            }
+            for (Map<String, Object> item : results) {
+                String url = (String) item.get("url");
+                int id = extrairIdDaUrl(url);
+                if (id > 0) {
+                    ids.add(id);
+                }
+            }
+        }
+        return ids.stream().distinct().sorted().toList();
     }
 
     /**

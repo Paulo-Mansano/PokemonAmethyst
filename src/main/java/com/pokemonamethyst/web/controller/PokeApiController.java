@@ -2,12 +2,15 @@ package com.pokemonamethyst.web.controller;
 
 import com.pokemonamethyst.exception.RecursoNaoEncontradoException;
 import com.pokemonamethyst.service.PokeApiService;
+import com.pokemonamethyst.service.PokemonSpeciesConfigService;
 import com.pokemonamethyst.web.dto.PokeApiPokemonDetailDto;
 import com.pokemonamethyst.web.dto.PokeApiPokemonSummaryDto;
+import com.pokemonamethyst.web.dto.PokemonSpeciesResumoDto;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
+import java.util.Map;
 
 @RestController
 @RequestMapping("/api/pokeapi")
@@ -16,9 +19,11 @@ public class PokeApiController {
     private static final int MAX_LIMIT = 100;
 
     private final PokeApiService pokeApiService;
+    private final PokemonSpeciesConfigService speciesConfigService;
 
-    public PokeApiController(PokeApiService pokeApiService) {
+    public PokeApiController(PokeApiService pokeApiService, PokemonSpeciesConfigService speciesConfigService) {
         this.pokeApiService = pokeApiService;
+        this.speciesConfigService = speciesConfigService;
     }
 
     @GetMapping("/pokemon")
@@ -41,5 +46,15 @@ public class PokeApiController {
         } catch (RecursoNaoEncontradoException e) {
             return ResponseEntity.notFound().build();
         }
+    }
+
+    @GetMapping("/species-local")
+    public ResponseEntity<List<PokemonSpeciesResumoDto>> listarCatalogoLocal() {
+        return ResponseEntity.ok(speciesConfigService.listarCatalogoLocal());
+    }
+
+    @GetMapping("/species-local/version")
+    public ResponseEntity<Map<String, String>> obterVersaoCatalogoLocal() {
+        return ResponseEntity.ok(Map.of("version", speciesConfigService.obterVersaoCatalogo()));
     }
 }

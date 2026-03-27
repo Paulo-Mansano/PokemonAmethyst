@@ -1,5 +1,7 @@
 import { useEffect, useState } from 'react'
 import { getMovimentos, importarMovimentosPokeApi, criarMovimento, atualizarMovimento, getUsuario } from '../api'
+import { useQuery, useQueryClient } from '@tanstack/react-query'
+import { queryKeys } from '../query/queryKeys'
 
 const TIPAGENS = ['NORMAL', 'FOGO', 'AGUA', 'ELETRICO', 'GRAMA', 'GELO', 'LUTADOR', 'VENENOSO', 'TERRA', 'VOADOR', 'PSIQUICO', 'INSETO', 'PEDRA', 'FANTASMA', 'DRAGAO', 'SOMBRIO', 'METAL', 'FADA']
 const CATEGORIAS = ['FISICO', 'ESPECIAL', 'STATUS']
@@ -41,9 +43,7 @@ function getMoveCardBackground(move) {
 }
 
 export default function MovimentosCatalogo() {
-  const [user, setUser] = useState(null)
-  const [movimentos, setMovimentos] = useState([])
-  const [loading, setLoading] = useState(true)
+  const queryClient = useQueryClient()
   const [erro, setErro] = useState('')
   const [info, setInfo] = useState('')
   const [editingItem, setEditingItem] = useState(null)
@@ -61,22 +61,24 @@ export default function MovimentosCatalogo() {
   const [editErro, setEditErro] = useState('')
   const [importing, setImporting] = useState(false)
 
-  const load = () => {
-    setLoading(true)
-    setErro('')
-    getUsuario()
-      .then((u) => {
-        setUser(u)
-        return getMovimentos()
-      })
-      .then(setMovimentos)
-      .catch((e) => setErro(e.message || 'Erro ao carregar movimentos'))
-      .finally(() => setLoading(false))
-  }
+  const userQuery = useQuery({
+    queryKey: queryKeys.auth.usuario,
+    queryFn: getUsuario,
+    staleTime: 10 * 60 * 1000,
+  })
+
+  const movimentosQuery = useQuery({
+    queryKey: queryKeys.catalogo.movimentos,
+    queryFn: getMovimentos,
+    staleTime: 15 * 60 * 1000,
+    gcTime: 24 * 60 * 60 * 1000,
+  })
 
   useEffect(() => {
-    load()
-  }, [])
+    if (userQuery.isError || movimentosQuery.isError) {
+      setErro('Erro ao carregar movimentos')
+    }
+  }, [userQuery.isError, movimentosQuery.isError])
 
   const handleEditar = (item) => {
     setEditingItem(item)
@@ -100,7 +102,7 @@ export default function MovimentosCatalogo() {
       const res = await importarMovimentosPokeApi()
       const n = res?.importados ?? 0
       setInfo(`${n} movimentos importados da PokéAPI (nomes e descrição em PT quando disponível).`)
-      load()
+      queryClient.invalidateQueries({ queryKey: queryKeys.catalogo.movimentos })
     } catch (e) {
       setErro(e.message || 'Erro ao importar movimentos')
     } finally {
@@ -139,7 +141,7 @@ export default function MovimentosCatalogo() {
       })
       setInfo('Movimento atualizado com sucesso.')
       setEditingItem(null)
-      load()
+      queryClient.invalidateQueries({ queryKey: queryKeys.catalogo.movimentos })
     } catch (e) {
       setEditErro(e.message || 'Erro ao salvar')
     } finally {
@@ -167,7 +169,7 @@ export default function MovimentosCatalogo() {
       })
       setInfo('Movimento criado com sucesso.')
       setCreatingItem(false)
-      load()
+      queryClient.invalidateQueries({ queryKey: queryKeys.catalogo.movimentos })
     } catch (e) {
       setEditErro(e.message || 'Erro ao criar movimento')
     } finally {
@@ -175,9 +177,12 @@ export default function MovimentosCatalogo() {
     }
   }
 
-  if (loading) {
+  if (userQuery.isLoading || movimentosQuery.isLoading) {
     return <div className="container">Carregando catálogo de movimentos...</div>
   }
+
+  const user = userQuery.data
+  const movimentos = movimentosQuery.data || []
 
   if (!user?.mestre) {
     return (

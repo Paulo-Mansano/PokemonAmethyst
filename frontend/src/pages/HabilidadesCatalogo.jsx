@@ -1,10 +1,10 @@
 import { useEffect, useState } from 'react'
 import { getHabilidades, importarHabilidadesPokeApi, criarHabilidade, atualizarHabilidade, getUsuario } from '../api'
+import { useQuery, useQueryClient } from '@tanstack/react-query'
+import { queryKeys } from '../query/queryKeys'
 
 export default function HabilidadesCatalogo() {
-  const [user, setUser] = useState(null)
-  const [habilidades, setHabilidades] = useState([])
-  const [loading, setLoading] = useState(true)
+  const queryClient = useQueryClient()
   const [erro, setErro] = useState('')
   const [info, setInfo] = useState('')
   const [editingItem, setEditingItem] = useState(null)
@@ -14,22 +14,24 @@ export default function HabilidadesCatalogo() {
   const [editErro, setEditErro] = useState('')
   const [importing, setImporting] = useState(false)
 
-  const load = () => {
-    setLoading(true)
-    setErro('')
-    getUsuario()
-      .then((u) => {
-        setUser(u)
-        return getHabilidades()
-      })
-      .then(setHabilidades)
-      .catch((e) => setErro(e.message || 'Erro ao carregar habilidades'))
-      .finally(() => setLoading(false))
-  }
+  const userQuery = useQuery({
+    queryKey: queryKeys.auth.usuario,
+    queryFn: getUsuario,
+    staleTime: 10 * 60 * 1000,
+  })
+
+  const habilidadesQuery = useQuery({
+    queryKey: queryKeys.catalogo.habilidades,
+    queryFn: getHabilidades,
+    staleTime: 15 * 60 * 1000,
+    gcTime: 24 * 60 * 60 * 1000,
+  })
 
   useEffect(() => {
-    load()
-  }, [])
+    if (userQuery.isError || habilidadesQuery.isError) {
+      setErro('Erro ao carregar habilidades')
+    }
+  }, [userQuery.isError, habilidadesQuery.isError])
 
   const handleEditar = (item) => {
     setEditingItem(item)
@@ -49,7 +51,7 @@ export default function HabilidadesCatalogo() {
       const res = await importarHabilidadesPokeApi()
       const n = res?.importados ?? 0
       setInfo(`${n} habilidades importadas da PokéAPI (nomes em PT e EN, descrição em PT quando disponível).`)
-      load()
+      queryClient.invalidateQueries({ queryKey: queryKeys.catalogo.habilidades })
     } catch (e) {
       setErro(e.message || 'Erro ao importar habilidades')
     } finally {
@@ -76,7 +78,7 @@ export default function HabilidadesCatalogo() {
       })
       setInfo('Habilidade atualizada com sucesso.')
       setEditingItem(null)
-      load()
+      queryClient.invalidateQueries({ queryKey: queryKeys.catalogo.habilidades })
     } catch (e) {
       setEditErro(e.message || 'Erro ao salvar')
     } finally {
@@ -100,7 +102,7 @@ export default function HabilidadesCatalogo() {
       })
       setInfo('Habilidade criada com sucesso.')
       setCreatingItem(false)
-      load()
+      queryClient.invalidateQueries({ queryKey: queryKeys.catalogo.habilidades })
     } catch (e) {
       setEditErro(e.message || 'Erro ao criar habilidade')
     } finally {
@@ -108,9 +110,12 @@ export default function HabilidadesCatalogo() {
     }
   }
 
-  if (loading) {
+  if (userQuery.isLoading || habilidadesQuery.isLoading) {
     return <div className="container">Carregando catálogo de habilidades...</div>
   }
+
+  const user = userQuery.data
+  const habilidades = habilidadesQuery.data || []
 
   if (!user?.mestre) {
     return (

@@ -1,13 +1,13 @@
 import { useState, useEffect, useCallback } from 'react'
 import { Link } from 'react-router-dom'
-import { getMeuPerfil, getUsuario, criarPokemon, getPokemon, atualizarPokemon, colocarNoTime, removerDoTime, excluirPokemon, getPokeApiList, getPokeApiPokemon, getMovimentos, getMovimentosDisponiveisPokemon, getPersonalidades, getItens, getHabilidades, ganharXpPokemon, aceitarMovimentoAprendido, recusarMovimentoAprendido, mestreDefinirTiposPokemon } from '../api'
+import { getMeuPerfil, getUsuario, criarPokemon, getPokemon, atualizarPokemon, colocarNoTime, removerDoTime, excluirPokemon, getSpeciesCatalogLocal, getSpeciesCatalogLocalVersion, getMovimentos, getMovimentosDisponiveisPokemon, getPersonalidades, getItens, getHabilidades, ganharXpPokemon, aceitarMovimentoAprendido, recusarMovimentoAprendido, mestreDefinirTiposPokemon } from '../api'
 import { usePlayerTarget } from '../context/PlayerTargetContext'
+import { useQuery, useQueryClient } from '@tanstack/react-query'
+import { queryKeys } from '../query/queryKeys'
 
 const PAGE_SIZE = 20
-function capitalize(str) {
-  if (!str) return ''
-  return str.charAt(0).toUpperCase() + str.slice(1).toLowerCase()
-}
+const SPECIES_CACHE_KEY = 'pokemonamethyst:species-local-cache:v1'
+const SPECIES_CACHE_VERSION_KEY = 'pokemonamethyst:species-local-version:v1'
 
 const TIPOS = ['NORMAL', 'FOGO', 'AGUA', 'ELETRICO', 'GRAMA', 'GELO', 'LUTADOR', 'VENENOSO', 'TERRA', 'VOADOR', 'PSIQUICO', 'INSETO', 'PEDRA', 'FANTASMA', 'DRAGAO', 'SOMBRIO', 'METAL', 'FADA']
 
@@ -680,8 +680,7 @@ function ExpandedForm({
 
 export default function PokemonList() {
   const { playerId, readyForPlayerApi } = usePlayerTarget()
-  const [perfil, setPerfil] = useState(null)
-  const [loading, setLoading] = useState(true)
+  const queryClient = useQueryClient()
   const [erro, setErro] = useState('')
   const [modal, setModal] = useState(null)
   const [formLoading, setFormLoading] = useState(false)
@@ -691,11 +690,14 @@ export default function PokemonList() {
   const [listaHabilidades, setListaHabilidades] = useState([])
   const [listaItens, setListaItens] = useState([])
   const [catalogoLista, setCatalogoLista] = useState([])
+  const [catalogoHasMore, setCatalogoHasMore] = useState(false)
   const [catalogoLoading, setCatalogoLoading] = useState(false)
   const [catalogoOffset, setCatalogoOffset] = useState(0)
   const [catalogoErro, setCatalogoErro] = useState('')
   const [catalogoBusca, setCatalogoBusca] = useState('')
   const [catalogoModo, setCatalogoModo] = useState('edit')
+  const [speciesCatalogoLista, setSpeciesCatalogoLista] = useState([])
+  const [speciesCatalogoVersion, setSpeciesCatalogoVersion] = useState('')
   const [savingPokemon, setSavingPokemon] = useState(false)
   const [xpLoading, setXpLoading] = useState(false)
   const [expandedId, setExpandedId] = useState(null)
@@ -710,33 +712,110 @@ export default function PokemonList() {
   const [nivelSubiuMsg, setNivelSubiuMsg] = useState('')
   const [usuarioMestre, setUsuarioMestre] = useState(null)
 
+  const perfilQuery = useQuery({
+    queryKey: queryKeys.perfil(playerId),
+    queryFn: () => getMeuPerfil(playerId),
+    enabled: readyForPlayerApi,
+    staleTime: 60 * 1000,
+  })
+
+  const usuarioQuery = useQuery({
+    queryKey: queryKeys.auth.usuario,
+    queryFn: getUsuario,
+    staleTime: 10 * 60 * 1000,
+  })
+
+  const movimentosQuery = useQuery({
+    queryKey: queryKeys.catalogo.movimentos,
+    queryFn: getMovimentos,
+    staleTime: 15 * 60 * 1000,
+    gcTime: 24 * 60 * 60 * 1000,
+  })
+
+  const habilidadesQuery = useQuery({
+    queryKey: queryKeys.catalogo.habilidades,
+    queryFn: getHabilidades,
+    staleTime: 15 * 60 * 1000,
+    gcTime: 24 * 60 * 60 * 1000,
+  })
+
+  const personalidadesQuery = useQuery({
+    queryKey: queryKeys.catalogo.personalidades,
+    queryFn: getPersonalidades,
+    staleTime: 15 * 60 * 1000,
+    gcTime: 24 * 60 * 60 * 1000,
+  })
+
+  const itensQuery = useQuery({
+    queryKey: queryKeys.catalogo.itens,
+    queryFn: getItens,
+    staleTime: 15 * 60 * 1000,
+    gcTime: 24 * 60 * 60 * 1000,
+  })
+
+  useQuery({
+    queryKey: queryKeys.species.version,
+    queryFn: getSpeciesCatalogLocalVersion,
+    staleTime: 10 * 60 * 1000,
+    enabled: false,
+  })
+
+  useQuery({
+    queryKey: queryKeys.species.lista,
+    queryFn: async () => {
+      const versaoRemota = await queryClient.fetchQuery({
+        queryKey: queryKeys.species.version,
+        queryFn: getSpeciesCatalogLocalVersion,
+        staleTime: 10 * 60 * 1000,
+      })
+      const cache = readSpeciesCache()
+      if (cache.lista && cache.version === versaoRemota) {
+        setSpeciesCatalogoVersion(versaoRemota)
+        setSpeciesCatalogoLista(cache.lista)
+        return cache.lista
+      }
+      if (speciesCatalogoLista.length > 0 && speciesCatalogoVersion === versaoRemota) {
+        return speciesCatalogoLista
+      }
+      const listaRemota = await getSpeciesCatalogLocal()
+      const listaSegura = Array.isArray(listaRemota) ? listaRemota : []
+      setSpeciesCatalogoVersion(versaoRemota)
+      setSpeciesCatalogoLista(listaSegura)
+      writeSpeciesCache(versaoRemota, listaSegura)
+      return listaSegura
+    },
+    staleTime: 10 * 60 * 1000,
+    gcTime: 24 * 60 * 60 * 1000,
+    enabled: false,
+  })
+
   const popupAprendizagemAberta = ofertasAprendizagem.length > 0 && ofertaIdx < ofertasAprendizagem.length
 
-  const load = useCallback(() => {
+  const load = useCallback(async () => {
     if (!readyForPlayerApi) return
-    setLoading(true)
-    getMeuPerfil(playerId)
-      .then(setPerfil)
-      .catch(() => setErro('Erro ao carregar'))
-      .finally(() => setLoading(false))
-  }, [playerId, readyForPlayerApi])
+    await queryClient.invalidateQueries({ queryKey: queryKeys.perfil(playerId) })
+  }, [playerId, readyForPlayerApi, queryClient])
 
   useEffect(() => {
-    load()
-  }, [load])
+    if (usuarioQuery.data) setUsuarioMestre(usuarioQuery.data)
+    else if (usuarioQuery.isError) setUsuarioMestre(null)
+  }, [usuarioQuery.data, usuarioQuery.isError])
 
   useEffect(() => {
-    getUsuario()
-      .then(setUsuarioMestre)
-      .catch(() => setUsuarioMestre(null))
-  }, [])
+    if (movimentosQuery.data) setListaMovimentos(movimentosQuery.data)
+  }, [movimentosQuery.data])
 
   useEffect(() => {
-    getMovimentos().then(setListaMovimentos).catch(() => setListaMovimentos([]))
-    getHabilidades().then(setListaHabilidades).catch(() => setListaHabilidades([]))
-    getPersonalidades().then(setListaPersonalidades).catch(() => setListaPersonalidades([]))
-    getItens().then(setListaItens).catch(() => setListaItens([]))
-  }, [])
+    if (habilidadesQuery.data) setListaHabilidades(habilidadesQuery.data)
+  }, [habilidadesQuery.data])
+
+  useEffect(() => {
+    if (personalidadesQuery.data) setListaPersonalidades(personalidadesQuery.data)
+  }, [personalidadesQuery.data])
+
+  useEffect(() => {
+    if (itensQuery.data) setListaItens(itensQuery.data)
+  }, [itensQuery.data])
 
   useEffect(() => {
     if (expandedPokemon) setExpandedEdit(editStateFromPokemon(expandedPokemon))
@@ -849,17 +928,85 @@ export default function PokemonList() {
     }
   }
 
-  const loadCatalogo = (offset = 0, busca = '') => {
+  function readSpeciesCache() {
+    try {
+      const version = localStorage.getItem(SPECIES_CACHE_VERSION_KEY)
+      const raw = localStorage.getItem(SPECIES_CACHE_KEY)
+      if (!raw) return { version, lista: null }
+      const parsed = JSON.parse(raw)
+      if (!Array.isArray(parsed)) return { version, lista: null }
+      return { version, lista: parsed }
+    } catch {
+      return { version: null, lista: null }
+    }
+  }
+
+  function writeSpeciesCache(version, lista) {
+    try {
+      localStorage.setItem(SPECIES_CACHE_VERSION_KEY, version || 'empty')
+      localStorage.setItem(SPECIES_CACHE_KEY, JSON.stringify(Array.isArray(lista) ? lista : []))
+    } catch {
+      // armazenamento local é opcional
+    }
+  }
+
+  const aplicarFiltroCatalogo = (listaBase, offset = 0, busca = '') => {
+    const trimmed = (busca || '').trim().toLowerCase()
+    const isNum = /^\d+$/.test(trimmed)
+    const filtered = !trimmed
+      ? listaBase
+      : (listaBase || []).filter((sp) => {
+          if (isNum) return Number(sp?.pokedexId) === Number(trimmed)
+          return (sp?.nome || '').toLowerCase().includes(trimmed)
+        })
+    const pagina = filtered.slice(offset, offset + PAGE_SIZE)
+    setCatalogoLista(pagina)
+    setCatalogoHasMore(offset + PAGE_SIZE < filtered.length)
+  }
+
+  const ensureSpeciesCatalogo = async (validarVersaoRemota = false) => {
+    if (!validarVersaoRemota && speciesCatalogoLista.length > 0) {
+      return speciesCatalogoLista
+    }
+    return queryClient.fetchQuery({
+      queryKey: queryKeys.species.lista,
+      queryFn: async () => {
+        const versaoRemota = await queryClient.fetchQuery({
+          queryKey: queryKeys.species.version,
+          queryFn: getSpeciesCatalogLocalVersion,
+          staleTime: 10 * 60 * 1000,
+        })
+        const cache = readSpeciesCache()
+        if (cache.lista && cache.version === versaoRemota) {
+          setSpeciesCatalogoVersion(versaoRemota)
+          setSpeciesCatalogoLista(cache.lista)
+          return cache.lista
+        }
+        const listaRemota = await getSpeciesCatalogLocal()
+        const listaSegura = Array.isArray(listaRemota) ? listaRemota : []
+        setSpeciesCatalogoVersion(versaoRemota)
+        setSpeciesCatalogoLista(listaSegura)
+        writeSpeciesCache(versaoRemota, listaSegura)
+        return listaSegura
+      },
+      staleTime: validarVersaoRemota ? 0 : 10 * 60 * 1000,
+      gcTime: 24 * 60 * 60 * 1000,
+    })
+  }
+
+  const loadCatalogo = async (offset = 0, busca = '', validarVersaoRemota = false) => {
     setCatalogoErro('')
     setCatalogoLoading(true)
-    const trimmed = (busca || catalogoBusca || '').trim()
-    const isNum = /^\d+$/.test(trimmed)
-    const nome = !isNum && trimmed ? trimmed : ''
-    const pokedexId = isNum && trimmed ? parseInt(trimmed, 10) : null
-    getPokeApiList(PAGE_SIZE, offset, nome, pokedexId)
-      .then(setCatalogoLista)
-      .catch((err) => setCatalogoErro(err.message || 'Erro ao carregar catálogo'))
-      .finally(() => setCatalogoLoading(false))
+    try {
+      const lista = await ensureSpeciesCatalogo(validarVersaoRemota)
+      aplicarFiltroCatalogo(lista, offset, busca || catalogoBusca || '')
+    } catch (err) {
+      setCatalogoErro(err.message || 'Erro ao carregar catálogo')
+      setCatalogoLista([])
+      setCatalogoHasMore(false)
+    } finally {
+      setCatalogoLoading(false)
+    }
   }
 
   const handleAbrirCatalogo = (modo = 'edit') => {
@@ -867,7 +1014,7 @@ export default function PokemonList() {
     setModal('catalogo')
     setCatalogoOffset(0)
     setCatalogoBusca('')
-    loadCatalogo(0, '')
+    loadCatalogo(0, '', true)
   }
 
   const handleNovoPokemon = async () => {
@@ -877,16 +1024,16 @@ export default function PokemonList() {
 
   const handleBuscarCatalogo = () => {
     setCatalogoOffset(0)
-    loadCatalogo(0, catalogoBusca)
+    loadCatalogo(0, catalogoBusca, false)
   }
 
-  const handleSelecionarDaApi = async (id) => {
+  const handleSelecionarDoCatalogo = async (species) => {
     setCatalogoErro('')
     try {
-      const detail = await getPokeApiPokemon(id)
+      if (!species) return
       if (catalogoModo === 'create') {
         setFormLoading(true)
-        const created = await criarPokemon({ pokedexId: detail.id }, playerId)
+        const created = await criarPokemon({ pokedexId: species.pokedexId }, playerId)
         await load()
         setExpandedId(created.id)
         setExpandedLoading(true)
@@ -896,11 +1043,11 @@ export default function PokemonList() {
       } else {
         setExpandedEdit((e) => (e ? {
           ...e,
-          pokedexId: detail.id,
-          especie: capitalize(detail.name),
-          tipoPrimario: detail.tipoPrimario || 'NORMAL',
-          tipoSecundario: detail.tipoSecundario || '',
-          imagemUrl: detail.imageUrl || '',
+          pokedexId: species.pokedexId,
+          especie: species.nome || '',
+          tipoPrimario: species.tipoPrimario || 'NORMAL',
+          tipoSecundario: species.tipoSecundario || '',
+          imagemUrl: species.imagemUrl || '',
         } : e))
       }
       setModal(null)
@@ -1062,12 +1209,13 @@ export default function PokemonList() {
     }
   }
 
+  const perfil = perfilQuery.data ?? null
   const timePrincipal = perfil?.timePrincipal ?? []
   const naBox = perfil?.box ?? []
 
   if (!readyForPlayerApi) return <div className="container">Carregando...</div>
 
-  if (loading) return <div className="container">Carregando...</div>
+  if (perfilQuery.isLoading) return <div className="container">Carregando...</div>
 
   if (!perfil) {
     return (
@@ -1287,11 +1435,11 @@ export default function PokemonList() {
       {modal === 'catalogo' && (
         <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.7)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 10, padding: '1rem' }}>
           <div className="card" style={{ maxWidth: 560, width: '100%', maxHeight: '90vh', overflow: 'auto' }}>
-            <h3 style={{ marginTop: 0 }}>Catálogo PokéAPI</h3>
+            <h3 style={{ marginTop: 0 }}>Catálogo local de espécies</h3>
             <p style={{ color: 'var(--text-muted)', fontSize: '0.9rem', marginBottom: '0.75rem' }}>
               {catalogoModo === 'create'
-                ? 'Busque por nome ou número da Pokédex. Clique em um para criar o Pokémon diretamente da PokéAPI.'
-                : 'Busque por nome ou número da Pokédex. Clique em um para preencher espécie, tipos e imagem no card expandido.'}
+                ? 'Busque por nome ou número da Pokédex. Clique em uma espécie para criar o Pokémon.'
+                : 'Busque por nome ou número da Pokédex. Clique em uma espécie para preencher espécie, tipos e imagem no card expandido.'}
             </p>
             <div style={{ display: 'flex', gap: '0.5rem', marginBottom: '1rem', flexWrap: 'wrap' }}>
               <input
@@ -1306,7 +1454,7 @@ export default function PokemonList() {
                 Buscar
               </button>
               {!catalogoBusca.trim() && (
-                <button type="button" className="btn btn-secondary" onClick={() => loadCatalogo(0, '')} disabled={catalogoLoading}>
+                <button type="button" className="btn btn-secondary" onClick={() => loadCatalogo(0, '', false)} disabled={catalogoLoading}>
                   Listar
                 </button>
               )}
@@ -1321,7 +1469,7 @@ export default function PokemonList() {
                     <li key={p.id}>
                       <button
                         type="button"
-                        onClick={() => handleSelecionarDaApi(p.id)}
+                        onClick={() => handleSelecionarDoCatalogo(p)}
                         style={{
                           display: 'flex',
                           alignItems: 'center',
@@ -1337,19 +1485,19 @@ export default function PokemonList() {
                           color: 'var(--text)',
                         }}
                       >
-                        <span style={{ minWidth: 28, color: 'var(--text-muted)', fontSize: '0.85rem' }}>#{p.id}</span>
-                        <img src={p.imageUrl} alt={p.name} style={{ width: 48, height: 48, objectFit: 'contain' }} />
-                        <span>{capitalize(p.name)}</span>
+                        <span style={{ minWidth: 60, color: 'var(--text-muted)', fontSize: '0.85rem' }}>#{p.pokedexId}</span>
+                        <img src={p.imagemUrl} alt={p.nome} style={{ width: 48, height: 48, objectFit: 'contain' }} />
+                        <span>{p.nome || 'Sem nome'}</span>
                       </button>
                     </li>
                   ))}
                 </ul>
                 {catalogoLista.length === 0 && !catalogoLoading && <p style={{ color: 'var(--text-muted)' }}>Nenhum resultado. Use a busca ou liste todos.</p>}
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '0.5rem' }}>
-                  <button type="button" className="btn btn-secondary" disabled={catalogoOffset === 0} onClick={() => { const o = Math.max(0, catalogoOffset - PAGE_SIZE); setCatalogoOffset(o); loadCatalogo(o, catalogoBusca); }}>
+                  <button type="button" className="btn btn-secondary" disabled={catalogoOffset === 0} onClick={() => { const o = Math.max(0, catalogoOffset - PAGE_SIZE); setCatalogoOffset(o); loadCatalogo(o, catalogoBusca, false); }}>
                     Anterior
                   </button>
-                  <button type="button" className="btn btn-secondary" disabled={catalogoLista.length < PAGE_SIZE} onClick={() => { const o = catalogoOffset + PAGE_SIZE; setCatalogoOffset(o); loadCatalogo(o, catalogoBusca); }}>
+                  <button type="button" className="btn btn-secondary" disabled={!catalogoHasMore} onClick={() => { const o = catalogoOffset + PAGE_SIZE; setCatalogoOffset(o); loadCatalogo(o, catalogoBusca, false); }}>
                     Próxima
                   </button>
                   <button type="button" className="btn btn-primary" onClick={() => { setModal(null); setCatalogoErro(''); }}>

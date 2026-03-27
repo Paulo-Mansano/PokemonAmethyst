@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
+import { useQuery, useQueryClient } from '@tanstack/react-query'
 import {
   aplicarDanoBatalha,
   atualizarEstadoPokemon,
@@ -7,6 +8,7 @@ import {
   getPokemons,
 } from '../api'
 import { usePlayerTarget } from '../context/PlayerTargetContext'
+import { queryKeys } from '../query/queryKeys'
 
 const TIPO_OPCOES = [0, 0.25, 0.5, 1, 2, 4]
 
@@ -22,9 +24,8 @@ function parsePowerFromMove(movimento) {
 export default function Batalha() {
   const { playerId, readyForPlayerApi } = usePlayerTarget()
   const navigate = useNavigate()
-  const [loading, setLoading] = useState(true)
+  const queryClient = useQueryClient()
   const [erro, setErro] = useState('')
-  const [pokemons, setPokemons] = useState([])
   const [atacanteId, setAtacanteId] = useState(localStorage.getItem('battleAtacanteId') || '')
   const [defensorId, setDefensorId] = useState(localStorage.getItem('battleDefensorId') || '')
   const [movimentoId, setMovimentoId] = useState('')
@@ -48,23 +49,13 @@ export default function Batalha() {
     }
   })
 
-  const carregar = async () => {
-    if (!readyForPlayerApi) return
-    setLoading(true)
-    setErro('')
-    try {
-      const lista = await getPokemons(playerId)
-      setPokemons(lista || [])
-    } catch (e) {
-      setErro(e.message || 'Erro ao carregar Pokémon')
-    } finally {
-      setLoading(false)
-    }
-  }
-
-  useEffect(() => {
-    carregar()
-  }, [playerId, readyForPlayerApi])
+  const pokemonsQuery = useQuery({
+    queryKey: queryKeys.pokemons(playerId),
+    queryFn: () => getPokemons(playerId),
+    enabled: readyForPlayerApi,
+    staleTime: 60 * 1000,
+  })
+  const pokemons = pokemonsQuery.data || []
 
   useEffect(() => {
     localStorage.setItem('battleHistory', JSON.stringify(historico))
@@ -141,7 +132,10 @@ export default function Batalha() {
         dano: resultado.danoAplicado,
       }
       setHistorico((prev) => [registro, ...prev].slice(0, 30))
-      setPokemons((prev) => prev.map((p) => (p.id === defensorAtualizado.id ? defensorAtualizado : p)))
+      queryClient.setQueryData(queryKeys.pokemons(playerId), (prev = []) =>
+        prev.map((p) => (p.id === defensorAtualizado.id ? defensorAtualizado : p))
+      )
+      queryClient.invalidateQueries({ queryKey: queryKeys.perfil(playerId) })
     } catch (e) {
       setErro(e.message || 'Erro ao aplicar dano')
     }
@@ -176,6 +170,7 @@ export default function Batalha() {
     try {
       if (atacanteId) await atualizarEstadoPokemon(atacanteId, 'ATIVO', playerId)
       if (defensorId) await atualizarEstadoPokemon(defensorId, 'ATIVO', playerId)
+      queryClient.invalidateQueries({ queryKey: queryKeys.pokemons(playerId) })
       setResultado(null)
     } catch (e) {
       setErro(e.message || 'Erro ao encerrar batalha')
@@ -202,7 +197,7 @@ export default function Batalha() {
     <div className="container container--wide">
       <h1>Batalha</h1>
       {erro && <p style={{ color: 'var(--danger)' }}>{erro}</p>}
-      {loading ? <p>Carregando...</p> : null}
+      {pokemonsQuery.isLoading ? <p>Carregando...</p> : null}
 
       <div className="card">
         <div className="battle-selectors">

@@ -539,6 +539,28 @@ export async function resincronizarSpeciesPokeApiMestre(speciesId) {
   return res.json()
 }
 
+export async function importarTodasSpeciesPokeApiMestre() {
+  const res = await request('/mestre/pokeapi/importar-species-todas', {
+    method: 'POST',
+  })
+  if (!res.ok) {
+    const data = await res.json().catch(() => ({}))
+    throw new Error(data.mensagem || 'Erro ao importar espécies da PokéAPI')
+  }
+  return res.json()
+}
+
+export async function vincularSpeciesExistentesPokeApiMestre() {
+  const res = await request('/mestre/pokeapi/vincular-species-existentes', {
+    method: 'POST',
+  })
+  if (!res.ok) {
+    const data = await res.json().catch(() => ({}))
+    throw new Error(data.mensagem || 'Erro ao vincular espécies existentes')
+  }
+  return res.json()
+}
+
 /** Reatribui ordem 0..n do learnset (nível → ordem PokéAPI). */
 export async function normalizarOrdemLearnsetMestre(speciesId) {
   const res = await request(`/mestre/species/${encodeURIComponent(speciesId)}/learnset/normalizar-ordem`, {
@@ -567,4 +589,17 @@ export async function getPokeApiPokemon(idOuNome) {
     throw new Error('Erro ao buscar Pokémon');
   }
   return res.json();
+}
+
+export async function getSpeciesCatalogLocal() {
+  const res = await request('/pokeapi/species-local');
+  if (!res.ok) throw new Error('Erro ao carregar catálogo local de espécies');
+  return res.json();
+}
+
+export async function getSpeciesCatalogLocalVersion() {
+  const res = await request('/pokeapi/species-local/version');
+  if (!res.ok) throw new Error('Erro ao consultar versão do catálogo local');
+  const data = await res.json().catch(() => ({}));
+  return data?.version || 'empty';
 }

@@ -36,3 +36,7 @@ server:
         # Produção (Netlify + Render): cross-site precisa None + Secure. No Render defina SESSION_COOKIE_SAME_SITE=none e SESSION_COOKIE_SECURE=true
         same-site: ${SESSION_COOKIE_SAME_SITE:lax}
         secure: ${SESSION_COOKIE_SECURE:false}
+
+pokemon:
+  runtime:
+    strict-local: ${POKEMON_RUNTIME_STRICT_LOCAL:true}

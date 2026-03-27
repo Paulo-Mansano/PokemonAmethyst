@@ -1,34 +1,25 @@
 import { useEffect, useMemo, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
+import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { getPokemons, tentarCapturaPokemon, atualizarEstadoPokemon } from '../api'
 import { usePlayerTarget } from '../context/PlayerTargetContext'
+import { queryKeys } from '../query/queryKeys'
 
 export default function Captura() {
   const { playerId, readyForPlayerApi } = usePlayerTarget()
   const navigate = useNavigate()
-  const [loading, setLoading] = useState(true)
+  const queryClient = useQueryClient()
   const [erro, setErro] = useState('')
   const [mensagem, setMensagem] = useState('')
-  const [pokemons, setPokemons] = useState([])
   const [pokemonId, setPokemonId] = useState(localStorage.getItem('capturePokemonId') || '')
 
-  const carregar = async () => {
-    if (!readyForPlayerApi) return
-    setLoading(true)
-    setErro('')
-    try {
-      const lista = await getPokemons(playerId)
-      setPokemons(lista || [])
-    } catch (e) {
-      setErro(e.message || 'Erro ao carregar Pokémon')
-    } finally {
-      setLoading(false)
-    }
-  }
-
-  useEffect(() => {
-    carregar()
-  }, [playerId, readyForPlayerApi])
+  const pokemonsQuery = useQuery({
+    queryKey: queryKeys.pokemons(playerId),
+    queryFn: () => getPokemons(playerId),
+    enabled: readyForPlayerApi,
+    staleTime: 60 * 1000,
+  })
+  const pokemons = pokemonsQuery.data || []
 
   useEffect(() => {
     if (pokemonId) {
@@ -52,7 +43,10 @@ export default function Captura() {
     try {
       const resposta = await tentarCapturaPokemon(pokemonId, sucesso, playerId)
       const atualizado = resposta.pokemon
-      setPokemons((prev) => prev.map((p) => (p.id === atualizado.id ? atualizado : p)))
+      queryClient.setQueryData(queryKeys.pokemons(playerId), (prev = []) =>
+        prev.map((p) => (p.id === atualizado.id ? atualizado : p))
+      )
+      queryClient.invalidateQueries({ queryKey: queryKeys.perfil(playerId) })
       if (sucesso) {
         setMensagem('Captura bem-sucedida. Pokémon agora pertence ao treinador.')
       } else {
@@ -67,6 +61,7 @@ export default function Captura() {
     if (!pokemonId) return
     try {
       await atualizarEstadoPokemon(pokemonId, 'EM_BATALHA', playerId)
+      queryClient.invalidateQueries({ queryKey: queryKeys.pokemons(playerId) })
       localStorage.setItem('battleDefensorId', pokemonId)
       navigate('/batalha')
     } catch (e) {
@@ -103,7 +98,7 @@ export default function Captura() {
         </div>
       </div>
 
-      {loading ? <p>Carregando...</p> : null}
+      {pokemonsQuery.isLoading ? <p>Carregando...</p> : null}
 
       {pokemon && (
         <div className="card batalha-card">

@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
+import { useQuery, useQueryClient } from '@tanstack/react-query'
 import {
   excluirPokemon,
   gerarPokemonSelvagem,
@@ -7,35 +8,24 @@ import {
   atualizarEstadoPokemon,
 } from '../api'
 import { usePlayerTarget } from '../context/PlayerTargetContext'
+import { queryKeys } from '../query/queryKeys'
 
 export default function Geracao() {
   const { playerId, readyForPlayerApi } = usePlayerTarget()
   const navigate = useNavigate()
-  const [loading, setLoading] = useState(true)
+  const queryClient = useQueryClient()
   const [erro, setErro] = useState('')
   const [gerando, setGerando] = useState(false)
   const [pokedexId, setPokedexId] = useState('')
   const [nivel, setNivel] = useState(5)
   const [gerado, setGerado] = useState(null)
-  const [selvagens, setSelvagens] = useState([])
-
-  const carregar = async () => {
-    if (!readyForPlayerApi) return
-    setLoading(true)
-    setErro('')
-    try {
-      const lista = await getPokemonsSelvagens(playerId)
-      setSelvagens(lista || [])
-    } catch (e) {
-      setErro(e.message || 'Erro ao carregar Pokémon selvagens')
-    } finally {
-      setLoading(false)
-    }
-  }
-
-  useEffect(() => {
-    carregar()
-  }, [playerId, readyForPlayerApi])
+  const selvagensQuery = useQuery({
+    queryKey: queryKeys.pokemonsSelvagens(playerId),
+    queryFn: () => getPokemonsSelvagens(playerId),
+    enabled: readyForPlayerApi,
+    staleTime: 60 * 1000,
+  })
+  const selvagens = selvagensQuery.data || []
 
   const onGerar = async () => {
     setGerando(true)
@@ -46,7 +36,10 @@ export default function Geracao() {
         nivel: Number(nivel) || 5,
       }, playerId)
       setGerado(pokemon)
-      setSelvagens((prev) => [pokemon, ...prev.filter((p) => p.id !== pokemon.id)])
+      queryClient.setQueryData(queryKeys.pokemonsSelvagens(playerId), (prev = []) =>
+        [pokemon, ...prev.filter((p) => p.id !== pokemon.id)]
+      )
+      queryClient.invalidateQueries({ queryKey: queryKeys.perfil(playerId) })
     } catch (e) {
       setErro(e.message || 'Erro ao gerar Pokémon')
     } finally {
@@ -57,6 +50,7 @@ export default function Geracao() {
   const enviarParaBatalha = async (pokemon) => {
     try {
       await atualizarEstadoPokemon(pokemon.id, 'EM_BATALHA', playerId)
+      queryClient.invalidateQueries({ queryKey: queryKeys.pokemonsSelvagens(playerId) })
       localStorage.setItem('battleDefensorId', pokemon.id)
       localStorage.setItem('capturePokemonId', pokemon.id)
       navigate('/batalha')
@@ -68,6 +62,7 @@ export default function Geracao() {
   const enviarParaCaptura = async (pokemon) => {
     try {
       await atualizarEstadoPokemon(pokemon.id, 'CAPTURAVEL', playerId)
+      queryClient.invalidateQueries({ queryKey: queryKeys.pokemonsSelvagens(playerId) })
       localStorage.setItem('capturePokemonId', pokemon.id)
       navigate('/captura')
     } catch (e) {
@@ -78,7 +73,7 @@ export default function Geracao() {
   const salvarParaDepois = async (pokemon) => {
     try {
       await atualizarEstadoPokemon(pokemon.id, 'ATIVO', playerId)
-      await carregar()
+      queryClient.invalidateQueries({ queryKey: queryKeys.pokemonsSelvagens(playerId) })
     } catch (e) {
       setErro(e.message || 'Erro ao salvar Pokémon')
     }
@@ -90,7 +85,10 @@ export default function Geracao() {
       if (gerado?.id === pokemon.id) {
         setGerado(null)
       }
-      setSelvagens((prev) => prev.filter((p) => p.id !== pokemon.id))
+      queryClient.setQueryData(queryKeys.pokemonsSelvagens(playerId), (prev = []) =>
+        prev.filter((p) => p.id !== pokemon.id)
+      )
+      queryClient.invalidateQueries({ queryKey: queryKeys.perfil(playerId) })
     } catch (e) {
       setErro(e.message || 'Erro ao deletar Pokémon')
     }
@@ -150,8 +148,8 @@ export default function Geracao() {
 
       <section>
         <h2>Selvagens salvos</h2>
-        {loading ? <p>Carregando...</p> : null}
-        {!loading && selvagens.length === 0 ? <p>Nenhum Pokémon selvagem salvo.</p> : null}
+        {selvagensQuery.isLoading ? <p>Carregando...</p> : null}
+        {!selvagensQuery.isLoading && selvagens.length === 0 ? <p>Nenhum Pokémon selvagem salvo.</p> : null}
         <div className="battle-grid">
           {selvagens.map(renderPokemon)}
         </div>

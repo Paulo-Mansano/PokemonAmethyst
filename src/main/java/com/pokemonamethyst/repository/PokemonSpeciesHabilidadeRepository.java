@@ -11,6 +11,7 @@ import java.util.List;
 
 public interface PokemonSpeciesHabilidadeRepository extends JpaRepository<PokemonSpeciesHabilidade, PokemonSpeciesHabilidadeId> {
     List<PokemonSpeciesHabilidade> findBySpeciesId(String speciesId);
+    boolean existsBySpeciesId(String speciesId);
 
     /**
      * Uma query por coleção: Hibernate não permite JOIN FETCH de dois {@code OneToMany} (bags) na mesma consulta.

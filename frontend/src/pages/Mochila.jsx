@@ -1,72 +1,83 @@
-import { useState, useEffect, useCallback } from 'react'
+import { useState, useEffect } from 'react'
 import { Link } from 'react-router-dom'
 import { getMeuPerfil, getMochila, getItens, adicionarItemMochila, removerItemMochila } from '../api'
 import { usePlayerTarget } from '../context/PlayerTargetContext'
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
+import { queryKeys } from '../query/queryKeys'
 
 export default function Mochila() {
   const { playerId, readyForPlayerApi } = usePlayerTarget()
-  const [perfil, setPerfil] = useState(null)
-  const [mochila, setMochila] = useState(null)
-  const [itens, setItens] = useState([])
-  const [loading, setLoading] = useState(true)
+  const queryClient = useQueryClient()
   const [erro, setErro] = useState('')
   const [addItemId, setAddItemId] = useState('')
   const [addQtd, setAddQtd] = useState(1)
-  const [adding, setAdding] = useState(false)
 
-  const load = useCallback(() => {
-    if (!readyForPlayerApi) return Promise.resolve()
-    setLoading(true)
-    return getMeuPerfil(playerId)
-      .then((p) => {
-        setPerfil(p)
-        if (!p) return null
-        return Promise.all([getMochila(playerId), getItens()])
-      })
-      .then((result) => {
-        if (result) {
-          const [m, list] = result
-          setMochila(m)
-          setItens(list)
-          setAddItemId((prev) => prev || list[0]?.id || '')
-        }
-      })
-      .catch(() => setErro('Erro ao carregar'))
-      .finally(() => setLoading(false))
-  }, [readyForPlayerApi, playerId])
+  const perfilQuery = useQuery({
+    queryKey: queryKeys.perfil(playerId),
+    queryFn: () => getMeuPerfil(playerId),
+    enabled: readyForPlayerApi,
+    staleTime: 60 * 1000,
+  })
+
+  const mochilaQuery = useQuery({
+    queryKey: queryKeys.mochila(playerId),
+    queryFn: () => getMochila(playerId),
+    enabled: readyForPlayerApi && !!perfilQuery.data,
+    staleTime: 60 * 1000,
+  })
+
+  const itensQuery = useQuery({
+    queryKey: queryKeys.catalogo.itens,
+    queryFn: getItens,
+    enabled: readyForPlayerApi && !!perfilQuery.data,
+    staleTime: 15 * 60 * 1000,
+    gcTime: 24 * 60 * 60 * 1000,
+  })
 
   useEffect(() => {
-    if (!readyForPlayerApi) return
-    load()
-  }, [readyForPlayerApi, playerId, load])
+    const list = Array.isArray(itensQuery.data) ? itensQuery.data : []
+    if (list.length > 0) {
+      setAddItemId((prev) => prev || list[0]?.id || '')
+    }
+  }, [itensQuery.data])
+
+  const adicionarMutation = useMutation({
+    mutationFn: ({ itemId, quantidade }) => adicionarItemMochila(itemId, quantidade, playerId),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: queryKeys.mochila(playerId) })
+      queryClient.invalidateQueries({ queryKey: queryKeys.perfil(playerId) })
+    },
+    onError: (err) => setErro(err?.message || 'Erro ao adicionar item'),
+  })
+
+  const removerMutation = useMutation({
+    mutationFn: ({ itemId, quantidade }) => removerItemMochila(itemId, quantidade, playerId),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: queryKeys.mochila(playerId) })
+      queryClient.invalidateQueries({ queryKey: queryKeys.perfil(playerId) })
+    },
+    onError: (err) => setErro(err?.message || 'Erro ao remover item'),
+  })
 
   const handleAdicionar = async (e) => {
     e.preventDefault()
     if (!addItemId || addQtd < 1) return
     setErro('')
-    setAdding(true)
-    try {
-      await adicionarItemMochila(addItemId, addQtd, playerId)
-      await load()
-    } catch (err) {
-      setErro(err.message)
-    } finally {
-      setAdding(false)
-    }
+    await adicionarMutation.mutateAsync({ itemId: addItemId, quantidade: addQtd })
   }
 
   const handleRemover = async (itemId, qtd) => {
-    try {
-      await removerItemMochila(itemId, qtd, playerId)
-      await load()
-    } catch (err) {
-      setErro(err.message)
-    }
+    setErro('')
+    await removerMutation.mutateAsync({ itemId, quantidade: qtd })
   }
 
   if (!readyForPlayerApi) return <div className="container">Carregando mochila...</div>
 
-  if (loading) return <div className="container">Carregando mochila...</div>
+  if (perfilQuery.isLoading || mochilaQuery.isLoading || itensQuery.isLoading) return <div className="container">Carregando mochila...</div>
+
+  const perfil = perfilQuery.data ?? null
+  const mochila = mochilaQuery.data ?? null
+  const itens = Array.isArray(itensQuery.data) ? itensQuery.data : []
 
   if (!perfil) {
     return (
@@ -110,8 +121,8 @@ export default function Mochila() {
             <label>Qtd</label>
             <input type="number" min={1} value={addQtd} onChange={(e) => setAddQtd(parseInt(e.target.value, 10) || 1)} />
           </div>
-          <button type="submit" className="btn btn-primary" disabled={adding || itens.length === 0}>
-            {adding ? '...' : 'Adicionar'}
+          <button type="submit" className="btn btn-primary" disabled={adicionarMutation.isPending || itens.length === 0}>
+            {adicionarMutation.isPending ? '...' : 'Adicionar'}
           </button>
         </form>
       </div>

@@ -42,7 +42,7 @@ class PokemonAbilityServiceTest {
         hiddenEntry.setSlot(3);
         hiddenEntry.setHidden(true);
 
-        when(repository.findBySpeciesId("species-1")).thenReturn(List.of(normalEntry, hiddenEntry));
+        when(repository.findBySpeciesIdComHabilidade("species-1")).thenReturn(List.of(normalEntry, hiddenEntry));
 
         Habilidade escolhida = service.sortearHabilidadeAtiva(species);
 
@@ -67,7 +67,7 @@ class PokemonAbilityServiceTest {
         normalEntry.setSlot(1);
         normalEntry.setHidden(false);
 
-        when(repository.findBySpeciesId("species-1")).thenReturn(List.of(normalEntry));
+        when(repository.findBySpeciesIdComHabilidade("species-1")).thenReturn(List.of(normalEntry));
 
         Habilidade escolhida = service.sortearHabilidadeAtiva(species);
 

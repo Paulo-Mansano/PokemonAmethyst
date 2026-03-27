@@ -49,7 +49,8 @@ class PokemonServiceTest {
                 pokeApiService,
                 pokemonAbilityService,
                 pokemonLearnsetService,
-                100
+                100,
+                false
         );
 
         assertThatThrownBy(() -> service.criar(
@@ -87,7 +88,8 @@ class PokemonServiceTest {
                 pokeApiService,
                 pokemonAbilityService,
                 pokemonLearnsetService,
-                100
+                100,
+                false
         );
 
         PerfilJogador perfil = new PerfilJogador();
