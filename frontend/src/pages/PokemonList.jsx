@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback } from 'react'
 import { Link } from 'react-router-dom'
-import { getMeuPerfil, getUsuario, criarPokemon, getPokemon, atualizarPokemon, colocarNoTime, removerDoTime, excluirPokemon, getSpeciesCatalogLocal, getSpeciesCatalogLocalVersion, getMovimentos, getMovimentosDisponiveisPokemon, getPersonalidades, getItens, getHabilidades, ganharXpPokemon, aceitarMovimentoAprendido, recusarMovimentoAprendido, mestreDefinirTiposPokemon } from '../api'
+import { getMeuPerfil, getUsuario, criarPokemon, getPokemon, atualizarPokemon, colocarNoTime, removerDoTime, excluirPokemon, getSpeciesCatalogLocal, getSpeciesCatalogLocalVersion, getMovimentos, getMovimentosDisponiveisPokemon, getPersonalidades, getItens, getHabilidades, ganharXpPokemon, aceitarMovimentoAprendido, recusarMovimentoAprendido, mestreDefinirTiposPokemon, alocarAtributosPokemon, listarEvolucoesPossiveisPokemon, evoluirPokemon } from '../api'
 import { usePlayerTarget } from '../context/PlayerTargetContext'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { queryKeys } from '../query/queryKeys'
@@ -99,6 +99,19 @@ function editStateFromPokemon(p) {
     defesa: p.defesa ?? 0,
     defesaEspecial: p.defesaEspecial ?? 0,
     speed: p.speed ?? 0,
+    ivClass: p.ivClass || '',
+    pontosDistribuicaoDisponiveis: p.pontosDistribuicaoDisponiveis ?? 0,
+    hpBaseRng: p.hpBaseRng ?? 0,
+    staminaBaseRng: p.staminaBaseRng ?? 0,
+    atrAtaque: p.atrAtaque ?? 0,
+    atrDefesa: p.atrDefesa ?? 0,
+    atrAtaqueEspecial: p.atrAtaqueEspecial ?? 0,
+    atrDefesaEspecial: p.atrDefesaEspecial ?? 0,
+    atrSpeed: p.atrSpeed ?? 0,
+    atrHp: p.atrHp ?? 0,
+    atrStamina: p.atrStamina ?? 0,
+    atrTecnica: p.atrTecnica ?? p.tecnica ?? 0,
+    atrRespeito: p.atrRespeito ?? p.respeito ?? 0,
     tecnica: p.tecnica ?? 0,
     respeito: p.respeito ?? 0,
     statusAtuais: Array.isArray(p.statusAtuais) ? [...p.statusAtuais] : [],
@@ -140,6 +153,11 @@ function ExpandedForm({
   acoesBloqueadas,
   usuarioMestre,
   onRestaurarTiposEspecie,
+  onAlocarAtributo,
+  alocandoAtributo,
+  custoParaProximo,
+  evolucoesPossiveis,
+  onEvoluir,
 }) {
   const [movimentoBusca, setMovimentoBusca] = useState('')
   const [xpGanho, setXpGanho] = useState('')
@@ -174,6 +192,20 @@ function ExpandedForm({
 
   const hpPercent = 100
   const staminaPercent = 100
+  const isMestre = !!usuarioMestre?.mestre
+  const saldoAtual = Number(expandedEdit.pontosDistribuicaoDisponiveis) || 0
+
+  const atributoRows = [
+    { key: 'atr_ataque', label: 'Ataque', valor: Number(expandedEdit.atrAtaque) || 0 },
+    { key: 'atr_defesa', label: 'Defesa', valor: Number(expandedEdit.atrDefesa) || 0 },
+    { key: 'atr_ataque_especial', label: 'Ataque especial', valor: Number(expandedEdit.atrAtaqueEspecial) || 0 },
+    { key: 'atr_defesa_especial', label: 'Defesa especial', valor: Number(expandedEdit.atrDefesaEspecial) || 0 },
+    { key: 'atr_speed', label: 'Velocidade', valor: Number(expandedEdit.atrSpeed) || 0 },
+    { key: 'atr_hp', label: 'HP investido', valor: Number(expandedEdit.atrHp) || 0 },
+    { key: 'atr_stamina', label: 'Stamina investida', valor: Number(expandedEdit.atrStamina) || 0 },
+    { key: 'atr_tecnica', label: 'Técnica investida', valor: Number(expandedEdit.atrTecnica) || 0 },
+    { key: 'atr_respeito', label: 'Respeito investido', valor: Number(expandedEdit.atrRespeito) || 0 },
+  ]
 
   return (
     <form onSubmit={onSalvar} className="pokemon-expanded-form pokemon-expanded-form--modern">
@@ -241,6 +273,22 @@ function ExpandedForm({
           <button type="button" className="btn btn-secondary" onClick={onAbrirCatalogo}>
             Buscar na PokéAPI
           </button>
+          {Array.isArray(evolucoesPossiveis) && evolucoesPossiveis.length > 0 && (
+            <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap', justifyContent: 'flex-end' }}>
+              {evolucoesPossiveis.map((evo) => (
+                <button
+                  key={`${evo.pokedexId}-${evo.triggerType}-${evo.minLevel || 0}`}
+                  type="button"
+                  className="btn btn-primary"
+                  disabled={savingPokemon || (!evo.disponivelAgora)}
+                  onClick={() => onEvoluir && onEvoluir(evo.pokedexId)}
+                  title={evo.disponivelAgora ? '' : (evo.minLevel ? `Necessário nível ${evo.minLevel}` : 'Evolução indisponível no momento')}
+                >
+                  Evoluir → {evo.especie || `#${evo.pokedexId}`}
+                </button>
+              ))}
+            </div>
+          )}
         </div>
       </div>
 
@@ -547,6 +595,43 @@ function ExpandedForm({
                 />
               </Field>
             </div>
+
+            <div style={{ marginTop: '1rem', paddingTop: '1rem', borderTop: '1px solid var(--border)' }}>
+              <h5 style={{ margin: '0 0 0.75rem' }}>Distribuição de atributos livres</h5>
+              <p style={{ margin: '0 0 0.75rem', color: saldoAtual < 0 ? 'var(--danger)' : 'var(--text-muted)' }}>
+                Classe IV: <strong>{expandedEdit.ivClass || '—'}</strong> | Pontos disponíveis: <strong>{saldoAtual}</strong>
+              </p>
+              {saldoAtual < 0 && isMestre && (
+                <p style={{ margin: '0 0 0.75rem', color: 'var(--danger)' }}>
+                  Atenção: você está excedendo o limite recomendado de pontos deste Pokémon.
+                </p>
+              )}
+              <div style={{ display: 'grid', gap: '0.5rem' }}>
+                {atributoRows.map((row) => {
+                  const custo = custoParaProximo ? custoParaProximo(expandedEdit.nivel, row.valor) : 1
+                  const bloqueadoPlayer = !isMestre && saldoAtual < custo
+                  return (
+                    <div key={row.key} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '0.75rem' }}>
+                      <span>{row.label}: <strong>{row.valor}</strong></span>
+                      <button
+                        type="button"
+                        className="btn btn-secondary btn-sm"
+                        disabled={alocandoAtributo || bloqueadoPlayer}
+                        onClick={() => onAlocarAtributo && onAlocarAtributo(row.key)}
+                        title={`Custo atual: ${custo}`}
+                      >
+                        +1 (custo {custo})
+                      </button>
+                    </div>
+                  )
+                })}
+              </div>
+              {!isMestre && (
+                <p style={{ marginTop: '0.75rem', color: 'var(--text-muted)' }}>
+                  Jogadores não podem ultrapassar os pontos disponíveis.
+                </p>
+              )}
+            </div>
           </div>
 
           <div className="pokemon-edit-section pokemon-edit-section--glass">
@@ -705,6 +790,8 @@ export default function PokemonList() {
   const [expandedPokemon, setExpandedPokemon] = useState(null)
   const [expandedEdit, setExpandedEdit] = useState(null)
   const [expandedLoading, setExpandedLoading] = useState(false)
+  const [alocandoAtributo, setAlocandoAtributo] = useState(false)
+  const [evolucoesPossiveis, setEvolucoesPossiveis] = useState([])
 
   // Pop-up sequencial quando o Pokémon aprende novos ataques ao subir de nível.
   const [ofertasAprendizagem, setOfertasAprendizagem] = useState([])
@@ -887,16 +974,77 @@ export default function PokemonList() {
     }
   }
 
+  const custoParaProximo = (nivel, valorAtual) => {
+    const n = Math.max(1, Number(nivel) || 1)
+    const v = Math.max(0, Number(valorAtual) || 0)
+    if (n <= 2) return 1
+    if (n >= 7 && v > 10) return 3
+    if (n >= 3 && v > 5) return 2
+    return 1
+  }
+
+  const handleAlocarAtributo = async (atributo) => {
+    if (!expandedPokemon?.id || !expandedEdit) return
+    const mapValor = {
+      atr_ataque: expandedEdit.atrAtaque,
+      atr_defesa: expandedEdit.atrDefesa,
+      atr_ataque_especial: expandedEdit.atrAtaqueEspecial,
+      atr_defesa_especial: expandedEdit.atrDefesaEspecial,
+      atr_speed: expandedEdit.atrSpeed,
+      atr_hp: expandedEdit.atrHp,
+      atr_stamina: expandedEdit.atrStamina,
+      atr_tecnica: expandedEdit.atrTecnica,
+      atr_respeito: expandedEdit.atrRespeito,
+    }
+    const custo = custoParaProximo(expandedEdit.nivel, mapValor[atributo] ?? 0)
+    const saldo = Number(expandedEdit.pontosDistribuicaoDisponiveis) || 0
+    const isMestre = !!usuarioMestre?.mestre
+    if (!isMestre && saldo < custo) {
+      setErro(`Pontos insuficientes para aumentar ${atributo}. Custo atual: ${custo}.`)
+      return
+    }
+    setErro('')
+    setAlocandoAtributo(true)
+    try {
+      const atualizado = await alocarAtributosPokemon(expandedPokemon.id, atributo, 1, playerId)
+      setExpandedPokemon(atualizado)
+      await load()
+    } catch (err) {
+      setErro(err.message || 'Erro ao distribuir pontos')
+    } finally {
+      setAlocandoAtributo(false)
+    }
+  }
+
+  const handleEvoluir = async (pokedexId) => {
+    if (!expandedPokemon?.id) return
+    setErro('')
+    setSavingPokemon(true)
+    try {
+      const atualizado = await evoluirPokemon(expandedPokemon.id, pokedexId, playerId)
+      setExpandedPokemon(atualizado)
+      const evolucoes = await listarEvolucoesPossiveisPokemon(atualizado.id, playerId).catch(() => [])
+      setEvolucoesPossiveis(Array.isArray(evolucoes) ? evolucoes : [])
+      await load()
+    } catch (err) {
+      setErro(err.message || 'Erro ao evoluir Pokémon')
+    } finally {
+      setSavingPokemon(false)
+    }
+  }
+
   const toggleExpand = (p) => {
     if (expandedId === p.id) {
       setExpandedId(null)
       setExpandedPokemon(null)
       setListaMovimentosDisponiveis([])
+      setEvolucoesPossiveis([])
       return
     }
     setExpandedId(p.id)
     setExpandedLoading(true)
     setExpandedPokemon(null)
+    setEvolucoesPossiveis([])
     getPokemon(p.id, playerId)
       .then(async (pokemon) => {
         setExpandedPokemon(pokemon)
@@ -905,6 +1053,12 @@ export default function PokemonList() {
           setListaMovimentosDisponiveis(disponiveis || [])
         } catch {
           setListaMovimentosDisponiveis(listaMovimentos)
+        }
+        try {
+          const evolucoes = await listarEvolucoesPossiveisPokemon(p.id, playerId)
+          setEvolucoesPossiveis(Array.isArray(evolucoes) ? evolucoes : [])
+        } catch {
+          setEvolucoesPossiveis([])
         }
       })
       .catch(() => setExpandedId(null))
@@ -1327,6 +1481,11 @@ export default function PokemonList() {
                         acoesBloqueadas={popupAprendizagemAberta}
                         usuarioMestre={usuarioMestre}
                         onRestaurarTiposEspecie={handleRestaurarTiposEspecie}
+                        onAlocarAtributo={handleAlocarAtributo}
+                        alocandoAtributo={alocandoAtributo}
+                        custoParaProximo={custoParaProximo}
+                        evolucoesPossiveis={evolucoesPossiveis}
+                        onEvoluir={handleEvoluir}
                       />
                     ) : null}
                   </div>
@@ -1424,6 +1583,11 @@ export default function PokemonList() {
                         acoesBloqueadas={popupAprendizagemAberta}
                         usuarioMestre={usuarioMestre}
                         onRestaurarTiposEspecie={handleRestaurarTiposEspecie}
+                        onAlocarAtributo={handleAlocarAtributo}
+                        alocandoAtributo={alocandoAtributo}
+                        custoParaProximo={custoParaProximo}
+                        evolucoesPossiveis={evolucoesPossiveis}
+                        onEvoluir={handleEvoluir}
                       />
                     ) : null}
                   </div>

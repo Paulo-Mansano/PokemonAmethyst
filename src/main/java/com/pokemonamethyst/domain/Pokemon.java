@@ -89,34 +89,45 @@ public class Pokemon {
     @Column(name = "stamina_maxima", nullable = false)
     private int staminaMaxima;
 
-    @Column(name = "iv_hp", nullable = false)
-    private int ivHp;
-    @Column(name = "iv_ataque", nullable = false)
-    private int ivAtaque;
-    @Column(name = "iv_defesa", nullable = false)
-    private int ivDefesa;
-    @Column(name = "iv_ataque_especial", nullable = false)
-    private int ivAtaqueEspecial;
-    @Column(name = "iv_defesa_especial", nullable = false)
-    private int ivDefesaEspecial;
-    @Column(name = "iv_speed", nullable = false)
-    private int ivSpeed;
+    @Enumerated(EnumType.STRING)
+    @Column(name = "iv_class")
+    private PokemonIVClass ivClass;
 
-    @Column(name = "ev_hp", nullable = false)
-    private int evHp;
-    @Column(name = "ev_ataque", nullable = false)
-    private int evAtaque;
-    @Column(name = "ev_defesa", nullable = false)
-    private int evDefesa;
-    @Column(name = "ev_ataque_especial", nullable = false)
-    private int evAtaqueEspecial;
-    @Column(name = "ev_defesa_especial", nullable = false)
-    private int evDefesaEspecial;
-    @Column(name = "ev_speed", nullable = false)
-    private int evSpeed;
+    @Column(name = "pontos_distribuicao_disponiveis", nullable = false)
+    private int pontosDistribuicaoDisponiveis;
 
-    private int tecnica;
-    private int respeito;
+    @Column(name = "hp_base_rng", nullable = false)
+    private int hpBaseRng;
+
+    @Column(name = "stamina_base_rng", nullable = false)
+    private int staminaBaseRng;
+
+    @Column(name = "atr_ataque", nullable = false)
+    private int atrAtaque;
+
+    @Column(name = "atr_defesa", nullable = false)
+    private int atrDefesa;
+
+    @Column(name = "atr_ataque_especial", nullable = false)
+    private int atrAtaqueEspecial;
+
+    @Column(name = "atr_defesa_especial", nullable = false)
+    private int atrDefesaEspecial;
+
+    @Column(name = "atr_speed", nullable = false)
+    private int atrSpeed;
+
+    @Column(name = "atr_hp", nullable = false)
+    private int atrHp;
+
+    @Column(name = "atr_stamina", nullable = false)
+    private int atrStamina;
+
+    @Column(name = "atr_tecnica", nullable = false)
+    private int atrTecnica;
+
+    @Column(name = "atr_respeito", nullable = false)
+    private int atrRespeito;
 
     @ElementCollection(fetch = FetchType.LAZY)
     @BatchSize(size = 32)
@@ -234,34 +245,62 @@ public class Pokemon {
     public void setItemSegurado(Item itemSegurado) { this.itemSegurado = itemSegurado; }
     public int getStaminaMaxima() { return staminaMaxima; }
     public void setStaminaMaxima(int staminaMaxima) { this.staminaMaxima = staminaMaxima; }
-    public int getIvHp() { return ivHp; }
-    public void setIvHp(int ivHp) { this.ivHp = ivHp; }
-    public int getIvAtaque() { return ivAtaque; }
-    public void setIvAtaque(int ivAtaque) { this.ivAtaque = ivAtaque; }
-    public int getIvAtaqueEspecial() { return ivAtaqueEspecial; }
-    public void setIvAtaqueEspecial(int ivAtaqueEspecial) { this.ivAtaqueEspecial = ivAtaqueEspecial; }
-    public int getIvDefesa() { return ivDefesa; }
-    public void setIvDefesa(int ivDefesa) { this.ivDefesa = ivDefesa; }
-    public int getIvDefesaEspecial() { return ivDefesaEspecial; }
-    public void setIvDefesaEspecial(int ivDefesaEspecial) { this.ivDefesaEspecial = ivDefesaEspecial; }
-    public int getIvSpeed() { return ivSpeed; }
-    public void setIvSpeed(int ivSpeed) { this.ivSpeed = ivSpeed; }
-    public int getEvHp() { return evHp; }
-    public void setEvHp(int evHp) { this.evHp = evHp; }
-    public int getEvAtaque() { return evAtaque; }
-    public void setEvAtaque(int evAtaque) { this.evAtaque = evAtaque; }
-    public int getEvDefesa() { return evDefesa; }
-    public void setEvDefesa(int evDefesa) { this.evDefesa = evDefesa; }
-    public int getEvAtaqueEspecial() { return evAtaqueEspecial; }
-    public void setEvAtaqueEspecial(int evAtaqueEspecial) { this.evAtaqueEspecial = evAtaqueEspecial; }
-    public int getEvDefesaEspecial() { return evDefesaEspecial; }
-    public void setEvDefesaEspecial(int evDefesaEspecial) { this.evDefesaEspecial = evDefesaEspecial; }
-    public int getEvSpeed() { return evSpeed; }
-    public void setEvSpeed(int evSpeed) { this.evSpeed = evSpeed; }
-    public int getTecnica() { return tecnica; }
-    public void setTecnica(int tecnica) { this.tecnica = tecnica; }
-    public int getRespeito() { return respeito; }
-    public void setRespeito(int respeito) { this.respeito = respeito; }
+    public PokemonIVClass getIvClass() { return ivClass; }
+    public void setIvClass(PokemonIVClass ivClass) { this.ivClass = ivClass; }
+    public int getPontosDistribuicaoDisponiveis() { return pontosDistribuicaoDisponiveis; }
+    public void setPontosDistribuicaoDisponiveis(int pontosDistribuicaoDisponiveis) { this.pontosDistribuicaoDisponiveis = pontosDistribuicaoDisponiveis; }
+    public int getHpBaseRng() { return hpBaseRng; }
+    public void setHpBaseRng(int hpBaseRng) { this.hpBaseRng = hpBaseRng; }
+    public int getStaminaBaseRng() { return staminaBaseRng; }
+    public void setStaminaBaseRng(int staminaBaseRng) { this.staminaBaseRng = staminaBaseRng; }
+    public int getAtrAtaque() { return atrAtaque; }
+    public void setAtrAtaque(int atrAtaque) { this.atrAtaque = atrAtaque; }
+    public int getAtrDefesa() { return atrDefesa; }
+    public void setAtrDefesa(int atrDefesa) { this.atrDefesa = atrDefesa; }
+    public int getAtrAtaqueEspecial() { return atrAtaqueEspecial; }
+    public void setAtrAtaqueEspecial(int atrAtaqueEspecial) { this.atrAtaqueEspecial = atrAtaqueEspecial; }
+    public int getAtrDefesaEspecial() { return atrDefesaEspecial; }
+    public void setAtrDefesaEspecial(int atrDefesaEspecial) { this.atrDefesaEspecial = atrDefesaEspecial; }
+    public int getAtrSpeed() { return atrSpeed; }
+    public void setAtrSpeed(int atrSpeed) { this.atrSpeed = atrSpeed; }
+    public int getAtrHp() { return atrHp; }
+    public void setAtrHp(int atrHp) { this.atrHp = atrHp; }
+    public int getAtrStamina() { return atrStamina; }
+    public void setAtrStamina(int atrStamina) { this.atrStamina = atrStamina; }
+    public int getAtrTecnica() { return atrTecnica; }
+    public void setAtrTecnica(int atrTecnica) { this.atrTecnica = atrTecnica; }
+    public int getAtrRespeito() { return atrRespeito; }
+    public void setAtrRespeito(int atrRespeito) { this.atrRespeito = atrRespeito; }
+
+    // Compatibilidade temporária com as camadas ainda não migradas (Passos 3-5).
+    public int getIvHp() { return hpBaseRng; }
+    public void setIvHp(int ivHp) { this.hpBaseRng = ivHp; }
+    public int getIvAtaque() { return 0; }
+    public void setIvAtaque(int ivAtaque) { }
+    public int getIvAtaqueEspecial() { return 0; }
+    public void setIvAtaqueEspecial(int ivAtaqueEspecial) { }
+    public int getIvDefesa() { return 0; }
+    public void setIvDefesa(int ivDefesa) { }
+    public int getIvDefesaEspecial() { return 0; }
+    public void setIvDefesaEspecial(int ivDefesaEspecial) { }
+    public int getIvSpeed() { return 0; }
+    public void setIvSpeed(int ivSpeed) { }
+    public int getEvHp() { return atrHp; }
+    public void setEvHp(int evHp) { this.atrHp = evHp; }
+    public int getEvAtaque() { return atrAtaque; }
+    public void setEvAtaque(int evAtaque) { this.atrAtaque = evAtaque; }
+    public int getEvDefesa() { return atrDefesa; }
+    public void setEvDefesa(int evDefesa) { this.atrDefesa = evDefesa; }
+    public int getEvAtaqueEspecial() { return atrAtaqueEspecial; }
+    public void setEvAtaqueEspecial(int evAtaqueEspecial) { this.atrAtaqueEspecial = evAtaqueEspecial; }
+    public int getEvDefesaEspecial() { return atrDefesaEspecial; }
+    public void setEvDefesaEspecial(int evDefesaEspecial) { this.atrDefesaEspecial = evDefesaEspecial; }
+    public int getEvSpeed() { return atrSpeed; }
+    public void setEvSpeed(int evSpeed) { this.atrSpeed = evSpeed; }
+    public int getTecnica() { return atrTecnica; }
+    public void setTecnica(int tecnica) { this.atrTecnica = tecnica; }
+    public int getRespeito() { return atrRespeito; }
+    public void setRespeito(int respeito) { this.atrRespeito = respeito; }
     public List<CondicaoStatus> getStatusAtuais() { return statusAtuais; }
     public void setStatusAtuais(List<CondicaoStatus> statusAtuais) { this.statusAtuais = statusAtuais; }
     public Habilidade getHabilidadeAtiva() { return habilidadeAtiva; }

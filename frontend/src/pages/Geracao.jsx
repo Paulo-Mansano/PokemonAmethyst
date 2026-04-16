@@ -6,6 +6,9 @@ import {
   gerarPokemonSelvagem,
   getPokemonsSelvagens,
   atualizarEstadoPokemon,
+  listarEvolucoesPossiveisPokemon,
+  evoluirPokemon,
+  getUsuario,
 } from '../api'
 import { usePlayerTarget } from '../context/PlayerTargetContext'
 import { queryKeys } from '../query/queryKeys'
@@ -19,6 +22,13 @@ export default function Geracao() {
   const [speciesBusca, setSpeciesBusca] = useState('')
   const [nivel, setNivel] = useState(5)
   const [gerado, setGerado] = useState(null)
+  const [evoluindoId, setEvoluindoId] = useState(null)
+  const usuarioQuery = useQuery({
+    queryKey: queryKeys.auth.usuario,
+    queryFn: getUsuario,
+    staleTime: 10 * 60 * 1000,
+  })
+  const usuarioMestre = !!usuarioQuery.data?.mestre
   const selvagensQuery = useQuery({
     queryKey: queryKeys.pokemonsSelvagens(playerId),
     queryFn: () => getPokemonsSelvagens(playerId),
@@ -137,6 +147,43 @@ export default function Geracao() {
     }
   }
 
+  const handleEvoluir = async (pokemon) => {
+    if (!pokemon?.id) return
+    setErro('')
+    setEvoluindoId(pokemon.id)
+    try {
+      const opcoes = await listarEvolucoesPossiveisPokemon(pokemon.id, playerId)
+      if (!Array.isArray(opcoes) || opcoes.length === 0) {
+        throw new Error('Não há evolução configurada localmente para este Pokémon.')
+      }
+      const disponiveis = opcoes.filter((o) => o.disponivelAgora)
+      if (disponiveis.length === 0) {
+        const bloqueada = opcoes.find((o) => o.minLevel)
+        if (bloqueada?.minLevel) {
+          throw new Error(`Evolução indisponível no momento. Nível mínimo: ${bloqueada.minLevel}.`)
+        }
+        throw new Error('Evolução indisponível no momento.')
+      }
+      const escolhida = disponiveis[0]
+      const atualizado = await evoluirPokemon(pokemon.id, escolhida.pokedexId, playerId)
+      if (gerado?.id === pokemon.id) setGerado(atualizado)
+      queryClient.setQueryData(queryKeys.pokemonsSelvagens(playerId), (prev = []) =>
+        (Array.isArray(prev) ? prev : []).map((p) => (p.id === atualizado.id ? atualizado : p))
+      )
+      queryClient.setQueryData(queryKeys.pokemons(playerId), (prev = []) =>
+        (Array.isArray(prev) ? prev : []).map((p) => (p.id === atualizado.id ? atualizado : p))
+      )
+      await Promise.all([
+        queryClient.invalidateQueries({ queryKey: queryKeys.pokemonsSelvagens(playerId) }),
+        queryClient.invalidateQueries({ queryKey: queryKeys.pokemons(playerId) }),
+      ])
+    } catch (e) {
+      setErro(e.message || 'Erro ao evoluir Pokémon')
+    } finally {
+      setEvoluindoId(null)
+    }
+  }
+
   const renderPokemon = (pokemon) => (
     <div className="card batalha-card" key={pokemon.id}>
       <div style={{ display: 'flex', gap: '0.75rem', alignItems: 'center', marginBottom: '0.5rem' }}>
@@ -158,6 +205,17 @@ export default function Geracao() {
       <p style={{ margin: '0 0 0.5rem', color: 'var(--text-muted)' }}>
         Habilidade: {pokemon.habilidadeAtivaNome || '—'}
       </p>
+      <p style={{ margin: '0 0 0.5rem', color: 'var(--text-muted)' }}>
+        Classe IV: {pokemon.ivClass || '—'} | Pontos: {pokemon.pontosDistribuicaoDisponiveis ?? 0} | Base HP/ST: {pokemon.hpBaseRng ?? 0}/{pokemon.staminaBaseRng ?? 0}
+      </p>
+      <p style={{ margin: '0 0 0.5rem', color: 'var(--text-muted)' }}>
+        Atributos: ATK {pokemon.atrAtaque ?? 0} | DEF {pokemon.atrDefesa ?? 0} | SPA {pokemon.atrAtaqueEspecial ?? 0} | SPD {pokemon.atrDefesaEspecial ?? 0} | SPE {pokemon.atrSpeed ?? 0} | HP {pokemon.atrHp ?? 0} | ST {pokemon.atrStamina ?? 0}
+      </p>
+      {usuarioMestre && (
+        <p style={{ margin: '0 0 0.5rem', color: (pokemon.pontosDistribuicaoDisponiveis ?? 0) < 0 ? 'var(--danger)' : 'var(--text-muted)' }}>
+          Mestre: Técnica {pokemon.atrTecnica ?? pokemon.tecnica ?? 0} | Respeito {pokemon.atrRespeito ?? pokemon.respeito ?? 0}
+        </p>
+      )}
       <p style={{ margin: '0 0 0.75rem', color: 'var(--text-muted)' }}>
         Ataques: {(pokemon.movimentosConhecidos || []).map((m) => m.nome).join(', ') || '—'}
       </p>
@@ -165,6 +223,9 @@ export default function Geracao() {
         <button className="btn btn-primary" onClick={() => enviarParaBatalha(pokemon)}>Enviar para batalha</button>
         <button className="btn btn-secondary" onClick={() => enviarParaCaptura(pokemon)}>Enviar para captura</button>
         <button className="btn btn-secondary" onClick={() => salvarParaDepois(pokemon)}>Salvar para depois</button>
+        <button className="btn btn-secondary" disabled={evoluindoId === pokemon.id} onClick={() => handleEvoluir(pokemon)}>
+          {evoluindoId === pokemon.id ? 'Evoluindo...' : 'Evoluir'}
+        </button>
         <button className="btn btn-danger" onClick={() => deletar(pokemon)}>Deletar</button>
       </div>
     </div>

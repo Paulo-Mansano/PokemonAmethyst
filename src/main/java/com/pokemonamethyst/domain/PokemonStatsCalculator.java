@@ -26,6 +26,46 @@ public final class PokemonStatsCalculator {
         return termoInterno(base, iv, ev, nivel) + 5;
     }
 
+    public static int hpMaximo(Pokemon pokemon) {
+        if (pokemon == null) {
+            return 1;
+        }
+        int base = Math.max(0, pokemon.getHpBaseRng());
+        int investido = Math.max(0, pokemon.getAtrHp());
+        return base + investido + bonusAutomaticoHpStamina(pokemon.getNivel());
+    }
+
+    public static int staminaMaxima(Pokemon pokemon) {
+        if (pokemon == null) {
+            return 1;
+        }
+        int base = Math.max(0, pokemon.getStaminaBaseRng());
+        int investido = Math.max(0, pokemon.getAtrStamina());
+        return base + investido + bonusAutomaticoHpStamina(pokemon.getNivel());
+    }
+
+    public static int statLivre(Pokemon pokemon, String atributo) {
+        if (pokemon == null || atributo == null) {
+            return 0;
+        }
+        return switch (atributo) {
+            case "atr_ataque" -> Math.max(0, pokemon.getAtrAtaque());
+            case "atr_defesa" -> Math.max(0, pokemon.getAtrDefesa());
+            case "atr_ataque_especial" -> Math.max(0, pokemon.getAtrAtaqueEspecial());
+            case "atr_defesa_especial" -> Math.max(0, pokemon.getAtrDefesaEspecial());
+            case "atr_speed" -> Math.max(0, pokemon.getAtrSpeed());
+            case "atr_hp" -> Math.max(0, pokemon.getAtrHp());
+            case "atr_stamina" -> Math.max(0, pokemon.getAtrStamina());
+            case "atr_tecnica" -> Math.max(0, pokemon.getAtrTecnica());
+            case "atr_respeito" -> Math.max(0, pokemon.getAtrRespeito());
+            default -> 0;
+        };
+    }
+
+    public static int bonusAutomaticoHpStamina(int nivel) {
+        return Math.max(0, Math.min(9, Math.max(1, nivel) - 1));
+    }
+
     private static int termoInterno(int base, int iv, int ev, int nivel) {
         int b = Math.max(1, base);
         int ivc = clamp(iv, 0, IV_MAX);

@@ -20,6 +20,9 @@ import com.pokemonamethyst.web.dto.PokemonRequestDto;
 import com.pokemonamethyst.web.dto.PokemonAtualizarComAprendizagemResponseDto;
 import com.pokemonamethyst.web.dto.PokemonMovimentoAprendidoRequestDto;
 import com.pokemonamethyst.web.dto.PokemonResponseDto;
+import com.pokemonamethyst.web.dto.PokemonEvoluirRequestDto;
+import com.pokemonamethyst.web.dto.PokemonAlocarAtributoRequestDto;
+import com.pokemonamethyst.web.dto.PokemonEvolucaoOpcaoDto;
 import jakarta.validation.Valid;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -210,6 +213,41 @@ public class PokemonController {
                 dto.getMovimentoIds(), dto.getHabilidadeId(), principal.isMestre()
         );
         return ResponseEntity.ok(resultado);
+    }
+
+    @PostMapping("/{id}/evoluir")
+    @Transactional
+    public ResponseEntity<PokemonResponseDto> evoluir(
+            @AuthenticationPrincipal UsuarioPrincipal principal,
+            @PathVariable String id,
+            @RequestParam(value = "playerId", required = false) String playerId,
+            @RequestBody(required = false) PokemonEvoluirRequestDto dto) {
+        String perfilId = perfilService.resolvePerfilId(principal, playerId);
+        Integer novaPokedexId = dto != null ? dto.getPokedexId() : null;
+        Pokemon pokemon = pokemonService.evoluir(id, perfilId, novaPokedexId);
+        return ResponseEntity.ok(PokemonResponseDto.from(pokemon));
+    }
+
+    @GetMapping("/{id}/evolucoes-possiveis")
+    @Transactional(readOnly = true)
+    public ResponseEntity<List<PokemonEvolucaoOpcaoDto>> listarEvolucoesPossiveis(
+            @AuthenticationPrincipal UsuarioPrincipal principal,
+            @PathVariable String id,
+            @RequestParam(value = "playerId", required = false) String playerId) {
+        String perfilId = perfilService.resolvePerfilId(principal, playerId);
+        return ResponseEntity.ok(pokemonService.listarEvolucoesPossiveis(id, perfilId));
+    }
+
+    @PostMapping("/{id}/atributos/alocar")
+    @Transactional
+    public ResponseEntity<PokemonResponseDto> alocarAtributos(
+            @AuthenticationPrincipal UsuarioPrincipal principal,
+            @PathVariable String id,
+            @RequestParam(value = "playerId", required = false) String playerId,
+            @Valid @RequestBody PokemonAlocarAtributoRequestDto dto) {
+        String perfilId = perfilService.resolvePerfilId(principal, playerId);
+        Pokemon pokemon = pokemonService.alocarAtributo(id, perfilId, dto.getAtributo(), dto.getQuantidade(), principal.isMestre());
+        return ResponseEntity.ok(PokemonResponseDto.from(pokemon));
     }
 
     @GetMapping("/{id}/movimentos-disponiveis")

@@ -6,6 +6,7 @@ import com.pokemonamethyst.domain.Habilidade;
 import com.pokemonamethyst.domain.OrigemPokemon;
 import com.pokemonamethyst.domain.PerfilJogador;
 import com.pokemonamethyst.domain.Pokemon;
+import com.pokemonamethyst.domain.PokemonIVClass;
 import com.pokemonamethyst.domain.PokemonSpecies;
 import com.pokemonamethyst.repository.HabilidadeRepository;
 import com.pokemonamethyst.repository.ItemRepository;
@@ -39,6 +40,9 @@ class PokemonServiceTest {
         PokeApiService pokeApiService = mock(PokeApiService.class);
         PokemonAbilityService pokemonAbilityService = mock(PokemonAbilityService.class);
         PokemonLearnsetService pokemonLearnsetService = mock(PokemonLearnsetService.class);
+        PokemonGenerationService pokemonGenerationService = new PokemonGenerationService();
+        PokemonStatService pokemonStatService = new PokemonStatService();
+        PokemonEvolutionService pokemonEvolutionService = mock(PokemonEvolutionService.class);
         PokemonSpeciesRepository pokemonSpeciesRepository = mock(PokemonSpeciesRepository.class);
 
         PokemonService service = new PokemonService(
@@ -51,6 +55,9 @@ class PokemonServiceTest {
                 pokeApiService,
                 pokemonAbilityService,
                 pokemonLearnsetService,
+                pokemonGenerationService,
+                pokemonStatService,
+                pokemonEvolutionService,
                 pokemonSpeciesRepository,
                 100,
                 false
@@ -81,6 +88,9 @@ class PokemonServiceTest {
         PokeApiService pokeApiService = mock(PokeApiService.class);
         PokemonAbilityService pokemonAbilityService = mock(PokemonAbilityService.class);
         PokemonLearnsetService pokemonLearnsetService = mock(PokemonLearnsetService.class);
+        PokemonGenerationService pokemonGenerationService = new PokemonGenerationService();
+        PokemonStatService pokemonStatService = new PokemonStatService();
+        PokemonEvolutionService pokemonEvolutionService = mock(PokemonEvolutionService.class);
         PokemonSpeciesRepository pokemonSpeciesRepository = mock(PokemonSpeciesRepository.class);
 
         PokemonService service = new PokemonService(
@@ -93,6 +103,9 @@ class PokemonServiceTest {
                 pokeApiService,
                 pokemonAbilityService,
                 pokemonLearnsetService,
+                pokemonGenerationService,
+                pokemonStatService,
+                pokemonEvolutionService,
                 pokemonSpeciesRepository,
                 100,
                 false
@@ -137,13 +150,14 @@ class PokemonServiceTest {
         assertThat(criado.getHabilidadeAtiva()).isNotNull();
         assertThat(criado.isShiny()).isTrue();
         assertThat(criado.getGenero()).isEqualTo(Genero.FEMEA);
-        assertThat(salvo.getIvHp()).isBetween(0, 31);
-        assertThat(salvo.getIvAtaque()).isBetween(0, 31);
-        assertThat(salvo.getIvDefesa()).isBetween(0, 31);
-        assertThat(salvo.getIvAtaqueEspecial()).isBetween(0, 31);
-        assertThat(salvo.getIvDefesaEspecial()).isBetween(0, 31);
-        assertThat(salvo.getIvSpeed()).isBetween(0, 31);
+                assertThat(salvo.getIvClass()).isEqualTo(PokemonIVClass.E);
+                assertThat(salvo.getPontosDistribuicaoDisponiveis()).isBetween(12, 15);
+                assertThat(salvo.getHpBaseRng()).isBetween(15, 20);
+                assertThat(salvo.getStaminaBaseRng()).isBetween(15, 20);
+                assertThat(salvo.getAtrAtaque()).isZero();
+                assertThat(salvo.getAtrHp()).isZero();
         assertThat(salvo.getHpAtual()).isNotNull().isPositive();
+                assertThat(salvo.getStaminaMaxima()).isPositive();
         assertThat(salvo.getOrigem()).isEqualTo(OrigemPokemon.TREINADOR);
         assertThat(salvo.getEstado()).isEqualTo(EstadoPokemon.ATIVO);
     }

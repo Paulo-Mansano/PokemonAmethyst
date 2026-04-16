@@ -52,6 +52,19 @@ public class PokemonResponseDto {
     private int defesa;
     private int defesaEspecial;
     private int speed;
+    private String ivClass;
+    private int pontosDistribuicaoDisponiveis;
+    private int hpBaseRng;
+    private int staminaBaseRng;
+    private int atrAtaque;
+    private int atrDefesa;
+    private int atrAtaqueEspecial;
+    private int atrDefesaEspecial;
+    private int atrSpeed;
+    private int atrHp;
+    private int atrStamina;
+    private int atrTecnica;
+    private int atrRespeito;
     private int tecnica;
     private int respeito;
     private int evHp;
@@ -106,12 +119,13 @@ public class PokemonResponseDto {
         String especie = p.getEspecie();
         if (especie == null) especie = "";
         int nivel = Math.max(1, p.getNivel());
-        int hpMaximo = PokemonStatsCalculator.hpMaximo(species != null ? species.getBaseHp() : 1, p.getIvHp(), p.getEvHp(), nivel);
-        int ataque = PokemonStatsCalculator.statNaoHp(species != null ? species.getBaseAtaque() : 1, p.getIvAtaque(), p.getEvAtaque(), nivel);
-        int ataqueEspecial = PokemonStatsCalculator.statNaoHp(species != null ? species.getBaseAtaqueEspecial() : 1, p.getIvAtaqueEspecial(), p.getEvAtaqueEspecial(), nivel);
-        int defesa = PokemonStatsCalculator.statNaoHp(species != null ? species.getBaseDefesa() : 1, p.getIvDefesa(), p.getEvDefesa(), nivel);
-        int defesaEspecial = PokemonStatsCalculator.statNaoHp(species != null ? species.getBaseDefesaEspecial() : 1, p.getIvDefesaEspecial(), p.getEvDefesaEspecial(), nivel);
-        int speed = PokemonStatsCalculator.statNaoHp(species != null ? species.getBaseSpeed() : 1, p.getIvSpeed(), p.getEvSpeed(), nivel);
+        int hpMaximo = PokemonStatsCalculator.hpMaximo(p);
+        int staminaMaxima = PokemonStatsCalculator.staminaMaxima(p);
+        int ataque = p.getAtrAtaque();
+        int ataqueEspecial = p.getAtrAtaqueEspecial();
+        int defesa = p.getAtrDefesa();
+        int defesaEspecial = p.getAtrDefesaEspecial();
+        int speed = p.getAtrSpeed();
         PokemonResponseDto dto = new PokemonResponseDto(
                 p.getId(),
                 p.getOrdemTime(),
@@ -133,27 +147,41 @@ public class PokemonResponseDto {
                 p.getPokebolaCaptura() != null ? p.getPokebolaCaptura().name() : null,
                 p.getItemSegurado() != null ? p.getItemSegurado().getId() : null,
                 hpMaximo,
-                p.getStaminaMaxima(),
+                staminaMaxima,
                 ataque,
                 ataqueEspecial,
                 defesa,
                 defesaEspecial,
                 speed,
-                p.getTecnica(),
-                p.getRespeito(),
+                p.getAtrTecnica(),
+                p.getAtrRespeito(),
                 p.getStatusAtuais() != null ? p.getStatusAtuais().stream().map(Enum::name).toList() : List.of()
         );
         dto.setPersonalidadeId(p.getPersonalidade() != null ? p.getPersonalidade().getId() : null);
         dto.setHabilidadeAtivaId(p.getHabilidadeAtiva() != null ? p.getHabilidadeAtiva().getId() : null);
         dto.setHabilidadeAtivaNome(p.getHabilidadeAtiva() != null ? p.getHabilidadeAtiva().getNome() : null);
-        dto.setEvHp(p.getEvHp());
-        dto.setEvAtaque(p.getEvAtaque());
-        dto.setEvDefesa(p.getEvDefesa());
-        dto.setEvAtaqueEspecial(p.getEvAtaqueEspecial());
-        dto.setEvDefesaEspecial(p.getEvDefesaEspecial());
-        dto.setEvSpeed(p.getEvSpeed());
+            dto.setIvClass(p.getIvClass() != null ? p.getIvClass().name() : null);
+            dto.setPontosDistribuicaoDisponiveis(p.getPontosDistribuicaoDisponiveis());
+            dto.setHpBaseRng(p.getHpBaseRng());
+            dto.setStaminaBaseRng(p.getStaminaBaseRng());
+            dto.setAtrAtaque(p.getAtrAtaque());
+            dto.setAtrDefesa(p.getAtrDefesa());
+            dto.setAtrAtaqueEspecial(p.getAtrAtaqueEspecial());
+            dto.setAtrDefesaEspecial(p.getAtrDefesaEspecial());
+            dto.setAtrSpeed(p.getAtrSpeed());
+            dto.setAtrHp(p.getAtrHp());
+            dto.setAtrStamina(p.getAtrStamina());
+            dto.setAtrTecnica(p.getAtrTecnica());
+            dto.setAtrRespeito(p.getAtrRespeito());
+            dto.setEvHp(p.getAtrHp());
+            dto.setEvAtaque(p.getAtrAtaque());
+            dto.setEvDefesa(p.getAtrDefesa());
+            dto.setEvAtaqueEspecial(p.getAtrAtaqueEspecial());
+            dto.setEvDefesaEspecial(p.getAtrDefesaEspecial());
+            dto.setEvSpeed(p.getAtrSpeed());
         int hpAtual = p.getHpAtual() == null ? hpMaximo : p.getHpAtual();
         dto.setHpAtual(Math.max(0, Math.min(hpAtual, hpMaximo)));
+            dto.setStaminaMaxima(staminaMaxima);
         dto.setOrigem(p.getOrigem() != null ? p.getOrigem().name() : null);
         dto.setEstado(p.getEstado() != null ? p.getEstado().name() : null);
         GrowthRate curva = GrowthRate.fromSpecies(species);
@@ -247,6 +275,32 @@ public class PokemonResponseDto {
     public void setDefesaEspecial(int defesaEspecial) { this.defesaEspecial = defesaEspecial; }
     public int getSpeed() { return speed; }
     public void setSpeed(int speed) { this.speed = speed; }
+    public String getIvClass() { return ivClass; }
+    public void setIvClass(String ivClass) { this.ivClass = ivClass; }
+    public int getPontosDistribuicaoDisponiveis() { return pontosDistribuicaoDisponiveis; }
+    public void setPontosDistribuicaoDisponiveis(int pontosDistribuicaoDisponiveis) { this.pontosDistribuicaoDisponiveis = pontosDistribuicaoDisponiveis; }
+    public int getHpBaseRng() { return hpBaseRng; }
+    public void setHpBaseRng(int hpBaseRng) { this.hpBaseRng = hpBaseRng; }
+    public int getStaminaBaseRng() { return staminaBaseRng; }
+    public void setStaminaBaseRng(int staminaBaseRng) { this.staminaBaseRng = staminaBaseRng; }
+    public int getAtrAtaque() { return atrAtaque; }
+    public void setAtrAtaque(int atrAtaque) { this.atrAtaque = atrAtaque; }
+    public int getAtrDefesa() { return atrDefesa; }
+    public void setAtrDefesa(int atrDefesa) { this.atrDefesa = atrDefesa; }
+    public int getAtrAtaqueEspecial() { return atrAtaqueEspecial; }
+    public void setAtrAtaqueEspecial(int atrAtaqueEspecial) { this.atrAtaqueEspecial = atrAtaqueEspecial; }
+    public int getAtrDefesaEspecial() { return atrDefesaEspecial; }
+    public void setAtrDefesaEspecial(int atrDefesaEspecial) { this.atrDefesaEspecial = atrDefesaEspecial; }
+    public int getAtrSpeed() { return atrSpeed; }
+    public void setAtrSpeed(int atrSpeed) { this.atrSpeed = atrSpeed; }
+    public int getAtrHp() { return atrHp; }
+    public void setAtrHp(int atrHp) { this.atrHp = atrHp; }
+    public int getAtrStamina() { return atrStamina; }
+    public void setAtrStamina(int atrStamina) { this.atrStamina = atrStamina; }
+    public int getAtrTecnica() { return atrTecnica; }
+    public void setAtrTecnica(int atrTecnica) { this.atrTecnica = atrTecnica; }
+    public int getAtrRespeito() { return atrRespeito; }
+    public void setAtrRespeito(int atrRespeito) { this.atrRespeito = atrRespeito; }
     public int getTecnica() { return tecnica; }
     public void setTecnica(int tecnica) { this.tecnica = tecnica; }
     public int getRespeito() { return respeito; }

@@ -14,6 +14,7 @@ import com.pokemonamethyst.repository.MovimentoRepository;
 import com.pokemonamethyst.repository.ItemRepository;
 import com.pokemonamethyst.repository.PokemonSpeciesHabilidadeRepository;
 import com.pokemonamethyst.repository.PokemonSpeciesMovimentoRepository;
+import com.pokemonamethyst.repository.PokemonSpeciesEvolutionRuleRepository;
 import com.pokemonamethyst.repository.PokemonSpeciesRepository;
 import com.pokemonamethyst.exception.RecursoNaoEncontradoException;
 import com.pokemonamethyst.exception.RegraNegocioException;
@@ -85,6 +86,7 @@ public class PokeApiService {
     private final PokemonSpeciesRepository pokemonSpeciesRepository;
     private final PokemonSpeciesHabilidadeRepository speciesHabilidadeRepository;
     private final PokemonSpeciesMovimentoRepository speciesMovimentoRepository;
+    private final PokemonSpeciesEvolutionRuleRepository speciesEvolutionRuleRepository;
     private final PokemonAbilityService pokemonAbilityService;
     private final PokemonLearnsetService pokemonLearnsetService;
     private final TransactionTemplate transactionTemplate;
@@ -96,6 +98,7 @@ public class PokeApiService {
                           PokemonSpeciesRepository pokemonSpeciesRepository,
                           PokemonSpeciesHabilidadeRepository speciesHabilidadeRepository,
                           PokemonSpeciesMovimentoRepository speciesMovimentoRepository,
+                          PokemonSpeciesEvolutionRuleRepository speciesEvolutionRuleRepository,
                           PokemonAbilityService pokemonAbilityService,
                           PokemonLearnsetService pokemonLearnsetService,
                           PlatformTransactionManager transactionManager) {
@@ -106,6 +109,7 @@ public class PokeApiService {
         this.pokemonSpeciesRepository = pokemonSpeciesRepository;
         this.speciesHabilidadeRepository = speciesHabilidadeRepository;
         this.speciesMovimentoRepository = speciesMovimentoRepository;
+        this.speciesEvolutionRuleRepository = speciesEvolutionRuleRepository;
         this.pokemonAbilityService = pokemonAbilityService;
         this.pokemonLearnsetService = pokemonLearnsetService;
         this.transactionTemplate = new TransactionTemplate(transactionManager);
@@ -256,6 +260,7 @@ public class PokeApiService {
             PokemonSpecies saved = pokemonSpeciesRepository.save(species);
             sincronizarAbilitiesDaSpecies(saved, pokemonData);
             sincronizarLearnsetDaSpecies(saved, pokemonData);
+            sincronizarEvolucoesDaSpecies(speciesData, pokedexId);
             String speciesId = saved.getId();
             pokemonAbilityService.invalidarCacheSpecies(speciesId);
             pokemonLearnsetService.invalidarCacheSpecies(speciesId);
@@ -470,6 +475,164 @@ public class PokeApiService {
             return species;
         }
         return atualizarSpritesDaPokeApi(species.getPokedexId());
+    }
+
+    @SuppressWarnings("unchecked")
+    public int obterEstagioEvolutivo(int pokedexId) {
+        if (pokedexId <= 0) {
+            return 1;
+        }
+        Map<String, Object> speciesData = restTemplate.getForObject(BASE_URL + "/pokemon-species/" + pokedexId, Map.class);
+        if (speciesData == null) {
+            return 1;
+        }
+        Map<String, Object> evolutionChainRef = (Map<String, Object>) speciesData.get("evolution_chain");
+        String chainUrl = evolutionChainRef != null ? (String) evolutionChainRef.get("url") : null;
+        if (chainUrl == null || chainUrl.isBlank()) {
+            return 1;
+        }
+        Map<String, Object> chainData = restTemplate.getForObject(chainUrl, Map.class);
+        if (chainData == null) {
+            return 1;
+        }
+        Map<String, Object> root = (Map<String, Object>) chainData.get("chain");
+        String speciesName = (String) speciesData.get("name");
+        return calcularEstagioEmArvore(root, speciesName, 1);
+    }
+
+    @SuppressWarnings("unchecked")
+    public java.util.Optional<Integer> obterPokedexIdDaProximaEvolucao(int pokedexId) {
+        return speciesEvolutionRuleRepository.findByFromPokedexIdOrderByToPokedexIdAsc(pokedexId).stream()
+                .findFirst()
+                .map(rule -> rule.getToPokedexId());
+    }
+
+    public List<com.pokemonamethyst.domain.PokemonSpeciesEvolutionRule> listarRegrasEvolucaoLocais(int fromPokedexId) {
+        return speciesEvolutionRuleRepository.findByFromPokedexIdOrderByToPokedexIdAsc(fromPokedexId);
+    }
+
+    @SuppressWarnings("unchecked")
+    private int calcularEstagioEmArvore(Map<String, Object> node, String targetSpeciesName, int depth) {
+        if (node == null || targetSpeciesName == null || targetSpeciesName.isBlank()) {
+            return 1;
+        }
+        Map<String, Object> species = (Map<String, Object>) node.get("species");
+        String currentName = species != null ? (String) species.get("name") : null;
+        if (targetSpeciesName.equalsIgnoreCase(currentName)) {
+            return Math.max(1, depth);
+        }
+        List<Map<String, Object>> evolvesTo = (List<Map<String, Object>>) node.get("evolves_to");
+        if (evolvesTo == null || evolvesTo.isEmpty()) {
+            return 1;
+        }
+        for (Map<String, Object> child : evolvesTo) {
+            int stage = calcularEstagioEmArvore(child, targetSpeciesName, depth + 1);
+            if (stage > 1) {
+                return stage;
+            }
+        }
+        return 1;
+    }
+
+    @SuppressWarnings("unchecked")
+    private Map<String, Object> encontrarNoArvoreEvolutiva(Map<String, Object> node, String targetSpeciesName) {
+        if (node == null || targetSpeciesName == null || targetSpeciesName.isBlank()) {
+            return null;
+        }
+        Map<String, Object> species = (Map<String, Object>) node.get("species");
+        String currentName = species != null ? (String) species.get("name") : null;
+        if (targetSpeciesName.equalsIgnoreCase(currentName)) {
+            return node;
+        }
+        List<Map<String, Object>> evolvesTo = (List<Map<String, Object>>) node.get("evolves_to");
+        if (evolvesTo == null || evolvesTo.isEmpty()) {
+            return null;
+        }
+        for (Map<String, Object> child : evolvesTo) {
+            Map<String, Object> found = encontrarNoArvoreEvolutiva(child, targetSpeciesName);
+            if (found != null) {
+                return found;
+            }
+        }
+        return null;
+    }
+
+    @SuppressWarnings("unchecked")
+    private void sincronizarEvolucoesDaSpecies(Map<String, Object> speciesData, int pokedexId) {
+        if (speciesData == null || pokedexId <= 0) {
+            return;
+        }
+        Map<String, Object> evolutionChainRef = (Map<String, Object>) speciesData.get("evolution_chain");
+        String chainUrl = evolutionChainRef != null ? (String) evolutionChainRef.get("url") : null;
+        if (chainUrl == null || chainUrl.isBlank()) {
+            return;
+        }
+        Map<String, Object> chainData = restTemplate.getForObject(chainUrl, Map.class);
+        if (chainData == null) {
+            return;
+        }
+        Map<String, Object> root = (Map<String, Object>) chainData.get("chain");
+        if (root == null) {
+            return;
+        }
+        List<com.pokemonamethyst.domain.PokemonSpeciesEvolutionRule> regras = new ArrayList<>();
+        coletarRegrasEvolucao(root, regras);
+
+        // Replace local rules for all "from" entries discovered in this chain to keep consistency.
+        Set<Integer> fromIds = regras.stream().map(com.pokemonamethyst.domain.PokemonSpeciesEvolutionRule::getFromPokedexId).collect(Collectors.toSet());
+        for (Integer fromId : fromIds) {
+            speciesEvolutionRuleRepository.deleteByFromPokedexId(fromId);
+        }
+        if (!regras.isEmpty()) {
+            speciesEvolutionRuleRepository.saveAll(regras);
+        }
+    }
+
+    @SuppressWarnings("unchecked")
+    private void coletarRegrasEvolucao(Map<String, Object> node,
+                                       List<com.pokemonamethyst.domain.PokemonSpeciesEvolutionRule> destino) {
+        if (node == null) {
+            return;
+        }
+        Map<String, Object> speciesNode = (Map<String, Object>) node.get("species");
+        String fromUrl = speciesNode != null ? (String) speciesNode.get("url") : null;
+        int fromId = extrairIdDaUrl(fromUrl);
+        List<Map<String, Object>> evolvesTo = (List<Map<String, Object>>) node.get("evolves_to");
+        if (evolvesTo == null || evolvesTo.isEmpty()) {
+            return;
+        }
+        for (Map<String, Object> child : evolvesTo) {
+            Map<String, Object> childSpecies = (Map<String, Object>) child.get("species");
+            String toUrl = childSpecies != null ? (String) childSpecies.get("url") : null;
+            int toId = extrairIdDaUrl(toUrl);
+            List<Map<String, Object>> details = (List<Map<String, Object>>) child.get("evolution_details");
+
+            if (fromId > 0 && toId > 0) {
+                if (details == null || details.isEmpty()) {
+                    com.pokemonamethyst.domain.PokemonSpeciesEvolutionRule r = new com.pokemonamethyst.domain.PokemonSpeciesEvolutionRule();
+                    r.setFromPokedexId(fromId);
+                    r.setToPokedexId(toId);
+                    r.setTriggerType("UNKNOWN");
+                    destino.add(r);
+                } else {
+                    for (Map<String, Object> detail : details) {
+                        String triggerType = extrairNomeReferencia(detail.get("trigger"));
+                        Number minLevelRaw = (Number) detail.get("min_level");
+                        String itemName = extrairNomeReferencia(detail.get("item"));
+
+                        com.pokemonamethyst.domain.PokemonSpeciesEvolutionRule r = new com.pokemonamethyst.domain.PokemonSpeciesEvolutionRule();
+                        r.setFromPokedexId(fromId);
+                        r.setToPokedexId(toId);
+                        r.setTriggerType(triggerType != null && !triggerType.isBlank() ? triggerType.toUpperCase() : "UNKNOWN");
+                        r.setMinLevel(minLevelRaw != null ? minLevelRaw.intValue() : null);
+                        r.setItemName(itemName);
+                        destino.add(r);
+                    }
+                }
+            }
+
+            coletarRegrasEvolucao(child, destino);
+        }
     }
 
     private PokeApiPokemonSummaryDto toSummary(Map<String, Object> item) {

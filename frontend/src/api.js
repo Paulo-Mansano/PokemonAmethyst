@@ -238,6 +238,40 @@ export async function atualizarPokemon(id, body, playerId) {
   return res.json();
 }
 
+export async function alocarAtributosPokemon(id, atributo, quantidade = 1, playerId) {
+  const res = await request(withPlayerQuery(`/perfis/meu/pokemons/${id}/atributos/alocar`, playerId), {
+    method: 'POST',
+    body: JSON.stringify({ atributo, quantidade }),
+  })
+  if (!res.ok) {
+    const data = await res.json().catch(() => ({}))
+    throw new Error(data.mensagem || 'Erro ao alocar atributos')
+  }
+  return res.json()
+}
+
+export async function listarEvolucoesPossiveisPokemon(id, playerId) {
+  const res = await request(withPlayerQuery(`/perfis/meu/pokemons/${id}/evolucoes-possiveis`, playerId))
+  if (!res.ok) {
+    const data = await res.json().catch(() => ({}))
+    throw new Error(data.mensagem || 'Erro ao listar evoluções possíveis')
+  }
+  return res.json()
+}
+
+export async function evoluirPokemon(id, pokedexId, playerId) {
+  const body = pokedexId ? { pokedexId } : {}
+  const res = await request(withPlayerQuery(`/perfis/meu/pokemons/${id}/evoluir`, playerId), {
+    method: 'POST',
+    body: JSON.stringify(body),
+  })
+  if (!res.ok) {
+    const data = await res.json().catch(() => ({}))
+    throw new Error(data.mensagem || 'Erro ao evoluir Pokémon')
+  }
+  return res.json()
+}
+
 export async function ganharXpPokemon(id, xpGanho, playerId) {
   const res = await request(withPlayerQuery(`/perfis/meu/pokemons/${id}/xp/ganhar`, playerId), {
     method: 'POST',

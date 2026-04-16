@@ -27,6 +27,7 @@ import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.ThreadLocalRandom;
 import java.util.stream.Collectors;
+import com.pokemonamethyst.web.dto.PokemonEvolucaoOpcaoDto;
 
 @Service
 public class PokemonService {
@@ -46,6 +47,9 @@ public class PokemonService {
     private final PokeApiService pokeApiService;
     private final PokemonAbilityService pokemonAbilityService;
     private final PokemonLearnsetService pokemonLearnsetService;
+    private final PokemonGenerationService pokemonGenerationService;
+    private final PokemonStatService pokemonStatService;
+    private final PokemonEvolutionService pokemonEvolutionService;
     private final PokemonSpeciesRepository pokemonSpeciesRepository;
     private final int shinyChancePercent;
     private final boolean strictLocalRuntime;
@@ -56,6 +60,9 @@ public class PokemonService {
                           PersonalidadeRepository personalidadeRepository, PokeApiService pokeApiService,
                           PokemonAbilityService pokemonAbilityService,
                           PokemonLearnsetService pokemonLearnsetService,
+                          PokemonGenerationService pokemonGenerationService,
+                          PokemonStatService pokemonStatService,
+                          PokemonEvolutionService pokemonEvolutionService,
                           PokemonSpeciesRepository pokemonSpeciesRepository,
                           @Value("${pokemon.shiny-chance-percent:1}") int shinyChancePercent,
                           @Value("${pokemon.runtime.strict-local:true}") boolean strictLocalRuntime) {
@@ -68,6 +75,9 @@ public class PokemonService {
         this.pokeApiService = pokeApiService;
         this.pokemonAbilityService = pokemonAbilityService;
         this.pokemonLearnsetService = pokemonLearnsetService;
+        this.pokemonGenerationService = pokemonGenerationService;
+        this.pokemonStatService = pokemonStatService;
+        this.pokemonEvolutionService = pokemonEvolutionService;
         this.pokemonSpeciesRepository = pokemonSpeciesRepository;
         this.shinyChancePercent = Math.max(0, Math.min(100, shinyChancePercent));
         this.strictLocalRuntime = strictLocalRuntime;
@@ -122,7 +132,7 @@ public class PokemonService {
         pokemon.setMovimentosConhecidos(
                 new ArrayList<>(pokemonLearnsetService.escolherMovimentosAoCriarPokemon(pokemon.getSpecies(), nivelFinal))
         );
-        pokemon.setHpAtual(calcularHpMaximo(pokemon));
+        pokemonStatService.sincronizarMaximos(pokemon);
         return pokemonRepository.save(pokemon);
     }
 
@@ -169,7 +179,7 @@ public class PokemonService {
         pokemon.setXpAtual(PokemonExperience.getTotalXpForLevel(nivelBase, curva));
         pokemon.setOrigem(OrigemPokemon.TREINADOR);
         pokemon.setEstado(EstadoPokemon.ATIVO);
-        preencherIvsAleatorios(pokemon);
+        pokemonGenerationService.inicializarPokemonNovo(pokemon);
         if (personalidadeId != null && !personalidadeId.isBlank()) {
             personalidadeRepository.findById(personalidadeId).ifPresent(pokemon::setPersonalidade);
         }
@@ -194,9 +204,7 @@ public class PokemonService {
             );
         }
 
-        int hpMaximo = PokemonStatsCalculator.hpMaximo(
-                pokemon.getSpecies().getBaseHp(), pokemon.getIvHp(), pokemon.getEvHp(), pokemon.getNivel());
-        pokemon.setHpAtual(hpMaximo);
+        pokemonStatService.sincronizarMaximos(pokemon);
 
         Pokemon salvo = pokemonRepository.save(pokemon);
         perfil.getPokemons().add(salvo);
@@ -603,6 +611,35 @@ public class PokemonService {
         pokemonRepository.delete(pokemon);
     }
 
+    @Transactional
+    public Pokemon evoluir(String pokemonId, String perfilId, Integer novaPokedexId) {
+        return pokemonEvolutionService.evoluir(pokemonId, perfilId, novaPokedexId);
+    }
+
+    @Transactional
+    public Pokemon alocarAtributo(String pokemonId, String perfilId, String atributo, int quantidade, boolean isMestre) {
+        Pokemon pokemon = buscarPorIdEPerfil(pokemonId, perfilId);
+        pokemonStatService.alocarPontos(pokemon, atributo, quantidade, isMestre);
+        return pokemonRepository.save(pokemon);
+    }
+
+    @Transactional(readOnly = true)
+    public List<PokemonEvolucaoOpcaoDto> listarEvolucoesPossiveis(String pokemonId, String perfilId) {
+        Pokemon pokemon = buscarPorIdEPerfil(pokemonId, perfilId);
+        return pokemonEvolutionService.listarOpcoes(pokemon).stream().map(rule -> {
+            PokemonEvolucaoOpcaoDto dto = new PokemonEvolucaoOpcaoDto();
+            dto.setPokedexId(rule.getToPokedexId());
+            dto.setEspecie(pokemonSpeciesRepository.findByPokedexId(rule.getToPokedexId()).map(PokemonSpecies::getNome).orElse("Pokedex " + rule.getToPokedexId()));
+            dto.setTriggerType(rule.getTriggerType());
+            dto.setMinLevel(rule.getMinLevel());
+            dto.setItemName(rule.getItemName());
+            boolean porNivel = rule.getTriggerType() != null &&
+                    ("LEVEL-UP".equalsIgnoreCase(rule.getTriggerType()) || "LEVEL_UP".equalsIgnoreCase(rule.getTriggerType()) || "LEVEL".equalsIgnoreCase(rule.getTriggerType()));
+            dto.setDisponivelAgora(!porNivel || rule.getMinLevel() == null || pokemon.getNivel() >= rule.getMinLevel());
+            return dto;
+        }).toList();
+    }
+
     private void preencherIvsAleatorios(Pokemon pokemon) {
         pokemon.setIvHp(rolarIv());
         pokemon.setIvAtaque(rolarIv());
@@ -690,9 +727,7 @@ public class PokemonService {
     }
 
     private int calcularHpMaximo(Pokemon pokemon) {
-        PokemonSpecies species = pokemon.getSpecies();
-        int baseHp = species != null ? species.getBaseHp() : 1;
-        return PokemonStatsCalculator.hpMaximo(baseHp, pokemon.getIvHp(), pokemon.getEvHp(), pokemon.getNivel());
+        return pokemonStatService.calcularHpMaximo(pokemon);
     }
 
     private int hpAtualNormalizado(Pokemon pokemon) {
@@ -702,43 +737,19 @@ public class PokemonService {
     }
 
     private int calcularAtaque(Pokemon pokemon) {
-        PokemonSpecies species = pokemon.getSpecies();
-        return PokemonStatsCalculator.statNaoHp(
-                species != null ? species.getBaseAtaque() : 1,
-                pokemon.getIvAtaque(),
-                pokemon.getEvAtaque(),
-                pokemon.getNivel()
-        );
+        return pokemonStatService.calcularAtaque(pokemon);
     }
 
     private int calcularAtaqueEspecial(Pokemon pokemon) {
-        PokemonSpecies species = pokemon.getSpecies();
-        return PokemonStatsCalculator.statNaoHp(
-                species != null ? species.getBaseAtaqueEspecial() : 1,
-                pokemon.getIvAtaqueEspecial(),
-                pokemon.getEvAtaqueEspecial(),
-                pokemon.getNivel()
-        );
+        return pokemonStatService.calcularAtaqueEspecial(pokemon);
     }
 
     private int calcularDefesa(Pokemon pokemon) {
-        PokemonSpecies species = pokemon.getSpecies();
-        return PokemonStatsCalculator.statNaoHp(
-                species != null ? species.getBaseDefesa() : 1,
-                pokemon.getIvDefesa(),
-                pokemon.getEvDefesa(),
-                pokemon.getNivel()
-        );
+        return pokemonStatService.calcularDefesa(pokemon);
     }
 
     private int calcularDefesaEspecial(Pokemon pokemon) {
-        PokemonSpecies species = pokemon.getSpecies();
-        return PokemonStatsCalculator.statNaoHp(
-                species != null ? species.getBaseDefesaEspecial() : 1,
-                pokemon.getIvDefesaEspecial(),
-                pokemon.getEvDefesaEspecial(),
-                pokemon.getNivel()
-        );
+        return pokemonStatService.calcularDefesaEspecial(pokemon);
     }
 
     private PokemonSpecies obterSpeciesRuntime(int pokedexId) {
