@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback } from 'react'
 import { Link } from 'react-router-dom'
-import { getMeuPerfil, getUsuario, criarPokemon, getPokemon, atualizarPokemon, colocarNoTime, removerDoTime, excluirPokemon, getSpeciesCatalogLocal, getSpeciesCatalogLocalVersion, getMovimentos, getMovimentosDisponiveisPokemon, getPersonalidades, getItens, getHabilidades, ganharXpPokemon, aceitarMovimentoAprendido, recusarMovimentoAprendido, mestreDefinirTiposPokemon, alocarAtributosPokemon, listarEvolucoesPossiveisPokemon, evoluirPokemon } from '../api'
+import { getMeuPerfil, getUsuario, criarPokemon, getPokemon, atualizarPokemon, colocarNoTime, removerDoTime, excluirPokemon, getSpeciesCatalogLocal, getSpeciesCatalogLocalVersion, getMovimentos, getMovimentosDisponiveisPokemon, getPersonalidades, getItens, getHabilidades, aceitarMovimentoAprendido, recusarMovimentoAprendido, mestreDefinirTiposPokemon, alocarAtributosPokemon, listarEvolucoesPossiveisPokemon, evoluirPokemon } from '../api'
 import { usePlayerTarget } from '../context/PlayerTargetContext'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { queryKeys } from '../query/queryKeys'
@@ -68,6 +68,18 @@ function formatMovimentoNomeExibicao(m) {
 const POKEBOLAS = ['POKEBALL', 'GREATBALL', 'ULTRABALL', 'MASTERBALL', 'SAFARIBALL', 'LUXURYBALL', 'FRIENDLYBALL', 'OUTRA']
 const ESPECIALIZACOES = ['VELOCISTA', 'ATACANTE_FISICO', 'ATACANTE_ESPECIAL', 'TANQUE', 'SUPORTE', 'UTILITARIO']
 const CONDICOES_STATUS = ['PARALISADO', 'ENVENENADO', 'DORMINDO', 'QUEIMADO', 'CONGELADO', 'CONFUSO']
+
+const ATRIBUTO_EDIT_FIELD_MAP = {
+  atr_ataque: 'atrAtaque',
+  atr_defesa: 'atrDefesa',
+  atr_ataque_especial: 'atrAtaqueEspecial',
+  atr_defesa_especial: 'atrDefesaEspecial',
+  atr_speed: 'atrSpeed',
+  atr_hp: 'atrHp',
+  atr_stamina: 'atrStamina',
+  atr_tecnica: 'atrTecnica',
+  atr_respeito: 'atrRespeito',
+}
 
 function editStateFromPokemon(p) {
   if (!p) return null
@@ -158,6 +170,8 @@ function ExpandedForm({
   custoParaProximo,
   evolucoesPossiveis,
   onEvoluir,
+  pendingResumo,
+  pendingEvolucaoPokedexId,
 }) {
   const [movimentoBusca, setMovimentoBusca] = useState('')
   const [xpGanho, setXpGanho] = useState('')
@@ -275,18 +289,25 @@ function ExpandedForm({
           </button>
           {Array.isArray(evolucoesPossiveis) && evolucoesPossiveis.length > 0 && (
             <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap', justifyContent: 'flex-end' }}>
-              {evolucoesPossiveis.map((evo) => (
-                <button
-                  key={`${evo.pokedexId}-${evo.triggerType}-${evo.minLevel || 0}`}
-                  type="button"
-                  className="btn btn-primary"
-                  disabled={savingPokemon || (!evo.disponivelAgora)}
-                  onClick={() => onEvoluir && onEvoluir(evo.pokedexId)}
-                  title={evo.disponivelAgora ? '' : (evo.minLevel ? `Necessário nível ${evo.minLevel}` : 'Evolução indisponível no momento')}
-                >
-                  Evoluir → {evo.especie || `#${evo.pokedexId}`}
-                </button>
-              ))}
+              {evolucoesPossiveis.map((evo) => {
+                const trigger = String(evo.triggerType || '').toUpperCase()
+                const minLevel = Number(evo.minLevel || 0)
+                const nivelAtual = Number(expandedEdit.nivel || 1)
+                const disponivelAgora = trigger === 'LEVEL_UP' ? nivelAtual >= minLevel : !!evo.disponivelAgora
+                const estaPendente = Number(pendingEvolucaoPokedexId) === Number(evo.pokedexId)
+                return (
+                  <button
+                    key={`${evo.pokedexId}-${evo.triggerType}-${evo.minLevel || 0}`}
+                    type="button"
+                    className="btn btn-primary"
+                    disabled={savingPokemon || (!disponivelAgora)}
+                    onClick={() => onEvoluir && onEvoluir(evo.pokedexId)}
+                    title={disponivelAgora ? '' : (evo.minLevel ? `Necessário nível ${evo.minLevel}` : 'Evolução indisponível no momento')}
+                  >
+                    {estaPendente ? 'Evolução marcada' : 'Marcar evolução'} → {evo.especie || `#${evo.pokedexId}`}
+                  </button>
+                )
+              })}
             </div>
           )}
         </div>
@@ -445,7 +466,7 @@ function ExpandedForm({
                       Promise.resolve(onGanharXp && onGanharXp(expandedPokemon?.id, valor)).finally(() => setXpGanho(''))
                     }}
                   >
-                    {ganharXpLoading ? '...' : 'Ganhar'}
+                    {ganharXpLoading ? '...' : 'Adicionar ao rascunho'}
                   </button>
                 </div>
               </Field>
@@ -606,6 +627,9 @@ function ExpandedForm({
                   Atenção: você está excedendo o limite recomendado de pontos deste Pokémon.
                 </p>
               )}
+              <p style={{ margin: '0 0 0.75rem', color: 'var(--text-muted)' }}>
+                A distribuição é aplicada no banco somente ao clicar em <strong>Salvar</strong>.
+              </p>
               <div style={{ display: 'grid', gap: '0.5rem' }}>
                 {atributoRows.map((row) => {
                   const custo = custoParaProximo ? custoParaProximo(expandedEdit.nivel, row.valor) : 1
@@ -754,6 +778,9 @@ function ExpandedForm({
       </div>
 
       {erro && <p className="pokemon-expanded-erro">{erro}</p>}
+      {pendingResumo && (
+        <p style={{ color: 'var(--text-muted)', margin: '0 0 0.5rem' }}>{pendingResumo}</p>
+      )}
       <div className="pokemon-expanded-form-actions">
         <button type="submit" className="btn btn-primary" disabled={savingPokemon || acoesBloqueadas}>
           {savingPokemon ? 'Salvando...' : 'Salvar'}
@@ -792,6 +819,10 @@ export default function PokemonList() {
   const [expandedLoading, setExpandedLoading] = useState(false)
   const [alocandoAtributo, setAlocandoAtributo] = useState(false)
   const [evolucoesPossiveis, setEvolucoesPossiveis] = useState([])
+  const [pendingXpGanhoTotal, setPendingXpGanhoTotal] = useState(0)
+  const [pendingAlocacoes, setPendingAlocacoes] = useState({})
+  const [pendingEvolucaoPokedexId, setPendingEvolucaoPokedexId] = useState(null)
+  const [pendingResetTiposEspecie, setPendingResetTiposEspecie] = useState(false)
 
   // Pop-up sequencial quando o Pokémon aprende novos ataques ao subir de nível.
   const [ofertasAprendizagem, setOfertasAprendizagem] = useState([])
@@ -906,8 +937,15 @@ export default function PokemonList() {
   }, [itensQuery.data])
 
   useEffect(() => {
-    if (expandedPokemon) setExpandedEdit(editStateFromPokemon(expandedPokemon))
-    else setExpandedEdit(null)
+    if (expandedPokemon) {
+      setExpandedEdit(editStateFromPokemon(expandedPokemon))
+      setPendingXpGanhoTotal(0)
+      setPendingAlocacoes({})
+      setPendingEvolucaoPokedexId(null)
+      setPendingResetTiposEspecie(false)
+    } else {
+      setExpandedEdit(null)
+    }
   }, [expandedPokemon])
 
   useEffect(() => {
@@ -942,36 +980,19 @@ export default function PokemonList() {
   }
 
   const handleGanharXp = async (pokemonId, xpGanho) => {
-    if (!pokemonId) return
+    if (!pokemonId || !expandedEdit) return
+    const valor = Math.max(0, Number(xpGanho) || 0)
+    if (!valor) return
     setErro('')
     setNivelSubiuMsg('')
-    setXpLoading(true)
-    try {
-      const response = await ganharXpPokemon(pokemonId, xpGanho, playerId)
-      if (response?.nivelSubiu) {
-        setNivelSubiuMsg(`Nível do Pokémon subiu para Lv. ${response.nivelDepois}!`)
-        if (response.movimentosAprendendo && response.movimentosAprendendo.length > 0) {
-          setOfertasAprendizagem(response.movimentosAprendendo)
-          setOfertaIdx(0)
-          setSubstituirMovimentoId('')
-        } else {
-          setOfertasAprendizagem([])
-          setOfertaIdx(0)
-        }
-      } else {
-        setOfertasAprendizagem([])
-        setOfertaIdx(0)
+    setExpandedEdit((current) => {
+      if (!current) return current
+      return {
+        ...current,
+        xpAtual: Math.max(0, (Number(current.xpAtual) || 0) + valor),
       }
-      if (response?.pokemon) {
-        setExpandedPokemon(response.pokemon)
-      }
-      load()
-    } catch (err) {
-      setErro(err.message)
-      throw err
-    } finally {
-      setXpLoading(false)
-    }
+    })
+    setPendingXpGanhoTotal((current) => current + valor)
   }
 
   const custoParaProximo = (nivel, valorAtual) => {
@@ -1003,34 +1024,34 @@ export default function PokemonList() {
       setErro(`Pontos insuficientes para aumentar ${atributo}. Custo atual: ${custo}.`)
       return
     }
+    const editField = ATRIBUTO_EDIT_FIELD_MAP[atributo]
+    if (!editField) return
     setErro('')
-    setAlocandoAtributo(true)
-    try {
-      const atualizado = await alocarAtributosPokemon(expandedPokemon.id, atributo, 1, playerId)
-      setExpandedPokemon(atualizado)
-      await load()
-    } catch (err) {
-      setErro(err.message || 'Erro ao distribuir pontos')
-    } finally {
-      setAlocandoAtributo(false)
-    }
+    setExpandedEdit((current) => {
+      if (!current) return current
+      const next = {
+        ...current,
+        pontosDistribuicaoDisponiveis: (Number(current.pontosDistribuicaoDisponiveis) || 0) - custo,
+        [editField]: (Number(current[editField]) || 0) + 1,
+      }
+      if (atributo === 'atr_tecnica') {
+        next.tecnica = Number(next.atrTecnica) || 0
+      }
+      if (atributo === 'atr_respeito') {
+        next.respeito = Number(next.atrRespeito) || 0
+      }
+      return next
+    })
+    setPendingAlocacoes((current) => ({
+      ...current,
+      [atributo]: (Number(current[atributo]) || 0) + 1,
+    }))
   }
 
   const handleEvoluir = async (pokedexId) => {
-    if (!expandedPokemon?.id) return
+    if (!expandedPokemon?.id || !expandedEdit) return
     setErro('')
-    setSavingPokemon(true)
-    try {
-      const atualizado = await evoluirPokemon(expandedPokemon.id, pokedexId, playerId)
-      setExpandedPokemon(atualizado)
-      const evolucoes = await listarEvolucoesPossiveisPokemon(atualizado.id, playerId).catch(() => [])
-      setEvolucoesPossiveis(Array.isArray(evolucoes) ? evolucoes : [])
-      await load()
-    } catch (err) {
-      setErro(err.message || 'Erro ao evoluir Pokémon')
-    } finally {
-      setSavingPokemon(false)
-    }
+    setPendingEvolucaoPokedexId(pokedexId)
   }
 
   const toggleExpand = (p) => {
@@ -1283,19 +1304,18 @@ export default function PokemonList() {
   }
 
   const handleRestaurarTiposEspecie = async () => {
-    if (!expandedPokemon?.id || !usuarioMestre?.mestre) return
+    if (!expandedPokemon?.id || !usuarioMestre?.mestre || !expandedEdit) return
     setErro('')
-    setSavingPokemon(true)
-    try {
-      await mestreDefinirTiposPokemon(expandedPokemon.id, { resetTiposParaEspecie: true })
-      const updated = await getPokemon(expandedPokemon.id, playerId)
-      setExpandedPokemon(updated)
-      await load()
-    } catch (err) {
-      setErro(err.message)
-    } finally {
-      setSavingPokemon(false)
-    }
+    setExpandedEdit((current) => {
+      if (!current) return current
+      return {
+        ...current,
+        tipoPrimario: current.tipoPrimarioEspecie || 'NORMAL',
+        tipoSecundario: current.tipoSecundarioEspecie || '',
+        tiposComOverride: false,
+      }
+    })
+    setPendingResetTiposEspecie(true)
   }
 
   const handleSalvarExpanded = async (e) => {
@@ -1304,6 +1324,7 @@ export default function PokemonList() {
     setErro('')
     setSavingPokemon(true)
     try {
+      const evolucaoPendente = pendingEvolucaoPokedexId
       if (usuarioMestre?.mestre) {
         const sec = expandedEdit.tipoSecundario || null
         if (sec && sec === expandedEdit.tipoPrimario) {
@@ -1311,13 +1332,21 @@ export default function PokemonList() {
           setSavingPokemon(false)
           return
         }
-        await mestreDefinirTiposPokemon(expandedPokemon.id, {
-          tipoPrimario: expandedEdit.tipoPrimario,
-          tipoSecundario: sec,
-        })
+        if (pendingResetTiposEspecie) {
+          await mestreDefinirTiposPokemon(expandedPokemon.id, { resetTiposParaEspecie: true })
+        } else {
+          const tipoAlterado = expandedEdit.tipoPrimario !== expandedPokemon.tipoPrimario
+            || (expandedEdit.tipoSecundario || null) !== (expandedPokemon.tipoSecundario || null)
+          if (tipoAlterado) {
+            await mestreDefinirTiposPokemon(expandedPokemon.id, {
+              tipoPrimario: expandedEdit.tipoPrimario,
+              tipoSecundario: sec,
+            })
+          }
+        }
       }
       const resultado = await atualizarPokemon(expandedPokemon.id, {
-        pokedexId: expandedEdit.pokedexId && expandedEdit.pokedexId > 0 ? expandedEdit.pokedexId : null,
+        pokedexId: evolucaoPendente ? null : (expandedEdit.pokedexId && expandedEdit.pokedexId > 0 ? expandedEdit.pokedexId : null),
         apelido: expandedEdit.apelido || null,
         notas: expandedEdit.notas || null,
         genero: (expandedEdit.genero && expandedEdit.genero !== '' ? expandedEdit.genero : 'SEM_GENERO'),
@@ -1336,12 +1365,21 @@ export default function PokemonList() {
         statusAtuais: expandedEdit.statusAtuais?.length ? expandedEdit.statusAtuais : null,
         movimentoIds: expandedEdit.movimentoIds?.length ? expandedEdit.movimentoIds : [],
       }, playerId)
-      if (resultado?.pokemon) {
-        setExpandedPokemon(resultado.pokemon)
-      } else {
-        const updated = await getPokemon(expandedPokemon.id, playerId)
-        setExpandedPokemon(updated)
+
+      let pokemonAtualizado = resultado?.pokemon || expandedPokemon
+      const alocacoesPendentes = Object.entries(pendingAlocacoes).filter(([, quantidade]) => Number(quantidade) > 0)
+      for (const [atributo, quantidade] of alocacoesPendentes) {
+        for (let i = 0; i < Number(quantidade); i += 1) {
+          pokemonAtualizado = await alocarAtributosPokemon(pokemonAtualizado.id, atributo, 1, playerId)
+        }
       }
+
+      if (evolucaoPendente) {
+        pokemonAtualizado = await evoluirPokemon(pokemonAtualizado.id, evolucaoPendente, playerId)
+      }
+
+      const updated = await getPokemon(pokemonAtualizado.id, playerId)
+      setExpandedPokemon(updated)
       await load()
 
       const movimentosAprendendo = resultado?.movimentosAprendendo || []
@@ -1351,13 +1389,14 @@ export default function PokemonList() {
         setNivelSubiuMsg(`Nível do Pokémon subiu para Lv. ${resultado.nivelDepois}`)
         // Mantém o card aberto até aceitar/recusar os ataques.
       } else {
-        // Após salvar, recolhe o card expandido
-        setExpandedId(null)
-        setExpandedPokemon(null)
         setOfertasAprendizagem([])
         setOfertaIdx(0)
         setNivelSubiuMsg('')
       }
+      setPendingXpGanhoTotal(0)
+      setPendingAlocacoes({})
+      setPendingEvolucaoPokedexId(null)
+      setPendingResetTiposEspecie(false)
     } catch (err) {
       setErro(err.message)
     } finally {
@@ -1368,6 +1407,15 @@ export default function PokemonList() {
   const perfil = perfilQuery.data ?? null
   const timePrincipal = perfil?.timePrincipal ?? []
   const naBox = perfil?.box ?? []
+  const totalAlocacoesPendentes = Object.values(pendingAlocacoes).reduce((acc, qtd) => acc + (Number(qtd) || 0), 0)
+  const pendingPartes = []
+  if (pendingXpGanhoTotal > 0) pendingPartes.push(`XP +${pendingXpGanhoTotal}`)
+  if (totalAlocacoesPendentes > 0) pendingPartes.push(`Alocações ${totalAlocacoesPendentes}`)
+  if (pendingEvolucaoPokedexId) pendingPartes.push(`Evolução #${pendingEvolucaoPokedexId}`)
+  if (pendingResetTiposEspecie) pendingPartes.push('Tipos restaurados para espécie')
+  const pendingResumo = pendingPartes.length > 0
+    ? `Rascunho pendente: ${pendingPartes.join(' · ')}. As mudanças serão persistidas somente ao salvar.`
+    : 'As mudanças nesta ficha ficam em rascunho e só vão para o banco ao clicar em Salvar.'
 
   if (!readyForPlayerApi) return <div className="container">Carregando...</div>
 
@@ -1486,6 +1534,8 @@ export default function PokemonList() {
                         custoParaProximo={custoParaProximo}
                         evolucoesPossiveis={evolucoesPossiveis}
                         onEvoluir={handleEvoluir}
+                        pendingResumo={pendingResumo}
+                        pendingEvolucaoPokedexId={pendingEvolucaoPokedexId}
                       />
                     ) : null}
                   </div>
@@ -1588,6 +1638,8 @@ export default function PokemonList() {
                         custoParaProximo={custoParaProximo}
                         evolucoesPossiveis={evolucoesPossiveis}
                         onEvoluir={handleEvoluir}
+                        pendingResumo={pendingResumo}
+                        pendingEvolucaoPokedexId={pendingEvolucaoPokedexId}
                       />
                     ) : null}
                   </div>
