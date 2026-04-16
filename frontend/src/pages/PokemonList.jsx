@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback } from 'react'
 import { Link } from 'react-router-dom'
-import { getMeuPerfil, getUsuario, criarPokemon, getPokemon, atualizarPokemon, colocarNoTime, removerDoTime, excluirPokemon, getSpeciesCatalogLocal, getSpeciesCatalogLocalVersion, getMovimentos, getMovimentosDisponiveisPokemon, getPersonalidades, getItens, getHabilidades, aceitarMovimentoAprendido, recusarMovimentoAprendido, mestreDefinirTiposPokemon, alocarAtributosPokemon, listarEvolucoesPossiveisPokemon, evoluirPokemon } from '../api'
+import { getMeuPerfil, getUsuario, criarPokemon, getPokemon, atualizarPokemon, colocarNoTime, removerDoTime, excluirPokemon, getSpeciesCatalogLocal, getSpeciesCatalogLocalVersion, getMovimentos, getMovimentosDisponiveisPokemon, getPersonalidades, getItens, getHabilidades, previewGanhoXpPokemon, mestreDefinirTiposPokemon, alocarAtributosPokemon, listarEvolucoesPossiveisPokemon, evoluirPokemon } from '../api'
 import { usePlayerTarget } from '../context/PlayerTargetContext'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { queryKeys } from '../query/queryKeys'
@@ -985,14 +985,34 @@ export default function PokemonList() {
     if (!valor) return
     setErro('')
     setNivelSubiuMsg('')
-    setExpandedEdit((current) => {
-      if (!current) return current
-      return {
-        ...current,
-        xpAtual: Math.max(0, (Number(current.xpAtual) || 0) + valor),
+    setXpLoading(true)
+    try {
+      const preview = await previewGanhoXpPokemon(pokemonId, valor, Number(expandedEdit.xpAtual) || 0, playerId)
+      setExpandedEdit((current) => {
+        if (!current) return current
+        return {
+          ...current,
+          xpAtual: Number(preview?.xpDepois ?? current.xpAtual) || 0,
+          nivel: Number(preview?.nivelDepois ?? current.nivel) || current.nivel,
+        }
+      })
+      setPendingXpGanhoTotal((current) => current + valor)
+      if (preview?.nivelSubiu) {
+        setNivelSubiuMsg(`Nível em rascunho: Lv. ${preview.nivelDepois}`)
       }
-    })
-    setPendingXpGanhoTotal((current) => current + valor)
+      const ofertas = Array.isArray(preview?.movimentosAprendendo) ? preview.movimentosAprendendo : []
+      if (ofertas.length > 0) {
+        setOfertasAprendizagem((atual) => {
+          const ids = new Set((atual || []).map((m) => m.id))
+          const novos = ofertas.filter((m) => m?.id && !ids.has(m.id))
+          return [...(atual || []), ...novos]
+        })
+      }
+    } catch (err) {
+      setErro(err.message || 'Erro ao calcular XP em rascunho')
+    } finally {
+      setXpLoading(false)
+    }
   }
 
   const custoParaProximo = (nivel, valorAtual) => {
@@ -1240,54 +1260,38 @@ export default function PokemonList() {
     const oferta = ofertasAprendizagem[ofertaIdx]
     if (!oferta || !expandedPokemon) return
     setErro('')
-    setXpLoading(true)
-    try {
-      await recusarMovimentoAprendido(expandedPokemon.id, oferta.id, playerId)
-      const proximo = ofertaIdx + 1
-      if (proximo >= ofertasAprendizagem.length) {
-        setOfertasAprendizagem([])
-        setOfertaIdx(0)
-        setNivelSubiuMsg('')
-      } else {
-        setOfertaIdx(proximo)
-      }
-      await load()
-    } catch (err) {
-      setErro(err.message)
-    } finally {
-      setXpLoading(false)
+    const proximo = ofertaIdx + 1
+    if (proximo >= ofertasAprendizagem.length) {
+      setOfertasAprendizagem([])
+      setOfertaIdx(0)
+      setNivelSubiuMsg('')
+    } else {
+      setOfertaIdx(proximo)
     }
   }
 
   const handleAceitarOfertaAprendizagem = async () => {
     const oferta = ofertasAprendizagem[ofertaIdx]
-    if (!oferta || !expandedPokemon) return
+    if (!oferta || !expandedPokemon || !expandedEdit) return
     setErro('')
-    setXpLoading(true)
-    try {
-      const idsAtuais = expandedEdit?.movimentoIds || []
-      const noLimite = idsAtuais.length >= 8
-      let substituto = null
-      if (noLimite) {
-        // Garante que a substituição use a lista atual (pode mudar conforme pop-ups anteriores).
-        substituto = idsAtuais.includes(substituirMovimentoId) ? substituirMovimentoId : (idsAtuais[0] || null)
-      }
-      const atualizado = await aceitarMovimentoAprendido(expandedPokemon.id, oferta.id, substituto, playerId)
-      if (atualizado) setExpandedPokemon(atualizado)
+    const idsAtuais = expandedEdit?.movimentoIds || []
+    const noLimite = idsAtuais.length >= 8
+    let nextMovimentos = idsAtuais
+    if (noLimite) {
+      const substituto = idsAtuais.includes(substituirMovimentoId) ? substituirMovimentoId : (idsAtuais[0] || null)
+      nextMovimentos = idsAtuais.map((id) => (id === substituto ? oferta.id : id))
+    } else if (!idsAtuais.includes(oferta.id)) {
+      nextMovimentos = [...idsAtuais, oferta.id]
+    }
+    setExpandedEdit((current) => (!current ? current : { ...current, movimentoIds: nextMovimentos }))
 
-      const proximo = ofertaIdx + 1
-      if (proximo >= ofertasAprendizagem.length) {
-        setOfertasAprendizagem([])
-        setOfertaIdx(0)
-        setNivelSubiuMsg('')
-      } else {
-        setOfertaIdx(proximo)
-      }
-      await load()
-    } catch (err) {
-      setErro(err.message)
-    } finally {
-      setXpLoading(false)
+    const proximo = ofertaIdx + 1
+    if (proximo >= ofertasAprendizagem.length) {
+      setOfertasAprendizagem([])
+      setOfertaIdx(0)
+      setNivelSubiuMsg('')
+    } else {
+      setOfertaIdx(proximo)
     }
   }
 
@@ -1382,7 +1386,7 @@ export default function PokemonList() {
       setExpandedPokemon(updated)
       await load()
 
-      const movimentosAprendendo = resultado?.movimentosAprendendo || []
+      const movimentosAprendendo = pendingXpGanhoTotal > 0 ? [] : (resultado?.movimentosAprendendo || [])
       if (movimentosAprendendo.length > 0) {
         setOfertasAprendizagem(movimentosAprendendo)
         setOfertaIdx(0)

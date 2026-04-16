@@ -9,12 +9,23 @@ public class PokemonGanharXpRequestDto {
     @Min(1)
     private Integer xpGanho;
 
+    @Min(0)
+    private Integer xpBaseAtual;
+
     public Integer getXpGanho() {
         return xpGanho;
     }
 
     public void setXpGanho(Integer xpGanho) {
         this.xpGanho = xpGanho;
+    }
+
+    public Integer getXpBaseAtual() {
+        return xpBaseAtual;
+    }
+
+    public void setXpBaseAtual(Integer xpBaseAtual) {
+        this.xpBaseAtual = xpBaseAtual;
     }
 }
 

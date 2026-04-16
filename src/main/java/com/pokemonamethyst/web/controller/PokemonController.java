@@ -16,6 +16,7 @@ import com.pokemonamethyst.web.dto.PokemonEstadoRequestDto;
 import com.pokemonamethyst.web.dto.PokemonGeracaoRequestDto;
 import com.pokemonamethyst.web.dto.PokemonGanharXpRequestDto;
 import com.pokemonamethyst.web.dto.PokemonGanharXpResponseDto;
+import com.pokemonamethyst.web.dto.PokemonXpPreviewResponseDto;
 import com.pokemonamethyst.web.dto.PokemonRequestDto;
 import com.pokemonamethyst.web.dto.PokemonAtualizarComAprendizagemResponseDto;
 import com.pokemonamethyst.web.dto.PokemonMovimentoAprendidoRequestDto;
@@ -156,6 +157,18 @@ public class PokemonController {
             @Valid @RequestBody PokemonGanharXpRequestDto dto) {
         String perfilId = perfilService.resolvePerfilId(principal, playerId);
         PokemonGanharXpResponseDto response = pokemonService.ganharXp(id, perfilId, dto.getXpGanho());
+        return ResponseEntity.ok(response);
+    }
+
+    @PostMapping("/{id}/xp/preview")
+    @Transactional(readOnly = true)
+    public ResponseEntity<PokemonXpPreviewResponseDto> previewXp(
+            @AuthenticationPrincipal UsuarioPrincipal principal,
+            @PathVariable String id,
+            @RequestParam(value = "playerId", required = false) String playerId,
+            @Valid @RequestBody PokemonGanharXpRequestDto dto) {
+        String perfilId = perfilService.resolvePerfilId(principal, playerId);
+        PokemonXpPreviewResponseDto response = pokemonService.preverGanhoXp(id, perfilId, dto.getXpGanho(), dto.getXpBaseAtual());
         return ResponseEntity.ok(response);
     }
 

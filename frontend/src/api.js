@@ -284,6 +284,18 @@ export async function ganharXpPokemon(id, xpGanho, playerId) {
   return res.json();
 }
 
+export async function previewGanhoXpPokemon(id, xpGanho, xpBaseAtual, playerId) {
+  const res = await request(withPlayerQuery(`/perfis/meu/pokemons/${id}/xp/preview`, playerId), {
+    method: 'POST',
+    body: JSON.stringify({ xpGanho, xpBaseAtual }),
+  });
+  if (!res.ok) {
+    const data = await res.json().catch(() => ({}));
+    throw new Error(data.mensagem || 'Erro ao pré-visualizar ganho de XP');
+  }
+  return res.json();
+}
+
 export async function aceitarMovimentoAprendido(id, movimentoId, substituirMovimentoId, playerId) {
   const res = await request(withPlayerQuery(`/perfis/meu/pokemons/${id}/movimentos-aprendendo/aceitar`, playerId), {
     method: 'POST',

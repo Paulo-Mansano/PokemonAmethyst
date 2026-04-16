@@ -279,24 +279,6 @@ public class PokemonService {
         if (tecnica != null) pokemon.setTecnica(tecnica);
         if (respeito != null) pokemon.setRespeito(respeito);
         if (statusAtuais != null) pokemon.setStatusAtuais(statusAtuais);
-        if (movimentoIds != null) {
-            List<String> movimentoIdsUnicos = deduplicarIdsPreservandoOrdem(movimentoIds);
-            if (movimentoIdsUnicos.size() > MAX_MOVIMENTOS_POR_POKEMON) {
-                throw new RegraNegocioException("Máximo de " + MAX_MOVIMENTOS_POR_POKEMON + " ataques por Pokémon.");
-            }
-            Set<MoveLearnMethod> metodosPermitidos = permitirMetodosExtrasNoLearnset
-                    ? Set.of(MoveLearnMethod.LEVEL_UP, MoveLearnMethod.EGG, MoveLearnMethod.MACHINE, MoveLearnMethod.TUTOR)
-                    : Set.of(MoveLearnMethod.LEVEL_UP);
-            pokemonLearnsetService.validarMovimentosPermitidos(
-                    pokemon.getSpecies(),
-                    pokemon.getNivel(),
-                    movimentoIdsUnicos,
-                    metodosPermitidos
-            );
-            List<Movimento> movimentos = semMovimentosDuplicados(buscarMovimentosPorIds(movimentoIdsUnicos));
-            pokemon.getMovimentosConhecidos().clear();
-            pokemon.getMovimentosConhecidos().addAll(movimentos);
-        }
         if (habilidadeId != null) {
             if (habilidadeId.isBlank()) {
                 pokemon.setHabilidadeAtiva(pokemonAbilityService.sortearHabilidadeAtivaOuNulo(pokemon.getSpecies()));
@@ -319,6 +301,26 @@ public class PokemonService {
         x = PokemonExperience.clampXpTotal(x, curva);
         pokemon.setXpAtual(x);
         pokemon.setNivel(PokemonExperience.calculateLevelFromXp(x, curva));
+
+        if (movimentoIds != null) {
+            List<String> movimentoIdsUnicos = deduplicarIdsPreservandoOrdem(movimentoIds);
+            if (movimentoIdsUnicos.size() > MAX_MOVIMENTOS_POR_POKEMON) {
+            throw new RegraNegocioException("Máximo de " + MAX_MOVIMENTOS_POR_POKEMON + " ataques por Pokémon.");
+            }
+            Set<MoveLearnMethod> metodosPermitidos = permitirMetodosExtrasNoLearnset
+                ? Set.of(MoveLearnMethod.LEVEL_UP, MoveLearnMethod.EGG, MoveLearnMethod.MACHINE, MoveLearnMethod.TUTOR)
+                : Set.of(MoveLearnMethod.LEVEL_UP);
+            pokemonLearnsetService.validarMovimentosPermitidos(
+                pokemon.getSpecies(),
+                pokemon.getNivel(),
+                movimentoIdsUnicos,
+                metodosPermitidos
+            );
+            List<Movimento> movimentos = semMovimentosDuplicados(buscarMovimentosPorIds(movimentoIdsUnicos));
+            pokemon.getMovimentosConhecidos().clear();
+            pokemon.getMovimentosConhecidos().addAll(movimentos);
+        }
+
         int hpMaximoAtualizado = calcularHpMaximo(pokemon);
         int hpAtual = pokemon.getHpAtual() == null ? hpMaximoAtualizado : pokemon.getHpAtual();
         pokemon.setHpAtual(Math.max(0, Math.min(hpAtual, hpMaximoAtualizado)));
@@ -367,6 +369,47 @@ public class PokemonService {
                         .collect(Collectors.toList());
 
         return com.pokemonamethyst.web.dto.PokemonGanharXpResponseDto.from(salvo, nivelAntes, nivelDepois, ofertas);
+    }
+
+    @Transactional(readOnly = true)
+    public com.pokemonamethyst.web.dto.PokemonXpPreviewResponseDto preverGanhoXp(String pokemonId, String perfilId, int xpGanho, Integer xpBaseAtual) {
+        if (xpGanho <= 0) {
+            throw new RegraNegocioException("xpGanho deve ser maior que zero.");
+        }
+        Pokemon pokemon = buscarPorIdEPerfil(pokemonId, perfilId);
+        if (pokemon.getSpecies() == null || pokemon.getSpecies().getId() == null || pokemon.getSpecies().getId().isBlank()) {
+            throw new RegraNegocioException("Não foi possível prever XP: espécie do Pokémon está incompleta.");
+        }
+        GrowthRate curva = GrowthRate.fromSpecies(pokemon.getSpecies());
+        if (curva == null) {
+            throw new RegraNegocioException("Não foi possível prever XP: curva de crescimento não disponível para a espécie.");
+        }
+
+        int xpAntes = xpBaseAtual != null
+                ? PokemonExperience.clampXpTotal(xpBaseAtual, curva)
+                : pokemon.getXpAtual();
+        int nivelAntes = PokemonExperience.calculateLevelFromXp(xpAntes, curva);
+
+        long soma = (long) xpAntes + xpGanho;
+        int xpDepois = (int) Math.min(PokemonExperience.getTotalXpForLevel(PokemonExperience.MAX_LEVEL, curva), Math.max(0, soma));
+        int nivelDepois = PokemonExperience.calculateLevelFromXp(xpDepois, curva);
+
+        List<Movimento> movimentosAprendendo = List.of();
+        if (nivelDepois > nivelAntes) {
+            try {
+                movimentosAprendendo = calcularMovimentosAprendidosEntreNiveis(pokemon, nivelAntes, nivelDepois);
+            } catch (RuntimeException ex) {
+                throw new RegraNegocioException("Não foi possível prever os ataques aprendidos para este Pokémon.");
+            }
+        }
+
+        return com.pokemonamethyst.web.dto.PokemonXpPreviewResponseDto.from(
+                xpAntes,
+                xpDepois,
+                nivelAntes,
+                nivelDepois,
+                movimentosAprendendo
+        );
     }
 
     @Transactional(readOnly = true)
@@ -459,6 +502,7 @@ public class PokemonService {
                 : pokemon.getMovimentosConhecidos().stream().map(Movimento::getId).collect(Collectors.toSet());
 
         PokemonSpecies species = pokemon.getSpecies();
+        if (species.getId() == null || species.getId().isBlank()) return List.of();
         // Ordem canônica do learnset (nível, ordem na PokéAPI, id) — mesmo critério da importação e da criação.
         List<PokemonSpeciesMovimento> entries = pokemonLearnsetService.listarLearnsetOrdenado(species.getId());
 
