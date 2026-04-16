@@ -12,6 +12,9 @@ spring:
     hikari:
       maximum-pool-size: ${SPRING_DATASOURCE_POOL_SIZE:3}
       minimum-idle: ${SPRING_DATASOURCE_POOL_MIN_IDLE:1}
+      # Supabase (e muitos hosts na nuvem): defina no .env DB_SSLMODE=require. Em Postgres local deixe sem a var (default disable).
+      data-source-properties:
+        sslmode: ${DB_SSLMODE:disable}
 
   jpa:
     hibernate:
