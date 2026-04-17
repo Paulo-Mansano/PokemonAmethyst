@@ -180,6 +180,9 @@ public class PokemonService {
         pokemon.setOrigem(OrigemPokemon.TREINADOR);
         pokemon.setEstado(EstadoPokemon.ATIVO);
         pokemonGenerationService.inicializarPokemonNovo(pokemon);
+        if (nivelBase > NIVEL_INICIAL) {
+            pokemonStatService.concederPontosPorNivel(pokemon, NIVEL_INICIAL, nivelBase);
+        }
         if (personalidadeId != null && !personalidadeId.isBlank()) {
             personalidadeRepository.findById(personalidadeId).ifPresent(pokemon::setPersonalidade);
         }

@@ -119,6 +119,12 @@ class PokemonServiceTest {
         species.setPokedexId(1);
         species.setNome("Bulbasaur");
         species.setGenderRate(8);
+        species.setBaseHp(60);
+        species.setBaseAtaque(60);
+        species.setBaseDefesa(60);
+        species.setBaseAtaqueEspecial(60);
+        species.setBaseDefesaEspecial(60);
+        species.setBaseSpeed(60);
 
         Habilidade ability = new Habilidade();
         ability.setId("ab-1");
@@ -161,4 +167,82 @@ class PokemonServiceTest {
         assertThat(salvo.getOrigem()).isEqualTo(OrigemPokemon.TREINADOR);
         assertThat(salvo.getEstado()).isEqualTo(EstadoPokemon.ATIVO);
     }
+
+        @Test
+        void criarAcimaDoNivelUmDeveConcederPontosPorNivel() {
+                PokemonRepository pokemonRepository = mock(PokemonRepository.class);
+                PerfilJogadorRepository perfilRepository = mock(PerfilJogadorRepository.class);
+                ItemRepository itemRepository = mock(ItemRepository.class);
+                MovimentoRepository movimentoRepository = mock(MovimentoRepository.class);
+                HabilidadeRepository habilidadeRepository = mock(HabilidadeRepository.class);
+                PersonalidadeRepository personalidadeRepository = mock(PersonalidadeRepository.class);
+                PokeApiService pokeApiService = mock(PokeApiService.class);
+                PokemonAbilityService pokemonAbilityService = mock(PokemonAbilityService.class);
+                PokemonLearnsetService pokemonLearnsetService = mock(PokemonLearnsetService.class);
+                PokemonGenerationService pokemonGenerationService = new PokemonGenerationService();
+                PokemonStatService pokemonStatService = new PokemonStatService();
+                PokemonEvolutionService pokemonEvolutionService = mock(PokemonEvolutionService.class);
+                PokemonSpeciesRepository pokemonSpeciesRepository = mock(PokemonSpeciesRepository.class);
+
+                PokemonService service = new PokemonService(
+                                pokemonRepository,
+                                perfilRepository,
+                                itemRepository,
+                                movimentoRepository,
+                                habilidadeRepository,
+                                personalidadeRepository,
+                                pokeApiService,
+                                pokemonAbilityService,
+                                pokemonLearnsetService,
+                                pokemonGenerationService,
+                                pokemonStatService,
+                                pokemonEvolutionService,
+                                pokemonSpeciesRepository,
+                                0,
+                                false
+                );
+
+                PerfilJogador perfil = new PerfilJogador();
+                perfil.setId("perfil-2");
+
+                PokemonSpecies species = new PokemonSpecies();
+                species.setId("species-2");
+                species.setPokedexId(2);
+                species.setNome("Teste");
+                species.setGenderRate(8);
+                species.setBaseHp(60);
+                species.setBaseAtaque(60);
+                species.setBaseDefesa(60);
+                species.setBaseAtaqueEspecial(60);
+                species.setBaseDefesaEspecial(60);
+                species.setBaseSpeed(60);
+
+                Habilidade ability = new Habilidade();
+                ability.setId("ab-2");
+                ability.setNome("Ability");
+
+                when(perfilRepository.findById("perfil-2")).thenReturn(Optional.of(perfil));
+                when(pokemonRepository.save(any(Pokemon.class))).thenAnswer(invocation -> invocation.getArgument(0));
+                when(perfilRepository.save(any(PerfilJogador.class))).thenAnswer(invocation -> invocation.getArgument(0));
+                when(pokeApiService.obterSpeciesParaCriacao(2)).thenReturn(species);
+                when(pokemonAbilityService.sortearHabilidadeAtiva(species)).thenReturn(ability);
+                when(pokemonLearnsetService.escolherMovimentosAoCriarPokemon(species, 5)).thenReturn(List.of());
+
+                Pokemon criado = service.criar(
+                                "perfil-2",
+                                2,
+                                "Lv5",
+                                null,
+                                null,
+                                10,
+                                null,
+                                null,
+                                5
+                );
+
+                assertThat(criado.getNivel()).isEqualTo(5);
+                assertThat(criado.getIvClass()).isEqualTo(PokemonIVClass.E);
+                // Classe E: base entre 12-15 e +2 por nível acima do 1 (4 níveis => +8).
+                assertThat(criado.getPontosDistribuicaoDisponiveis()).isBetween(20, 23);
+        }
 }
