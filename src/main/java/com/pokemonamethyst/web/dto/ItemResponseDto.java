@@ -11,9 +11,10 @@ public class ItemResponseDto {
     private double peso;
     private int preco;
     private String imagemUrl;
+    private String categoria;
 
     public ItemResponseDto() {}
-    public ItemResponseDto(String id, String nome, String nomeEn, String descricao, double peso, int preco, String imagemUrl) {
+    public ItemResponseDto(String id, String nome, String nomeEn, String descricao, double peso, int preco, String imagemUrl, String categoria) {
         this.id = id;
         this.nome = nome;
         this.nomeEn = nomeEn;
@@ -21,6 +22,7 @@ public class ItemResponseDto {
         this.peso = peso;
         this.preco = preco;
         this.imagemUrl = imagemUrl;
+        this.categoria = categoria;
     }
     public String getId() { return id; }
     public void setId(String id) { this.id = id; }
@@ -36,9 +38,11 @@ public class ItemResponseDto {
     public void setPreco(int preco) { this.preco = preco; }
     public String getImagemUrl() { return imagemUrl; }
     public void setImagemUrl(String imagemUrl) { this.imagemUrl = imagemUrl; }
+    public String getCategoria() { return categoria; }
+    public void setCategoria(String categoria) { this.categoria = categoria; }
 
     public static ItemResponseDto from(Item i) {
         if (i == null) return null;
-        return new ItemResponseDto(i.getId(), i.getNome(), i.getNomeEn(), i.getDescricao(), i.getPeso(), i.getPreco(), i.getImagemUrl());
+        return new ItemResponseDto(i.getId(), i.getNome(), i.getNomeEn(), i.getDescricao(), i.getPeso(), i.getPreco(), i.getImagemUrl(), i.getCategoria());
     }
 }

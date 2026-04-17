@@ -220,6 +220,7 @@ public class PokemonService {
                             Genero genero, Boolean isShiny, String personalidadeId,
                             Especializacao especializacao, String berryFavorita, Integer nivelDeVinculo,
                             Integer nivel, Integer xpAtual, Pokebola pokebolaCaptura, String itemSeguradoId,
+                            String spriteCustomizadoUrl,
                             Integer tecnica, Integer respeito, List<CondicaoStatus> statusAtuais,
                             List<String> movimentoIds, String habilidadeId, boolean permitirMetodosExtrasNoLearnset) {
         Pokemon pokemon = buscarPorIdEPerfil(pokemonId, perfilId);
@@ -278,6 +279,9 @@ public class PokemonService {
                 Item item = itemRepository.findById(itemSeguradoId).orElse(null);
                 pokemon.setItemSegurado(item);
             }
+        }
+        if (spriteCustomizadoUrl != null) {
+            pokemon.setSpriteCustomizadoUrl(spriteCustomizadoUrl.isBlank() ? null : spriteCustomizadoUrl.trim());
         }
         if (tecnica != null) pokemon.setTecnica(tecnica);
         if (respeito != null) pokemon.setRespeito(respeito);

@@ -33,6 +33,9 @@ public class Item {
     @Column(name = "imagem_url", length = 512)
     private String imagemUrl;
 
+    @Column(name = "categoria", length = 50)
+    private String categoria;
+
     public String getId() { return id; }
     public void setId(String id) { this.id = id; }
     public String getNome() { return nome; }
@@ -49,4 +52,6 @@ public class Item {
     public void setNomeEn(String nomeEn) { this.nomeEn = nomeEn; }
     public String getImagemUrl() { return imagemUrl; }
     public void setImagemUrl(String imagemUrl) { this.imagemUrl = imagemUrl; }
+    public String getCategoria() { return categoria; }
+    public void setCategoria(String categoria) { this.categoria = categoria; }
 }

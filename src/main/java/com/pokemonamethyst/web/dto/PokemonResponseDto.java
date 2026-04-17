@@ -18,6 +18,7 @@ public class PokemonResponseDto {
     private String especie;
     private String apelido;
     private String imagemUrl;
+    private String spriteCustomizadoUrl;
     private String notas;
     private String genero;
     private boolean shiny;
@@ -81,13 +82,14 @@ public class PokemonResponseDto {
     private List<MovimentoResponseDto> movimentosConhecidos;
 
     public PokemonResponseDto() {}
-    public PokemonResponseDto(String id, Integer ordemTime, int pokedexId, String especie, String apelido, String imagemUrl, String notas, String genero, boolean shiny, String tipoPrimario, String tipoSecundario, String personalidade, String especializacao, String berryFavorita, int nivelDeVinculo, int nivel, int xpAtual, String pokebolaCaptura, String itemSeguradoId, int hpMaximo, int staminaMaxima, int ataque, int ataqueEspecial, int defesa, int defesaEspecial, int speed, int tecnica, int respeito, List<String> statusAtuais) {
+    public PokemonResponseDto(String id, Integer ordemTime, int pokedexId, String especie, String apelido, String imagemUrl, String spriteCustomizadoUrl, String notas, String genero, boolean shiny, String tipoPrimario, String tipoSecundario, String personalidade, String especializacao, String berryFavorita, int nivelDeVinculo, int nivel, int xpAtual, String pokebolaCaptura, String itemSeguradoId, int hpMaximo, int staminaMaxima, int ataque, int ataqueEspecial, int defesa, int defesaEspecial, int speed, int tecnica, int respeito, List<String> statusAtuais) {
         this.id = id;
         this.ordemTime = ordemTime;
         this.pokedexId = pokedexId;
         this.especie = especie;
         this.apelido = apelido;
         this.imagemUrl = imagemUrl;
+        this.spriteCustomizadoUrl = spriteCustomizadoUrl;
         this.notas = notas;
         this.genero = genero;
         this.shiny = shiny;
@@ -133,6 +135,7 @@ public class PokemonResponseDto {
                 especie,
                 p.getApelido() != null ? p.getApelido() : null,
                 p.getImagemUrl() != null ? p.getImagemUrl() : null,
+                p.getSpriteCustomizadoUrl() != null ? p.getSpriteCustomizadoUrl() : null,
                 p.getNotas() != null ? p.getNotas() : null,
                 p.getGenero() != null ? p.getGenero().name() : null,
                 p.isShiny(),
@@ -217,6 +220,8 @@ public class PokemonResponseDto {
     public void setApelido(String apelido) { this.apelido = apelido; }
     public String getImagemUrl() { return imagemUrl; }
     public void setImagemUrl(String imagemUrl) { this.imagemUrl = imagemUrl; }
+    public String getSpriteCustomizadoUrl() { return spriteCustomizadoUrl; }
+    public void setSpriteCustomizadoUrl(String spriteCustomizadoUrl) { this.spriteCustomizadoUrl = spriteCustomizadoUrl; }
     public String getNotas() { return notas; }
     public void setNotas(String notas) { this.notas = notas; }
     public String getGenero() { return genero; }

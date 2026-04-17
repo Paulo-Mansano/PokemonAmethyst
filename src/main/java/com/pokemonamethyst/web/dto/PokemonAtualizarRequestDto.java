@@ -24,6 +24,7 @@ public class PokemonAtualizarRequestDto {
     private Integer tecnica;
     private Integer respeito;
     private String habilidadeId;
+    private String spriteCustomizadoUrl;
     private List<CondicaoStatus> statusAtuais;
 
     @Size(max = 8, message = "Máximo de 8 ataques")
@@ -63,6 +64,8 @@ public class PokemonAtualizarRequestDto {
     public void setRespeito(Integer respeito) { this.respeito = respeito; }
     public String getHabilidadeId() { return habilidadeId; }
     public void setHabilidadeId(String habilidadeId) { this.habilidadeId = habilidadeId; }
+    public String getSpriteCustomizadoUrl() { return spriteCustomizadoUrl; }
+    public void setSpriteCustomizadoUrl(String spriteCustomizadoUrl) { this.spriteCustomizadoUrl = spriteCustomizadoUrl; }
     public List<CondicaoStatus> getStatusAtuais() { return statusAtuais; }
     public void setStatusAtuais(List<CondicaoStatus> statusAtuais) { this.statusAtuais = statusAtuais; }
 }

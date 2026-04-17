@@ -55,7 +55,7 @@ public class SecurityConfig {
                         // Health: GET/HEAD liberados (monitoramento costuma usar HEAD).
                         .requestMatchers(HttpMethod.GET, "/api/health").permitAll()
                         .requestMatchers(HttpMethod.HEAD, "/api/health").permitAll()
-                        .requestMatchers(HttpMethod.GET, "/api/movimentos", "/api/habilidades", "/api/itens", "/api/personalidades").permitAll()
+                        .requestMatchers(HttpMethod.GET, "/api/movimentos", "/api/habilidades", "/api/itens", "/api/itens/**", "/api/personalidades").permitAll()
                         // Catálogo local de espécies (somente leitura): modal "Novo Pokémon" depende disso; não expõe dados do jogador.
                         // Sem isso, sessão cross-site (Netlify→Render) pode falhar e o GET vira 403 antes de carregar o modal.
                         .requestMatchers(HttpMethod.GET, "/api/pokeapi/species-local", "/api/pokeapi/species-local/version").permitAll()

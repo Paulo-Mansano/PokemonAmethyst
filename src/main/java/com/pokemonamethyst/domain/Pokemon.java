@@ -58,6 +58,9 @@ public class Pokemon {
     @Column(name = "berry_favorita")
     private String berryFavorita;
 
+    @Column(name = "sprite_customizado_url", length = 512)
+    private String spriteCustomizadoUrl;
+
     @Column(name = "nivel_de_vinculo", nullable = false)
     private int nivelDeVinculo = 0;
 
@@ -162,6 +165,9 @@ public class Pokemon {
     public void setApelido(String apelido) { this.apelido = apelido; }
     /** Sprite exibido: shiny quando aplicável e a espécie tiver URL shiny na PokéAPI; senão o sprite normal. */
     public String getImagemUrl() {
+        if (spriteCustomizadoUrl != null && !spriteCustomizadoUrl.isBlank()) {
+            return spriteCustomizadoUrl;
+        }
         if (species == null) {
             return null;
         }
@@ -227,6 +233,8 @@ public class Pokemon {
     public void setEspecializacao(Especializacao especializacao) { this.especializacao = especializacao; }
     public String getBerryFavorita() { return berryFavorita; }
     public void setBerryFavorita(String berryFavorita) { this.berryFavorita = berryFavorita; }
+    public String getSpriteCustomizadoUrl() { return spriteCustomizadoUrl; }
+    public void setSpriteCustomizadoUrl(String spriteCustomizadoUrl) { this.spriteCustomizadoUrl = spriteCustomizadoUrl; }
     public int getNivelDeVinculo() { return nivelDeVinculo; }
     public void setNivelDeVinculo(int nivelDeVinculo) { this.nivelDeVinculo = nivelDeVinculo; }
     public int getNivel() { return nivel; }

@@ -4,6 +4,7 @@ import { getMeuPerfil, getUsuario, criarPokemon, getPokemon, atualizarPokemon, c
 import { usePlayerTarget } from '../context/PlayerTargetContext'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { queryKeys } from '../query/queryKeys'
+import { uploadPokemonSprite, isPokemonSpriteUploadConfigured } from '../lib/supabaseStorage'
 
 const PAGE_SIZE = 20
 const SPECIES_CACHE_KEY = 'pokemonamethyst:species-local-cache:v1'
@@ -104,6 +105,7 @@ function editStateFromPokemon(p) {
     xpAtual: p.xpAtual ?? 0,
     pokebolaCaptura: p.pokebolaCaptura || 'POKEBALL',
     itemSeguradoId: p.itemSeguradoId || '',
+    spriteCustomizadoUrl: p.spriteCustomizadoUrl || '',
     hpMaximo: p.hpMaximo ?? 20,
     staminaMaxima: p.staminaMaxima ?? 10,
     ataque: p.ataque ?? 0,
@@ -166,13 +168,17 @@ function ExpandedForm({
   usuarioMestre,
   onRestaurarTiposEspecie,
   onAlocarAtributo,
+  onSetAtributoValor,
   alocandoAtributo,
   custoParaProximo,
   evolucoesPossiveis,
   onEvoluir,
   pendingResumo,
   pendingEvolucaoPokedexId,
+  onSelecionarSprite,
+  spriteUploadLoading,
 }) {
+  const spriteUploadReady = isPokemonSpriteUploadConfigured()
   const [movimentoBusca, setMovimentoBusca] = useState('')
   const [xpGanho, setXpGanho] = useState('')
   const set = (key, value) => setExpandedEdit((e) => (e ? { ...e, [key]: value } : e))
@@ -548,8 +554,8 @@ function ExpandedForm({
                   type="number"
                   min={1}
                   value={expandedEdit.staminaMaxima}
-                  onChange={(e) => set('staminaMaxima', parseInt(e.target.value, 10) || 1)}
                   className="pokemon-edit-input pokemon-edit-input--num"
+                  readOnly
                 />
               </Field>
               <Field label="Ataque">
@@ -602,8 +608,8 @@ function ExpandedForm({
                   type="number"
                   min={0}
                   value={expandedEdit.tecnica}
-                  onChange={(e) => set('tecnica', parseInt(e.target.value, 10) || 0)}
                   className="pokemon-edit-input pokemon-edit-input--num"
+                  readOnly
                 />
               </Field>
               <Field label="Respeito">
@@ -611,8 +617,8 @@ function ExpandedForm({
                   type="number"
                   min={0}
                   value={expandedEdit.respeito}
-                  onChange={(e) => set('respeito', parseInt(e.target.value, 10) || 0)}
                   className="pokemon-edit-input pokemon-edit-input--num"
+                  readOnly
                 />
               </Field>
             </div>
@@ -634,9 +640,23 @@ function ExpandedForm({
                 {atributoRows.map((row) => {
                   const custo = custoParaProximo ? custoParaProximo(expandedEdit.nivel, row.valor) : 1
                   const bloqueadoPlayer = !isMestre && saldoAtual < custo
+                  const field = ATRIBUTO_EDIT_FIELD_MAP[row.key]
                   return (
                     <div key={row.key} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '0.75rem' }}>
-                      <span>{row.label}: <strong>{row.valor}</strong></span>
+                      <span style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                        <span>{row.label}:</span>
+                        <input
+                          type="number"
+                          min={0}
+                          value={row.valor}
+                          className="pokemon-edit-input pokemon-edit-input--num"
+                          style={{ width: 88 }}
+                          onChange={(e) => onSetAtributoValor && onSetAtributoValor(row.key, e.target.value)}
+                          onBlur={(e) => onSetAtributoValor && onSetAtributoValor(row.key, e.target.value)}
+                          inputMode="numeric"
+                          aria-label={`Valor de ${row.label}`}
+                        />
+                      </span>
                       <button
                         type="button"
                         className="btn btn-secondary btn-sm"
@@ -683,6 +703,32 @@ function ExpandedForm({
                   <option key={item.id} value={item.id}>{item.nome || item.id}</option>
                 ))}
               </select>
+            </Field>
+            <Field label="Sprite customizado">
+              <label
+                className="btn btn-secondary btn-sm"
+                style={{ display: 'inline-flex', alignItems: 'center', gap: '0.5rem', cursor: spriteUploadReady && !spriteUploadLoading ? 'pointer' : 'not-allowed', opacity: spriteUploadReady ? 1 : 0.75 }}
+              >
+                {spriteUploadLoading ? 'Enviando...' : (spriteUploadReady ? 'Selecionar imagem' : 'Upload indisponível')}
+                <input
+                  type="file"
+                  accept="image/*"
+                  onChange={onSelecionarSprite}
+                  disabled={!spriteUploadReady || spriteUploadLoading}
+                  style={{ display: 'none' }}
+                />
+              </label>
+              <input
+                value={expandedEdit.spriteCustomizadoUrl || ''}
+                className="pokemon-edit-input"
+                placeholder="URL pública do sprite customizado"
+                readOnly
+              />
+              {!spriteUploadReady && (
+                <small style={{ color: 'var(--text-muted)' }}>
+                  Configure `VITE_SUPABASE_URL` e `VITE_SUPABASE_ANON_KEY` para liberar o upload no site.
+                </small>
+              )}
             </Field>
             <div className="pokemon-edit-field">
               <label>Condições de status</label>
@@ -819,6 +865,7 @@ export default function PokemonList() {
   const [expandedLoading, setExpandedLoading] = useState(false)
   const [alocandoAtributo, setAlocandoAtributo] = useState(false)
   const [evolucoesPossiveis, setEvolucoesPossiveis] = useState([])
+  const [spriteUploadLoading, setSpriteUploadLoading] = useState(false)
   const [pendingXpGanhoTotal, setPendingXpGanhoTotal] = useState(0)
   const [pendingAlocacoes, setPendingAlocacoes] = useState({})
   const [pendingEvolucaoPokedexId, setPendingEvolucaoPokedexId] = useState(null)
@@ -943,6 +990,7 @@ export default function PokemonList() {
       setPendingAlocacoes({})
       setPendingEvolucaoPokedexId(null)
       setPendingResetTiposEspecie(false)
+      setSpriteUploadLoading(false)
     } else {
       setExpandedEdit(null)
     }
@@ -1025,6 +1073,78 @@ export default function PokemonList() {
     return 1
   }
 
+  const custoIntervalo = (nivel, valorInicial, valorFinal) => {
+    const inicio = Math.max(0, Number(valorInicial) || 0)
+    const fim = Math.max(0, Number(valorFinal) || 0)
+    if (fim <= inicio) return 0
+    let total = 0
+    for (let v = inicio; v < fim; v += 1) {
+      total += custoParaProximo(nivel, v)
+    }
+    return total
+  }
+
+  const construirPendenciasAtributo = (editState, pokemonBase) => {
+    const pendencias = {}
+    Object.entries(ATRIBUTO_EDIT_FIELD_MAP).forEach(([atributo, campo]) => {
+      const base = Math.max(0, Number(pokemonBase?.[campo]) || 0)
+      const atual = Math.max(0, Number(editState?.[campo]) || 0)
+      const diff = atual - base
+      if (diff > 0) {
+        pendencias[atributo] = diff
+      }
+    })
+    return pendencias
+  }
+
+  const handleSetAtributoValor = (atributo, valorDigitado) => {
+    if (!expandedEdit || !expandedPokemon) return
+    const campo = ATRIBUTO_EDIT_FIELD_MAP[atributo]
+    if (!campo) return
+
+    const base = Math.max(0, Number(expandedPokemon[campo]) || 0)
+    const atual = Math.max(0, Number(expandedEdit[campo]) || 0)
+    let novo = Number.parseInt(String(valorDigitado ?? '').trim(), 10)
+    if (!Number.isFinite(novo)) {
+      novo = atual
+    }
+    novo = Math.max(base, novo)
+    if (novo === atual) return
+
+    const nivelAtual = Math.max(1, Number(expandedEdit.nivel) || 1)
+    const saldoAtual = Number(expandedEdit.pontosDistribuicaoDisponiveis) || 0
+    const isMestre = !!usuarioMestre?.mestre
+
+    let saldoNovo = saldoAtual
+    if (novo > atual) {
+      const custo = custoIntervalo(nivelAtual, atual, novo)
+      if (!isMestre && saldoAtual < custo) {
+        setErro(`Pontos insuficientes para aumentar ${atributo}.`) 
+        return
+      }
+      saldoNovo -= custo
+    } else {
+      const reembolso = custoIntervalo(nivelAtual, novo, atual)
+      saldoNovo += reembolso
+    }
+
+    setErro('')
+    const nextEdit = {
+      ...expandedEdit,
+      [campo]: novo,
+      pontosDistribuicaoDisponiveis: saldoNovo,
+    }
+    if (atributo === 'atr_tecnica') {
+      nextEdit.tecnica = novo
+    }
+    if (atributo === 'atr_respeito') {
+      nextEdit.respeito = novo
+    }
+
+    setExpandedEdit(nextEdit)
+    setPendingAlocacoes(construirPendenciasAtributo(nextEdit, expandedPokemon))
+  }
+
   const handleAlocarAtributo = async (atributo) => {
     if (!expandedPokemon?.id || !expandedEdit) return
     const mapValor = {
@@ -1047,26 +1167,7 @@ export default function PokemonList() {
     }
     const editField = ATRIBUTO_EDIT_FIELD_MAP[atributo]
     if (!editField) return
-    setErro('')
-    setExpandedEdit((current) => {
-      if (!current) return current
-      const next = {
-        ...current,
-        pontosDistribuicaoDisponiveis: (Number(current.pontosDistribuicaoDisponiveis) || 0) - custo,
-        [editField]: (Number(current[editField]) || 0) + 1,
-      }
-      if (atributo === 'atr_tecnica') {
-        next.tecnica = Number(next.atrTecnica) || 0
-      }
-      if (atributo === 'atr_respeito') {
-        next.respeito = Number(next.atrRespeito) || 0
-      }
-      return next
-    })
-    setPendingAlocacoes((current) => ({
-      ...current,
-      [atributo]: (Number(current[atributo]) || 0) + 1,
-    }))
+    handleSetAtributoValor(atributo, (Number(expandedEdit[editField]) || 0) + 1)
   }
 
   const handleEvoluir = async (pokedexId) => {
@@ -1081,8 +1182,16 @@ export default function PokemonList() {
       setExpandedPokemon(null)
       setListaMovimentosDisponiveis([])
       setEvolucoesPossiveis([])
+      setOfertasAprendizagem([])
+      setOfertaIdx(0)
+      setSubstituirMovimentoId('')
+      setNivelSubiuMsg('')
       return
     }
+    setOfertasAprendizagem([])
+    setOfertaIdx(0)
+    setSubstituirMovimentoId('')
+    setNivelSubiuMsg('')
     setExpandedId(p.id)
     setExpandedLoading(true)
     setExpandedPokemon(null)
@@ -1323,6 +1432,22 @@ export default function PokemonList() {
     setPendingResetTiposEspecie(true)
   }
 
+  const handleSelecionarSprite = async (event) => {
+    const file = event.target.files && event.target.files[0]
+    event.target.value = ''
+    if (!file || !expandedPokemon?.id || !expandedEdit) return
+    setErro('')
+    setSpriteUploadLoading(true)
+    try {
+      const { publicUrl } = await uploadPokemonSprite(file, expandedPokemon.id)
+      setExpandedEdit((current) => (!current ? current : { ...current, spriteCustomizadoUrl: publicUrl }))
+    } catch (err) {
+      setErro(err.message || 'Erro ao enviar sprite customizado')
+    } finally {
+      setSpriteUploadLoading(false)
+    }
+  }
+
   const handleSalvarExpanded = async (e) => {
     e.preventDefault()
     if (!expandedPokemon || !expandedEdit) return
@@ -1364,6 +1489,7 @@ export default function PokemonList() {
         xpAtual: expandedEdit.xpAtual,
         pokebolaCaptura: expandedEdit.pokebolaCaptura || undefined,
         itemSeguradoId: expandedEdit.itemSeguradoId || null,
+        spriteCustomizadoUrl: expandedEdit.spriteCustomizadoUrl || null,
         tecnica: expandedEdit.tecnica,
         respeito: expandedEdit.respeito,
         habilidadeId: expandedEdit.habilidadeId || null,
@@ -1535,12 +1661,15 @@ export default function PokemonList() {
                         usuarioMestre={usuarioMestre}
                         onRestaurarTiposEspecie={handleRestaurarTiposEspecie}
                         onAlocarAtributo={handleAlocarAtributo}
+                        onSetAtributoValor={handleSetAtributoValor}
                         alocandoAtributo={alocandoAtributo}
                         custoParaProximo={custoParaProximo}
                         evolucoesPossiveis={evolucoesPossiveis}
                         onEvoluir={handleEvoluir}
                         pendingResumo={pendingResumo}
                         pendingEvolucaoPokedexId={pendingEvolucaoPokedexId}
+                        onSelecionarSprite={handleSelecionarSprite}
+                        spriteUploadLoading={spriteUploadLoading}
                       />
                     ) : null}
                   </div>
@@ -1639,12 +1768,15 @@ export default function PokemonList() {
                         usuarioMestre={usuarioMestre}
                         onRestaurarTiposEspecie={handleRestaurarTiposEspecie}
                         onAlocarAtributo={handleAlocarAtributo}
+                        onSetAtributoValor={handleSetAtributoValor}
                         alocandoAtributo={alocandoAtributo}
                         custoParaProximo={custoParaProximo}
                         evolucoesPossiveis={evolucoesPossiveis}
                         onEvoluir={handleEvoluir}
                         pendingResumo={pendingResumo}
                         pendingEvolucaoPokedexId={pendingEvolucaoPokedexId}
+                        onSelecionarSprite={handleSelecionarSprite}
+                        spriteUploadLoading={spriteUploadLoading}
                       />
                     ) : null}
                   </div>

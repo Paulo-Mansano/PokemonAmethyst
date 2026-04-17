@@ -26,6 +26,13 @@ public class ItemController {
         return ResponseEntity.ok(lista.stream().map(ItemResponseDto::from).toList());
     }
 
+    @GetMapping("/categoria/{categoria}")
+    @Transactional(readOnly = true)
+    public ResponseEntity<List<ItemResponseDto>> listarPorCategoria(@PathVariable String categoria) {
+        List<Item> lista = catalogoService.listarItensPorCategoria(categoria);
+        return ResponseEntity.ok(lista.stream().map(ItemResponseDto::from).toList());
+    }
+
     @GetMapping("/{id}")
     @Transactional(readOnly = true)
     public ResponseEntity<ItemResponseDto> buscar(@PathVariable String id) {

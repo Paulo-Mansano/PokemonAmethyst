@@ -10,6 +10,8 @@ public interface ItemRepository extends JpaRepository<Item, String> {
 
     List<Item> findAllByOrderByNome();
 
+    List<Item> findAllByCategoriaIgnoreCaseOrderByNome(String categoria);
+
     Optional<Item> findByPokeapiId(Integer pokeapiId);
 
     List<Item> findByPokeapiIdIsNotNull();

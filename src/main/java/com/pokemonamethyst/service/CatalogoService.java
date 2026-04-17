@@ -135,6 +135,13 @@ public class CatalogoService {
         return itemRepository.findAllByOrderByNome();
     }
 
+    public List<Item> listarItensPorCategoria(String categoria) {
+        if (categoria == null || categoria.isBlank()) {
+            throw new IllegalArgumentException("Categoria do item é obrigatória.");
+        }
+        return itemRepository.findAllByCategoriaIgnoreCaseOrderByNome(categoria.trim());
+    }
+
     public Item buscarItem(String id) {
         return itemRepository.findById(id)
                 .orElseThrow(() -> new RecursoNaoEncontradoException("Item não encontrado."));
