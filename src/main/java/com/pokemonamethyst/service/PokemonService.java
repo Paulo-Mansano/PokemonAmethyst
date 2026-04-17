@@ -301,6 +301,10 @@ public class PokemonService {
         x = PokemonExperience.clampXpTotal(x, curva);
         pokemon.setXpAtual(x);
         pokemon.setNivel(PokemonExperience.calculateLevelFromXp(x, curva));
+        int nivelRecalculado = pokemon.getNivel();
+        if (nivelRecalculado > nivelAtual) {
+            pokemonStatService.concederPontosPorNivel(pokemon, nivelAtual, nivelRecalculado);
+        }
 
         if (movimentoIds != null) {
             List<String> movimentoIdsUnicos = deduplicarIdsPreservandoOrdem(movimentoIds);
@@ -352,6 +356,9 @@ public class PokemonService {
 
         pokemon.setXpAtual(xpDepois);
         pokemon.setNivel(nivelDepois);
+        if (nivelDepois > nivelAntes) {
+            pokemonStatService.concederPontosPorNivel(pokemon, nivelAntes, nivelDepois);
+        }
         int hpMaximoAtualizado = calcularHpMaximo(pokemon);
         int hpAtual = pokemon.getHpAtual() == null ? hpMaximoAtualizado : pokemon.getHpAtual();
         pokemon.setHpAtual(Math.max(0, Math.min(hpAtual, hpMaximoAtualizado)));
@@ -393,6 +400,12 @@ public class PokemonService {
         long soma = (long) xpAntes + xpGanho;
         int xpDepois = (int) Math.min(PokemonExperience.getTotalXpForLevel(PokemonExperience.MAX_LEVEL, curva), Math.max(0, soma));
         int nivelDepois = PokemonExperience.calculateLevelFromXp(xpDepois, curva);
+        int pontosGanhos = 0;
+        if (nivelDepois > nivelAntes) {
+            PokemonIVClass classe = pokemon.getIvClass() != null ? pokemon.getIvClass() : PokemonIVClass.fromBst(0);
+            pontosGanhos = (nivelDepois - nivelAntes) * classe.getPontosPorNivel();
+        }
+        int pontosDistribuicaoDepois = Math.max(0, pokemon.getPontosDistribuicaoDisponiveis() + pontosGanhos);
 
         List<Movimento> movimentosAprendendo = List.of();
         if (nivelDepois > nivelAntes) {
@@ -408,6 +421,8 @@ public class PokemonService {
                 xpDepois,
                 nivelAntes,
                 nivelDepois,
+                pontosGanhos,
+                pontosDistribuicaoDepois,
                 movimentosAprendendo
         );
     }

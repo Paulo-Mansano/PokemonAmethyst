@@ -994,6 +994,7 @@ export default function PokemonList() {
           ...current,
           xpAtual: Number(preview?.xpDepois ?? current.xpAtual) || 0,
           nivel: Number(preview?.nivelDepois ?? current.nivel) || current.nivel,
+          pontosDistribuicaoDisponiveis: Number(preview?.pontosDistribuicaoDepois ?? current.pontosDistribuicaoDisponiveis) || 0,
         }
       })
       setPendingXpGanhoTotal((current) => current + valor)

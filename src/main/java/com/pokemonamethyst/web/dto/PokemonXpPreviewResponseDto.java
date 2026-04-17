@@ -11,12 +11,16 @@ public class PokemonXpPreviewResponseDto {
     private int nivelAntes;
     private int nivelDepois;
     private boolean nivelSubiu;
+    private int pontosGanhos;
+    private int pontosDistribuicaoDepois;
     private List<MovimentoResponseDto> movimentosAprendendo;
 
     public static PokemonXpPreviewResponseDto from(int xpAntes,
                                                    int xpDepois,
                                                    int nivelAntes,
                                                    int nivelDepois,
+                                                   int pontosGanhos,
+                                                   int pontosDistribuicaoDepois,
                                                    List<Movimento> movimentosAprendendo) {
         PokemonXpPreviewResponseDto dto = new PokemonXpPreviewResponseDto();
         dto.setXpAntes(xpAntes);
@@ -24,6 +28,8 @@ public class PokemonXpPreviewResponseDto {
         dto.setNivelAntes(nivelAntes);
         dto.setNivelDepois(nivelDepois);
         dto.setNivelSubiu(nivelDepois > nivelAntes);
+        dto.setPontosGanhos(pontosGanhos);
+        dto.setPontosDistribuicaoDepois(pontosDistribuicaoDepois);
         dto.setMovimentosAprendendo(
                 movimentosAprendendo == null
                         ? List.of()
@@ -70,6 +76,22 @@ public class PokemonXpPreviewResponseDto {
 
     public void setNivelSubiu(boolean nivelSubiu) {
         this.nivelSubiu = nivelSubiu;
+    }
+
+    public int getPontosGanhos() {
+        return pontosGanhos;
+    }
+
+    public void setPontosGanhos(int pontosGanhos) {
+        this.pontosGanhos = pontosGanhos;
+    }
+
+    public int getPontosDistribuicaoDepois() {
+        return pontosDistribuicaoDepois;
+    }
+
+    public void setPontosDistribuicaoDepois(int pontosDistribuicaoDepois) {
+        this.pontosDistribuicaoDepois = pontosDistribuicaoDepois;
     }
 
     public List<MovimentoResponseDto> getMovimentosAprendendo() {
