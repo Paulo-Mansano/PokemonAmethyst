@@ -241,8 +241,103 @@ class PokemonServiceTest {
                 );
 
                 assertThat(criado.getNivel()).isEqualTo(5);
+                assertThat(criado.getXpAtual()).isEqualTo(100);
                 assertThat(criado.getIvClass()).isEqualTo(PokemonIVClass.E);
                 // Classe E: base entre 12-15 e +2 por nível acima do 1 (4 níveis => +8).
                 assertThat(criado.getPontosDistribuicaoDisponiveis()).isBetween(20, 23);
+                // Bônus automático de HP/ST até nível 10 deve aplicar na criação acima do nível 1.
+                assertThat(criado.getHpAtual() - criado.getHpBaseRng() - criado.getAtrHp()).isEqualTo(5);
+                assertThat(criado.getStaminaMaxima() - criado.getStaminaBaseRng() - criado.getAtrStamina()).isEqualTo(5);
         }
+
+    @Test
+    void atualizarDeveAplicarPontosDistribuicaoBonusNoSalvamento() {
+        PokemonRepository pokemonRepository = mock(PokemonRepository.class);
+        PerfilJogadorRepository perfilRepository = mock(PerfilJogadorRepository.class);
+        ItemRepository itemRepository = mock(ItemRepository.class);
+        MovimentoRepository movimentoRepository = mock(MovimentoRepository.class);
+        HabilidadeRepository habilidadeRepository = mock(HabilidadeRepository.class);
+        PersonalidadeRepository personalidadeRepository = mock(PersonalidadeRepository.class);
+        PokeApiService pokeApiService = mock(PokeApiService.class);
+        PokemonAbilityService pokemonAbilityService = mock(PokemonAbilityService.class);
+        PokemonLearnsetService pokemonLearnsetService = mock(PokemonLearnsetService.class);
+        PokemonGenerationService pokemonGenerationService = new PokemonGenerationService();
+        PokemonStatService pokemonStatService = new PokemonStatService();
+        PokemonEvolutionService pokemonEvolutionService = mock(PokemonEvolutionService.class);
+        PokemonSpeciesRepository pokemonSpeciesRepository = mock(PokemonSpeciesRepository.class);
+
+        PokemonService service = new PokemonService(
+                pokemonRepository,
+                perfilRepository,
+                itemRepository,
+                movimentoRepository,
+                habilidadeRepository,
+                personalidadeRepository,
+                pokeApiService,
+                pokemonAbilityService,
+                pokemonLearnsetService,
+                pokemonGenerationService,
+                pokemonStatService,
+                pokemonEvolutionService,
+                pokemonSpeciesRepository,
+                0,
+                false
+        );
+
+        PerfilJogador perfil = new PerfilJogador();
+        perfil.setId("perfil-3");
+
+        PokemonSpecies species = new PokemonSpecies();
+        species.setId("species-3");
+        species.setPokedexId(3);
+        species.setNome("Teste");
+        species.setGenderRate(8);
+        species.setBaseHp(60);
+        species.setBaseAtaque(60);
+        species.setBaseDefesa(60);
+        species.setBaseAtaqueEspecial(60);
+        species.setBaseDefesaEspecial(60);
+        species.setBaseSpeed(60);
+
+        Pokemon pokemon = new Pokemon();
+        pokemon.setId("pokemon-3");
+        pokemon.setPerfil(perfil);
+        pokemon.setSpecies(species);
+        pokemon.setNivel(5);
+        pokemon.setXpAtual(100);
+        pokemon.setPontosDistribuicaoDisponiveis(4);
+        pokemon.setHpAtual(50);
+        pokemon.setMovimentosConhecidos(new java.util.ArrayList<>());
+
+        when(pokemonRepository.findByIdAndPerfilId("pokemon-3", "perfil-3")).thenReturn(Optional.of(pokemon));
+        when(pokemonRepository.save(any(Pokemon.class))).thenAnswer(invocation -> invocation.getArgument(0));
+
+        com.pokemonamethyst.web.dto.PokemonAtualizarComAprendizagemResponseDto resultado = service.atualizar(
+                "pokemon-3",
+                "perfil-3",
+                null,
+                null,
+                null,
+                null,
+                null,
+                null,
+                null,
+                null,
+                null,
+                5,
+                100,
+                null,
+                null,
+                null,
+                        null,
+                        null,
+                        3,
+                        null,
+                        null,
+                        null,
+                false
+        );
+
+        assertThat(resultado.getPokemon().getPontosDistribuicaoDisponiveis()).isEqualTo(7);
+    }
 }

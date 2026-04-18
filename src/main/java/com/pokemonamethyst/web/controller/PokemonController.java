@@ -221,9 +221,9 @@ public class PokemonController {
                 dto.getApelido(), dto.getNotas(),
                 dto.getGenero(), dto.getShiny(), dto.getPersonalidadeId(),
                 dto.getEspecializacao(), dto.getBerryFavorita(), dto.getNivelDeVinculo(),
-            dto.getNivel(), dto.getXpAtual(), dto.getPokebolaCaptura(), dto.getItemSeguradoId(),
-            dto.getSpriteCustomizadoUrl(),
-                dto.getTecnica(), dto.getRespeito(), dto.getStatusAtuais(),
+                dto.getNivel(), dto.getXpAtual(), dto.getPokebolaCaptura(), dto.getItemSeguradoId(),
+                dto.getSpriteCustomizadoUrl(),
+                dto.getTecnica(), dto.getRespeito(), dto.getPontosDistribuicaoBonus(), dto.getStatusAtuais(),
                 dto.getMovimentoIds(), dto.getHabilidadeId(), principal.isMestre()
         );
         return ResponseEntity.ok(resultado);

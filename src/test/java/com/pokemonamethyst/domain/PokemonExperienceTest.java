@@ -7,32 +7,41 @@ import static org.assertj.core.api.Assertions.assertThat;
 class PokemonExperienceTest {
 
     @Test
-    void totaisNivel100_batemComTabelasOficiais() {
-        assertThat(PokemonExperience.getTotalXpForLevel(100, GrowthRate.MEDIUM_FAST)).isEqualTo(1_000_000);
-        assertThat(PokemonExperience.getTotalXpForLevel(100, GrowthRate.FAST)).isEqualTo(800_000);
-        assertThat(PokemonExperience.getTotalXpForLevel(100, GrowthRate.SLOW)).isEqualTo(1_250_000);
-        assertThat(PokemonExperience.getTotalXpForLevel(100, GrowthRate.ERRATIC)).isEqualTo(600_000);
-        assertThat(PokemonExperience.getTotalXpForLevel(100, GrowthRate.FLUCTUATING)).isEqualTo(1_640_000);
-        assertThat(PokemonExperience.getTotalXpForLevel(100, GrowthRate.MEDIUM_SLOW)).isEqualTo(1_059_860);
+    void totaisDeXpSeguemCurvaLinearCumulativa() {
+        assertThat(PokemonExperience.getTotalXpForLevel(1, GrowthRate.MEDIUM_FAST)).isEqualTo(0);
+        assertThat(PokemonExperience.getTotalXpForLevel(2, GrowthRate.MEDIUM_FAST)).isEqualTo(10);
+        assertThat(PokemonExperience.getTotalXpForLevel(3, GrowthRate.MEDIUM_FAST)).isEqualTo(30);
+        assertThat(PokemonExperience.getTotalXpForLevel(100, GrowthRate.MEDIUM_FAST)).isEqualTo(49_500);
     }
 
     @Test
-    void mediumFast_nivelCalculadoPeloXpCumulativo() {
-        assertThat(PokemonExperience.calculateLevelFromXp(7, GrowthRate.MEDIUM_FAST)).isEqualTo(1);
-        assertThat(PokemonExperience.calculateLevelFromXp(8, GrowthRate.MEDIUM_FAST)).isEqualTo(2);
-        assertThat(PokemonExperience.calculateLevelFromXp(999_999, GrowthRate.MEDIUM_FAST)).isEqualTo(99);
-        assertThat(PokemonExperience.calculateLevelFromXp(1_000_000, GrowthRate.MEDIUM_FAST)).isEqualTo(100);
+    void nivelCalculadoPelosLimiaresLineares() {
+        assertThat(PokemonExperience.calculateLevelFromXp(9, GrowthRate.MEDIUM_FAST)).isEqualTo(1);
+        assertThat(PokemonExperience.calculateLevelFromXp(10, GrowthRate.MEDIUM_FAST)).isEqualTo(2);
+        assertThat(PokemonExperience.calculateLevelFromXp(29, GrowthRate.MEDIUM_FAST)).isEqualTo(2);
+        assertThat(PokemonExperience.calculateLevelFromXp(30, GrowthRate.MEDIUM_FAST)).isEqualTo(3);
+        assertThat(PokemonExperience.calculateLevelFromXp(49_499, GrowthRate.MEDIUM_FAST)).isEqualTo(99);
+        assertThat(PokemonExperience.calculateLevelFromXp(49_500, GrowthRate.MEDIUM_FAST)).isEqualTo(100);
     }
 
     @Test
-    void xpParaProximoNivel_mediumFastNivel1() {
-        assertThat(PokemonExperience.getXpToNextLevel(1, GrowthRate.MEDIUM_FAST)).isEqualTo(8);
+    void xpParaProximoNivelSegueNivelAtualVezesDez() {
+        assertThat(PokemonExperience.getXpToNextLevel(1, GrowthRate.MEDIUM_FAST)).isEqualTo(10);
+        assertThat(PokemonExperience.getXpToNextLevel(2, GrowthRate.MEDIUM_FAST)).isEqualTo(20);
+        assertThat(PokemonExperience.getXpToNextLevel(99, GrowthRate.MEDIUM_FAST)).isEqualTo(990);
+        assertThat(PokemonExperience.getXpToNextLevel(100, GrowthRate.MEDIUM_FAST)).isZero();
+    }
+
+    @Test
+    void curvaEhIndependenteDaTaxaDeCrescimento() {
+        assertThat(PokemonExperience.getTotalXpForLevel(25, GrowthRate.FAST))
+                .isEqualTo(PokemonExperience.getTotalXpForLevel(25, GrowthRate.SLOW));
     }
 
     @Test
     void pokeApiSlug_mediumEhMediumSlow() {
-        assertThat(GrowthRate.fromPokeApiSlug("medium")).isEqualTo(GrowthRate.MEDIUM_SLOW);
-        assertThat(GrowthRate.fromPokeApiSlug("medium-slow")).isEqualTo(GrowthRate.MEDIUM_FAST);
+        assertThat(GrowthRate.fromPokeApiSlug("medium")).isEqualTo(GrowthRate.MEDIUM_FAST);
+        assertThat(GrowthRate.fromPokeApiSlug("medium-slow")).isEqualTo(GrowthRate.MEDIUM_SLOW);
         assertThat(GrowthRate.fromPokeApiSlug("slow-then-very-fast")).isEqualTo(GrowthRate.ERRATIC);
         assertThat(GrowthRate.fromPokeApiSlug("fast-then-very-slow")).isEqualTo(GrowthRate.FLUCTUATING);
     }

@@ -221,13 +221,14 @@ public class PokemonService {
                             Especializacao especializacao, String berryFavorita, Integer nivelDeVinculo,
                             Integer nivel, Integer xpAtual, Pokebola pokebolaCaptura, String itemSeguradoId,
                             String spriteCustomizadoUrl,
-                            Integer tecnica, Integer respeito, List<CondicaoStatus> statusAtuais,
+                            Integer tecnica, Integer respeito, Integer pontosDistribuicaoBonus, List<CondicaoStatus> statusAtuais,
                             List<String> movimentoIds, String habilidadeId, boolean permitirMetodosExtrasNoLearnset) {
         Pokemon pokemon = buscarPorIdEPerfil(pokemonId, perfilId);
         int nivelAtual = pokemon.getNivel();
         if (xpAtual != null && xpAtual < 0) {
             throw new RegraNegocioException("xpAtual não pode ser negativo.");
         }
+        int bonusDistribuicao = pontosDistribuicaoBonus == null ? 0 : Math.max(0, pontosDistribuicaoBonus);
         if (pokedexId != null && pokedexId <= 0) {
             throw new RegraNegocioException("pokedexId inválido. Use um valor maior que zero.");
         }
@@ -311,6 +312,11 @@ public class PokemonService {
         int nivelRecalculado = pokemon.getNivel();
         if (nivelRecalculado > nivelAtual) {
             pokemonStatService.concederPontosPorNivel(pokemon, nivelAtual, nivelRecalculado);
+        }
+        if (bonusDistribuicao > 0) {
+            pokemon.setPontosDistribuicaoDisponiveis(
+                    Math.max(0, pokemon.getPontosDistribuicaoDisponiveis() + bonusDistribuicao)
+            );
         }
 
         if (movimentoIds != null) {

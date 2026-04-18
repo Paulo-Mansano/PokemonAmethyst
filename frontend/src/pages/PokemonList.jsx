@@ -214,6 +214,13 @@ function ExpandedForm({
   const staminaPercent = 100
   const isMestre = !!usuarioMestre?.mestre
   const saldoAtual = Number(expandedEdit.pontosDistribuicaoDisponiveis) || 0
+  const bonusHpStamina = Math.max(1, Math.min(10, Math.max(1, Number(expandedEdit.nivel) || 1)))
+  const hpMaximoRascunho = (Math.max(0, Number(expandedEdit.hpBaseRng) || 0)
+    + Math.max(0, Number(expandedEdit.atrHp) || 0)
+    + bonusHpStamina)
+  const staminaMaximaRascunho = (Math.max(0, Number(expandedEdit.staminaBaseRng) || 0)
+    + Math.max(0, Number(expandedEdit.atrStamina) || 0)
+    + bonusHpStamina)
 
   const atributoRows = [
     { key: 'atr_ataque', label: 'Ataque', valor: Number(expandedEdit.atrAtaque) || 0 },
@@ -323,7 +330,7 @@ function ExpandedForm({
         <div className="pokemon-expanded-bar">
           <div className="pokemon-expanded-bar-header">
             <span className="pokemon-expanded-bar-label pokemon-expanded-bar-label--hp">HP (Vida)</span>
-            <span className="pokemon-expanded-bar-value">Total {expandedEdit.hpMaximo}</span>
+            <span className="pokemon-expanded-bar-value">Total {hpMaximoRascunho}</span>
           </div>
           <div className="pokemon-expanded-bar-track">
             <div
@@ -335,7 +342,7 @@ function ExpandedForm({
         <div className="pokemon-expanded-bar">
           <div className="pokemon-expanded-bar-header">
             <span className="pokemon-expanded-bar-label pokemon-expanded-bar-label--st">ST (Stamina)</span>
-            <span className="pokemon-expanded-bar-value">Total {expandedEdit.staminaMaxima}</span>
+            <span className="pokemon-expanded-bar-value">Total {staminaMaximaRascunho}</span>
           </div>
           <div className="pokemon-expanded-bar-track">
             <div
@@ -544,7 +551,7 @@ function ExpandedForm({
                 <input
                   type="number"
                   min={1}
-                  value={expandedEdit.hpMaximo}
+                  value={hpMaximoRascunho}
                   className="pokemon-edit-input pokemon-edit-input--num"
                   readOnly
                 />
@@ -553,7 +560,7 @@ function ExpandedForm({
                 <input
                   type="number"
                   min={1}
-                  value={expandedEdit.staminaMaxima}
+                  value={staminaMaximaRascunho}
                   className="pokemon-edit-input pokemon-edit-input--num"
                   readOnly
                 />
@@ -638,7 +645,7 @@ function ExpandedForm({
               </p>
               <div style={{ display: 'grid', gap: '0.5rem' }}>
                 {atributoRows.map((row) => {
-                  const custo = custoParaProximo ? custoParaProximo(expandedEdit.nivel, row.valor) : 1
+                  const custo = custoParaProximo ? custoParaProximo(row.key, row.valor) : 1
                   const bloqueadoPlayer = !isMestre && saldoAtual < custo
                   const field = ATRIBUTO_EDIT_FIELD_MAP[row.key]
                   return (
@@ -870,6 +877,7 @@ export default function PokemonList() {
   const [pendingAlocacoes, setPendingAlocacoes] = useState({})
   const [pendingEvolucaoPokedexId, setPendingEvolucaoPokedexId] = useState(null)
   const [pendingResetTiposEspecie, setPendingResetTiposEspecie] = useState(false)
+  const [confirmarTopUp, setConfirmarTopUp] = useState(null)
 
   // Pop-up sequencial quando o Pokémon aprende novos ataques ao subir de nível.
   const [ofertasAprendizagem, setOfertasAprendizagem] = useState([])
@@ -991,6 +999,7 @@ export default function PokemonList() {
       setPendingEvolucaoPokedexId(null)
       setPendingResetTiposEspecie(false)
       setSpriteUploadLoading(false)
+      setConfirmarTopUp(null)
     } else {
       setExpandedEdit(null)
     }
@@ -1064,22 +1073,21 @@ export default function PokemonList() {
     }
   }
 
-  const custoParaProximo = (nivel, valorAtual) => {
-    const n = Math.max(1, Number(nivel) || 1)
+  const custoParaProximo = (atributo, valorAtual) => {
     const v = Math.max(0, Number(valorAtual) || 0)
-    if (n <= 2) return 1
-    if (n >= 7 && v > 10) return 3
-    if (n >= 3 && v > 5) return 2
+    if (atributo === 'atr_hp' || atributo === 'atr_stamina') return 1
+    if (v >= 10) return 3
+    if (v >= 5) return 2
     return 1
   }
 
-  const custoIntervalo = (nivel, valorInicial, valorFinal) => {
+  const custoIntervalo = (atributo, valorInicial, valorFinal) => {
     const inicio = Math.max(0, Number(valorInicial) || 0)
     const fim = Math.max(0, Number(valorFinal) || 0)
     if (fim <= inicio) return 0
     let total = 0
     for (let v = inicio; v < fim; v += 1) {
-      total += custoParaProximo(nivel, v)
+      total += custoParaProximo(atributo, v)
     }
     return total
   }
@@ -1111,20 +1119,19 @@ export default function PokemonList() {
     novo = Math.max(base, novo)
     if (novo === atual) return
 
-    const nivelAtual = Math.max(1, Number(expandedEdit.nivel) || 1)
     const saldoAtual = Number(expandedEdit.pontosDistribuicaoDisponiveis) || 0
     const isMestre = !!usuarioMestre?.mestre
 
     let saldoNovo = saldoAtual
     if (novo > atual) {
-      const custo = custoIntervalo(nivelAtual, atual, novo)
+      const custo = custoIntervalo(atributo, atual, novo)
       if (!isMestre && saldoAtual < custo) {
         setErro(`Pontos insuficientes para aumentar ${atributo}.`) 
         return
       }
       saldoNovo -= custo
     } else {
-      const reembolso = custoIntervalo(nivelAtual, novo, atual)
+      const reembolso = custoIntervalo(atributo, novo, atual)
       saldoNovo += reembolso
     }
 
@@ -1158,7 +1165,7 @@ export default function PokemonList() {
       atr_tecnica: expandedEdit.atrTecnica,
       atr_respeito: expandedEdit.atrRespeito,
     }
-    const custo = custoParaProximo(expandedEdit.nivel, mapValor[atributo] ?? 0)
+    const custo = custoParaProximo(atributo, mapValor[atributo] ?? 0)
     const saldo = Number(expandedEdit.pontosDistribuicaoDisponiveis) || 0
     const isMestre = !!usuarioMestre?.mestre
     if (!isMestre && saldo < custo) {
@@ -1186,6 +1193,7 @@ export default function PokemonList() {
       setOfertaIdx(0)
       setSubstituirMovimentoId('')
       setNivelSubiuMsg('')
+      setConfirmarTopUp(null)
       return
     }
     setOfertasAprendizagem([])
@@ -1448,8 +1456,7 @@ export default function PokemonList() {
     }
   }
 
-  const handleSalvarExpanded = async (e) => {
-    e.preventDefault()
+  const salvarPokemonExpanded = async (bonusDistribuicao = 0) => {
     if (!expandedPokemon || !expandedEdit) return
     setErro('')
     setSavingPokemon(true)
@@ -1459,7 +1466,6 @@ export default function PokemonList() {
         const sec = expandedEdit.tipoSecundario || null
         if (sec && sec === expandedEdit.tipoPrimario) {
           setErro('Tipo primário e secundário não podem ser iguais.')
-          setSavingPokemon(false)
           return
         }
         if (pendingResetTiposEspecie) {
@@ -1475,6 +1481,7 @@ export default function PokemonList() {
           }
         }
       }
+
       const resultado = await atualizarPokemon(expandedPokemon.id, {
         pokedexId: evolucaoPendente ? null : (expandedEdit.pokedexId && expandedEdit.pokedexId > 0 ? expandedEdit.pokedexId : null),
         apelido: expandedEdit.apelido || null,
@@ -1492,6 +1499,7 @@ export default function PokemonList() {
         spriteCustomizadoUrl: expandedEdit.spriteCustomizadoUrl || null,
         tecnica: expandedEdit.tecnica,
         respeito: expandedEdit.respeito,
+        pontosDistribuicaoBonus: Math.max(0, Number(bonusDistribuicao) || 0),
         habilidadeId: expandedEdit.habilidadeId || null,
         statusAtuais: expandedEdit.statusAtuais?.length ? expandedEdit.statusAtuais : null,
         movimentoIds: expandedEdit.movimentoIds?.length ? expandedEdit.movimentoIds : [],
@@ -1518,7 +1526,6 @@ export default function PokemonList() {
         setOfertasAprendizagem(movimentosAprendendo)
         setOfertaIdx(0)
         setNivelSubiuMsg(`Nível do Pokémon subiu para Lv. ${resultado.nivelDepois}`)
-        // Mantém o card aberto até aceitar/recusar os ataques.
       } else {
         setOfertasAprendizagem([])
         setOfertaIdx(0)
@@ -1533,6 +1540,28 @@ export default function PokemonList() {
     } finally {
       setSavingPokemon(false)
     }
+  }
+
+  const handleSalvarExpanded = async (e) => {
+    e.preventDefault()
+    if (!expandedPokemon || !expandedEdit) return
+    const saldoAtual = Number(expandedEdit.pontosDistribuicaoDisponiveis) || 0
+    const bonusNecessario = usuarioMestre?.mestre ? Math.max(0, -saldoAtual) : 0
+    if (bonusNecessario > 0) {
+      setConfirmarTopUp({ bonus: bonusNecessario })
+      return
+    }
+    await salvarPokemonExpanded(0)
+  }
+
+  const confirmarTopUpSave = async () => {
+    const bonus = Number(confirmarTopUp?.bonus) || 0
+    setConfirmarTopUp(null)
+    await salvarPokemonExpanded(bonus)
+  }
+
+  const cancelarTopUpSave = () => {
+    setConfirmarTopUp(null)
   }
 
   const perfil = perfilQuery.data ?? null
@@ -1941,6 +1970,37 @@ export default function PokemonList() {
             ) : (
               <p style={{ color: 'var(--text-muted)' }}>Nenhuma oferta no momento.</p>
             )}
+          </div>
+        </div>
+      )}
+
+      {confirmarTopUp && expandedPokemon && expandedEdit && (
+        <div
+          style={{
+            position: 'fixed',
+            inset: 0,
+            background: 'rgba(0,0,0,0.78)',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            zIndex: 30,
+            padding: '1rem',
+          }}
+        >
+          <div className="card" style={{ maxWidth: 560, width: '100%' }}>
+            <h3 style={{ marginTop: 0 }}>Confirmar ajuste de pontos</h3>
+            <p style={{ color: 'var(--text-muted)' }}>
+              Este Pokémon está com saldo negativo de <strong>{Math.max(0, Number(confirmarTopUp?.bonus) || 0)}</strong> ponto(s).
+              Ao confirmar, esse total será adicionado antes de salvar para zerar o déficit.
+            </p>
+            <div style={{ display: 'flex', gap: '0.5rem', justifyContent: 'flex-end', flexWrap: 'wrap' }}>
+              <button type="button" className="btn btn-secondary" onClick={cancelarTopUpSave} disabled={savingPokemon}>
+                Cancelar
+              </button>
+              <button type="button" className="btn btn-primary" onClick={confirmarTopUpSave} disabled={savingPokemon}>
+                Confirmar e salvar
+              </button>
+            </div>
           </div>
         </div>
       )}

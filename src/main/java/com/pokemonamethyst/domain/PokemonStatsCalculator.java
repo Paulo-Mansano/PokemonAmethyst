@@ -63,7 +63,7 @@ public final class PokemonStatsCalculator {
     }
 
     public static int bonusAutomaticoHpStamina(int nivel) {
-        return Math.max(0, Math.min(9, Math.max(1, nivel) - 1));
+        return Math.max(1, Math.min(10, Math.max(1, nivel)));
     }
 
     private static int termoInterno(int base, int iv, int ev, int nivel) {

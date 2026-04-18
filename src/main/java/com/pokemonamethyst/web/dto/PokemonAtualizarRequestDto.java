@@ -23,6 +23,7 @@ public class PokemonAtualizarRequestDto {
     private String itemSeguradoId;
     private Integer tecnica;
     private Integer respeito;
+    private Integer pontosDistribuicaoBonus;
     private String habilidadeId;
     private String spriteCustomizadoUrl;
     private List<CondicaoStatus> statusAtuais;
@@ -62,6 +63,8 @@ public class PokemonAtualizarRequestDto {
     public void setTecnica(Integer tecnica) { this.tecnica = tecnica; }
     public Integer getRespeito() { return respeito; }
     public void setRespeito(Integer respeito) { this.respeito = respeito; }
+    public Integer getPontosDistribuicaoBonus() { return pontosDistribuicaoBonus; }
+    public void setPontosDistribuicaoBonus(Integer pontosDistribuicaoBonus) { this.pontosDistribuicaoBonus = pontosDistribuicaoBonus; }
     public String getHabilidadeId() { return habilidadeId; }
     public void setHabilidadeId(String habilidadeId) { this.habilidadeId = habilidadeId; }
     public String getSpriteCustomizadoUrl() { return spriteCustomizadoUrl; }

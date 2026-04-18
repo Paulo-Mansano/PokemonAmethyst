@@ -90,9 +90,8 @@ public class PokemonStatService {
     }
 
     public int custoParaProximoPonto(Pokemon pokemon, String atributo) {
-        int nivel = pokemon != null ? Math.max(1, pokemon.getNivel()) : 1;
         int valorAtual = obterValorAtual(pokemon, atributo);
-        return custoPorRegra(nivel, valorAtual);
+        return custoPorRegra(atributo, valorAtual);
     }
 
     public int totalAtributosInvestidos(Pokemon pokemon) {
@@ -143,15 +142,14 @@ public class PokemonStatService {
         pokemon.setPontosDistribuicaoDisponiveis(pokemon.getPontosDistribuicaoDisponiveis() - custo);
     }
 
-    private int custoPorRegra(int nivel, int valorAtual) {
-        int nivelSeguro = Math.max(1, nivel);
-        if (nivelSeguro <= 2) {
+    private int custoPorRegra(String atributo, int valorAtual) {
+        if ("atr_hp".equals(atributo) || "atr_stamina".equals(atributo)) {
             return 1;
         }
-        if (nivelSeguro >= 7 && valorAtual > 10) {
+        if (valorAtual >= 10) {
             return 3;
         }
-        if (nivelSeguro >= 3 && valorAtual > 5) {
+        if (valorAtual >= 5) {
             return 2;
         }
         return 1;
