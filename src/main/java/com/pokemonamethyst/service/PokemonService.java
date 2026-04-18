@@ -37,6 +37,7 @@ public class PokemonService {
     private static final int NIVEL_INICIAL = 1;
     private static final int POKEDEX_MIN = 1;
     private static final int POKEDEX_MAX = 1025;
+    private static final double CHANCE_SUPORTE_ALEATORIO = 0.05d;
 
     private final PokemonRepository pokemonRepository;
     private final PerfilJogadorRepository perfilRepository;
@@ -183,9 +184,9 @@ public class PokemonService {
         if (nivelBase > NIVEL_INICIAL) {
             pokemonStatService.concederPontosPorNivel(pokemon, NIVEL_INICIAL, nivelBase);
         }
-        if (personalidadeId != null && !personalidadeId.isBlank()) {
-            personalidadeRepository.findById(personalidadeId).ifPresent(pokemon::setPersonalidade);
-        }
+        definirPersonalidadeInicial(pokemon, personalidadeId);
+        pokemon.setBerryFavorita(sortearBerryFavorita());
+        pokemon.setEspecializacao(definirEspecializacaoInicial(pokemon.getSpecies()));
 
         if (movimentoIds != null && !movimentoIds.isEmpty()) {
             List<String> movimentoIdsUnicos = deduplicarIdsPreservandoOrdem(movimentoIds);
@@ -722,11 +723,11 @@ public class PokemonService {
     }
 
     private int rolarIv() {
-        return ThreadLocalRandom.current().nextInt(32);
+        return randomIndex(32);
     }
 
     private boolean sortearShiny() {
-        return ThreadLocalRandom.current().nextInt(100) < shinyChancePercent;
+        return randomIndex(100) < shinyChancePercent;
     }
 
     private Genero definirGeneroAleatorio(PokemonSpecies species) {
@@ -741,7 +742,69 @@ public class PokemonService {
             return Genero.FEMEA;
         }
         int femalePercent = Math.round((genderRate / 8.0f) * 100f);
-        return ThreadLocalRandom.current().nextInt(100) < femalePercent ? Genero.FEMEA : Genero.MACHO;
+        return randomIndex(100) < femalePercent ? Genero.FEMEA : Genero.MACHO;
+    }
+
+    private void definirPersonalidadeInicial(Pokemon pokemon, String personalidadeId) {
+        if (personalidadeId != null && !personalidadeId.isBlank()) {
+            personalidadeRepository.findById(personalidadeId).ifPresent(pokemon::setPersonalidade);
+            return;
+        }
+        List<Personalidade> personalidades = personalidadeRepository.findAllByOrderByNome();
+        if (personalidades.isEmpty()) {
+            return;
+        }
+        pokemon.setPersonalidade(personalidades.get(randomIndex(personalidades.size())));
+    }
+
+    private String sortearBerryFavorita() {
+        List<Item> berries = itemRepository.findByNomeEnContainingIgnoreCaseOrderByNomeEn("berry");
+        if (berries.isEmpty()) {
+            return null;
+        }
+        Item berry = berries.get(randomIndex(berries.size()));
+        if (berry.getNomeEn() != null && !berry.getNomeEn().isBlank()) {
+            return berry.getNomeEn();
+        }
+        return berry.getNome();
+    }
+
+    private Especializacao definirEspecializacaoInicial(PokemonSpecies species) {
+        if (species == null) {
+            return Especializacao.UTILITARIO;
+        }
+        if (sortearSuporteAleatorio()) {
+            return Especializacao.SUPORTE;
+        }
+        int hp = Math.max(0, species.getBaseHp());
+        int defesa = Math.max(0, species.getBaseDefesa());
+        int defesaEspecial = Math.max(0, species.getBaseDefesaEspecial());
+        int ataque = Math.max(0, species.getBaseAtaque());
+        int ataqueEspecial = Math.max(0, species.getBaseAtaqueEspecial());
+        int speed = Math.max(0, species.getBaseSpeed());
+
+        int maior = Math.max(Math.max(Math.max(hp, defesa), defesaEspecial), Math.max(Math.max(ataque, ataqueEspecial), speed));
+        if (hp == maior || defesa == maior || defesaEspecial == maior) {
+            return Especializacao.TANQUE;
+        }
+        if (ataque == maior) {
+            return Especializacao.ATACANTE_FISICO;
+        }
+        if (ataqueEspecial == maior) {
+            return Especializacao.ATACANTE_ESPECIAL;
+        }
+        if (speed == maior) {
+            return Especializacao.VELOCISTA;
+        }
+        return Especializacao.UTILITARIO;
+    }
+
+    protected int randomIndex(int bound) {
+        return ThreadLocalRandom.current().nextInt(bound);
+    }
+
+    protected boolean sortearSuporteAleatorio() {
+        return ThreadLocalRandom.current().nextDouble() < CHANCE_SUPORTE_ALEATORIO;
     }
 
     private List<Movimento> buscarMovimentosPorIds(List<String> ids) {

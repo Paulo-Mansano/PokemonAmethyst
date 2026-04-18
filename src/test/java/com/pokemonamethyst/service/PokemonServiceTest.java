@@ -2,8 +2,11 @@ package com.pokemonamethyst.service;
 
 import com.pokemonamethyst.domain.Genero;
 import com.pokemonamethyst.domain.EstadoPokemon;
+import com.pokemonamethyst.domain.Especializacao;
 import com.pokemonamethyst.domain.Habilidade;
+import com.pokemonamethyst.domain.Item;
 import com.pokemonamethyst.domain.OrigemPokemon;
+import com.pokemonamethyst.domain.Personalidade;
 import com.pokemonamethyst.domain.PerfilJogador;
 import com.pokemonamethyst.domain.Pokemon;
 import com.pokemonamethyst.domain.PokemonIVClass;
@@ -24,8 +27,7 @@ import java.util.Optional;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.Mockito.mock;
-import static org.mockito.Mockito.when;
+import static org.mockito.Mockito.*;
 
 class PokemonServiceTest {
 
@@ -340,4 +342,276 @@ class PokemonServiceTest {
 
         assertThat(resultado.getPokemon().getPontosDistribuicaoDisponiveis()).isEqualTo(7);
     }
+
+        @Test
+        void criarDeveSortearPersonalidadeBerryEEspecializacaoPorBaseStat() {
+                PokemonRepository pokemonRepository = mock(PokemonRepository.class);
+                PerfilJogadorRepository perfilRepository = mock(PerfilJogadorRepository.class);
+                ItemRepository itemRepository = mock(ItemRepository.class);
+                MovimentoRepository movimentoRepository = mock(MovimentoRepository.class);
+                HabilidadeRepository habilidadeRepository = mock(HabilidadeRepository.class);
+                PersonalidadeRepository personalidadeRepository = mock(PersonalidadeRepository.class);
+                PokeApiService pokeApiService = mock(PokeApiService.class);
+                PokemonAbilityService pokemonAbilityService = mock(PokemonAbilityService.class);
+                PokemonLearnsetService pokemonLearnsetService = mock(PokemonLearnsetService.class);
+                PokemonGenerationService pokemonGenerationService = new PokemonGenerationService();
+                PokemonStatService pokemonStatService = new PokemonStatService();
+                PokemonEvolutionService pokemonEvolutionService = mock(PokemonEvolutionService.class);
+                PokemonSpeciesRepository pokemonSpeciesRepository = mock(PokemonSpeciesRepository.class);
+
+                PokemonService service = new TestPokemonService(
+                                pokemonRepository,
+                                perfilRepository,
+                                itemRepository,
+                                movimentoRepository,
+                                habilidadeRepository,
+                                personalidadeRepository,
+                                pokeApiService,
+                                pokemonAbilityService,
+                                pokemonLearnsetService,
+                                pokemonGenerationService,
+                                pokemonStatService,
+                                pokemonEvolutionService,
+                                pokemonSpeciesRepository,
+                                100,
+                                false,
+                                false,
+                                0
+                );
+
+                PerfilJogador perfil = new PerfilJogador();
+                perfil.setId("perfil-4");
+
+                PokemonSpecies species = novaSpecies("species-4", 4, 70, 120, 60, 80, 70, 90);
+                Habilidade ability = new Habilidade();
+                ability.setId("ab-4");
+                ability.setNome("Ability");
+
+                Personalidade personalidade = new Personalidade();
+                personalidade.setId("pers-1");
+                personalidade.setNome("Calma");
+
+                Item berry = new Item();
+                berry.setId("item-1");
+                berry.setNome("Oran Berry");
+                berry.setNomeEn("oran-berry");
+
+                when(perfilRepository.findById("perfil-4")).thenReturn(Optional.of(perfil));
+                when(pokemonRepository.save(any(Pokemon.class))).thenAnswer(invocation -> invocation.getArgument(0));
+                when(perfilRepository.save(any(PerfilJogador.class))).thenAnswer(invocation -> invocation.getArgument(0));
+                when(pokeApiService.obterSpeciesParaCriacao(4)).thenReturn(species);
+                when(pokemonAbilityService.sortearHabilidadeAtiva(species)).thenReturn(ability);
+                when(pokemonLearnsetService.escolherMovimentosAoCriarPokemon(species, 1)).thenReturn(List.of());
+                when(personalidadeRepository.findAllByOrderByNome()).thenReturn(List.of(personalidade));
+                when(itemRepository.findByNomeEnContainingIgnoreCaseOrderByNomeEn("berry")).thenReturn(List.of(berry));
+
+                Pokemon criado = service.criar("perfil-4", 4, "Atk", null, null, 10, null, null, null);
+
+                assertThat(criado.getPersonalidade()).isNotNull();
+                assertThat(criado.getPersonalidade().getId()).isEqualTo("pers-1");
+                assertThat(criado.getBerryFavorita()).isEqualTo("oran-berry");
+                assertThat(criado.getEspecializacao()).isEqualTo(Especializacao.ATACANTE_FISICO);
+        }
+
+        @Test
+        void criarDeveRespeitarPersonalidadeInformadaQuandoPresente() {
+                PokemonRepository pokemonRepository = mock(PokemonRepository.class);
+                PerfilJogadorRepository perfilRepository = mock(PerfilJogadorRepository.class);
+                ItemRepository itemRepository = mock(ItemRepository.class);
+                MovimentoRepository movimentoRepository = mock(MovimentoRepository.class);
+                HabilidadeRepository habilidadeRepository = mock(HabilidadeRepository.class);
+                PersonalidadeRepository personalidadeRepository = mock(PersonalidadeRepository.class);
+                PokeApiService pokeApiService = mock(PokeApiService.class);
+                PokemonAbilityService pokemonAbilityService = mock(PokemonAbilityService.class);
+                PokemonLearnsetService pokemonLearnsetService = mock(PokemonLearnsetService.class);
+                PokemonGenerationService pokemonGenerationService = new PokemonGenerationService();
+                PokemonStatService pokemonStatService = new PokemonStatService();
+                PokemonEvolutionService pokemonEvolutionService = mock(PokemonEvolutionService.class);
+                PokemonSpeciesRepository pokemonSpeciesRepository = mock(PokemonSpeciesRepository.class);
+
+                PokemonService service = new TestPokemonService(
+                                pokemonRepository,
+                                perfilRepository,
+                                itemRepository,
+                                movimentoRepository,
+                                habilidadeRepository,
+                                personalidadeRepository,
+                                pokeApiService,
+                                pokemonAbilityService,
+                                pokemonLearnsetService,
+                                pokemonGenerationService,
+                                pokemonStatService,
+                                pokemonEvolutionService,
+                                pokemonSpeciesRepository,
+                                100,
+                                false,
+                                false,
+                                0
+                );
+
+                PerfilJogador perfil = new PerfilJogador();
+                perfil.setId("perfil-5");
+
+                PokemonSpecies species = novaSpecies("species-5", 5, 100, 50, 90, 70, 90, 40);
+                Habilidade ability = new Habilidade();
+                ability.setId("ab-5");
+                ability.setNome("Ability");
+
+                Personalidade informada = new Personalidade();
+                informada.setId("pers-informada");
+                informada.setNome("Firme");
+
+                Item berry = new Item();
+                berry.setId("item-5");
+                berry.setNome("Sitrus Berry");
+                berry.setNomeEn("sitrus-berry");
+
+                when(perfilRepository.findById("perfil-5")).thenReturn(Optional.of(perfil));
+                when(pokemonRepository.save(any(Pokemon.class))).thenAnswer(invocation -> invocation.getArgument(0));
+                when(perfilRepository.save(any(PerfilJogador.class))).thenAnswer(invocation -> invocation.getArgument(0));
+                when(pokeApiService.obterSpeciesParaCriacao(5)).thenReturn(species);
+                when(pokemonAbilityService.sortearHabilidadeAtiva(species)).thenReturn(ability);
+                when(pokemonLearnsetService.escolherMovimentosAoCriarPokemon(species, 1)).thenReturn(List.of());
+                when(personalidadeRepository.findById("pers-informada")).thenReturn(Optional.of(informada));
+                when(itemRepository.findByNomeEnContainingIgnoreCaseOrderByNomeEn("berry")).thenReturn(List.of(berry));
+
+                Pokemon criado = service.criar("perfil-5", 5, "Tank", null, null, 10, null, "pers-informada", null);
+
+                assertThat(criado.getPersonalidade()).isNotNull();
+                assertThat(criado.getPersonalidade().getId()).isEqualTo("pers-informada");
+                assertThat(criado.getEspecializacao()).isEqualTo(Especializacao.TANQUE);
+                verify(personalidadeRepository, never()).findAllByOrderByNome();
+        }
+
+        @Test
+        void criarDevePermitirSuporteMesmoQuandoMaiorStatForOfensivo() {
+                PokemonRepository pokemonRepository = mock(PokemonRepository.class);
+                PerfilJogadorRepository perfilRepository = mock(PerfilJogadorRepository.class);
+                ItemRepository itemRepository = mock(ItemRepository.class);
+                MovimentoRepository movimentoRepository = mock(MovimentoRepository.class);
+                HabilidadeRepository habilidadeRepository = mock(HabilidadeRepository.class);
+                PersonalidadeRepository personalidadeRepository = mock(PersonalidadeRepository.class);
+                PokeApiService pokeApiService = mock(PokeApiService.class);
+                PokemonAbilityService pokemonAbilityService = mock(PokemonAbilityService.class);
+                PokemonLearnsetService pokemonLearnsetService = mock(PokemonLearnsetService.class);
+                PokemonGenerationService pokemonGenerationService = new PokemonGenerationService();
+                PokemonStatService pokemonStatService = new PokemonStatService();
+                PokemonEvolutionService pokemonEvolutionService = mock(PokemonEvolutionService.class);
+                PokemonSpeciesRepository pokemonSpeciesRepository = mock(PokemonSpeciesRepository.class);
+
+                PokemonService service = new TestPokemonService(
+                                pokemonRepository,
+                                perfilRepository,
+                                itemRepository,
+                                movimentoRepository,
+                                habilidadeRepository,
+                                personalidadeRepository,
+                                pokeApiService,
+                                pokemonAbilityService,
+                                pokemonLearnsetService,
+                                pokemonGenerationService,
+                                pokemonStatService,
+                                pokemonEvolutionService,
+                                pokemonSpeciesRepository,
+                                100,
+                                false,
+                                true,
+                                0
+                );
+
+                PerfilJogador perfil = new PerfilJogador();
+                perfil.setId("perfil-6");
+
+                PokemonSpecies species = novaSpecies("species-6", 6, 45, 120, 50, 50, 50, 95);
+                Habilidade ability = new Habilidade();
+                ability.setId("ab-6");
+                ability.setNome("Ability");
+
+                Item berry = new Item();
+                berry.setId("item-6");
+                berry.setNome("Lum Berry");
+                berry.setNomeEn("lum-berry");
+
+                when(perfilRepository.findById("perfil-6")).thenReturn(Optional.of(perfil));
+                when(pokemonRepository.save(any(Pokemon.class))).thenAnswer(invocation -> invocation.getArgument(0));
+                when(perfilRepository.save(any(PerfilJogador.class))).thenAnswer(invocation -> invocation.getArgument(0));
+                when(pokeApiService.obterSpeciesParaCriacao(6)).thenReturn(species);
+                when(pokemonAbilityService.sortearHabilidadeAtiva(species)).thenReturn(ability);
+                when(pokemonLearnsetService.escolherMovimentosAoCriarPokemon(species, 1)).thenReturn(List.of());
+                when(personalidadeRepository.findAllByOrderByNome()).thenReturn(List.of());
+                when(itemRepository.findByNomeEnContainingIgnoreCaseOrderByNomeEn("berry")).thenReturn(List.of(berry));
+
+                Pokemon criado = service.criar("perfil-6", 6, "Support", null, null, 10, null, null, null);
+
+                assertThat(criado.getEspecializacao()).isEqualTo(Especializacao.SUPORTE);
+                assertThat(criado.getBerryFavorita()).isEqualTo("lum-berry");
+        }
+
+        private static PokemonSpecies novaSpecies(String id, int pokedexId, int hp, int atk, int def, int spAtk, int spDef, int speed) {
+                PokemonSpecies species = new PokemonSpecies();
+                species.setId(id);
+                species.setPokedexId(pokedexId);
+                species.setNome("Teste");
+                species.setGenderRate(8);
+                species.setBaseHp(hp);
+                species.setBaseAtaque(atk);
+                species.setBaseDefesa(def);
+                species.setBaseAtaqueEspecial(spAtk);
+                species.setBaseDefesaEspecial(spDef);
+                species.setBaseSpeed(speed);
+                return species;
+        }
+
+        private static class TestPokemonService extends PokemonService {
+                private final boolean suporteAleatorio;
+                private final int indiceFixo;
+
+                TestPokemonService(PokemonRepository pokemonRepository,
+                                                   PerfilJogadorRepository perfilRepository,
+                                                   ItemRepository itemRepository,
+                                                   MovimentoRepository movimentoRepository,
+                                                   HabilidadeRepository habilidadeRepository,
+                                                   PersonalidadeRepository personalidadeRepository,
+                                                   PokeApiService pokeApiService,
+                                                   PokemonAbilityService pokemonAbilityService,
+                                                   PokemonLearnsetService pokemonLearnsetService,
+                                                   PokemonGenerationService pokemonGenerationService,
+                                                   PokemonStatService pokemonStatService,
+                                                   PokemonEvolutionService pokemonEvolutionService,
+                                                   PokemonSpeciesRepository pokemonSpeciesRepository,
+                                                   int shinyChancePercent,
+                                                   boolean strictLocalRuntime,
+                                                   boolean suporteAleatorio,
+                                                   int indiceFixo) {
+                        super(
+                                        pokemonRepository,
+                                        perfilRepository,
+                                        itemRepository,
+                                        movimentoRepository,
+                                        habilidadeRepository,
+                                        personalidadeRepository,
+                                        pokeApiService,
+                                        pokemonAbilityService,
+                                        pokemonLearnsetService,
+                                        pokemonGenerationService,
+                                        pokemonStatService,
+                                        pokemonEvolutionService,
+                                        pokemonSpeciesRepository,
+                                        shinyChancePercent,
+                                        strictLocalRuntime
+                        );
+                        this.suporteAleatorio = suporteAleatorio;
+                        this.indiceFixo = indiceFixo;
+                }
+
+                @Override
+                protected int randomIndex(int bound) {
+                        return Math.max(0, Math.min(bound - 1, indiceFixo));
+                }
+
+                @Override
+                protected boolean sortearSuporteAleatorio() {
+                        return suporteAleatorio;
+                }
+        }
 }
