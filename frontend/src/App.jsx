@@ -10,10 +10,10 @@ import HabilidadesCatalogo from './pages/HabilidadesCatalogo'
 import MovimentosCatalogo from './pages/MovimentosCatalogo'
 import PersonalidadesCatalogo from './pages/PersonalidadesCatalogo'
 import Geracao from './pages/Geracao'
-import Batalha from './pages/Batalha'
 import Captura from './pages/Captura'
 import MestreSpecies from './pages/MestreSpecies'
 import { getUsuario } from './api'
+import { clearAuthCache } from './query/queryClient'
 
 function RedirectToLogin() {
   const location = useLocation()
@@ -43,7 +43,9 @@ export default function App() {
   }, [])
 
   useEffect(() => {
-    const onAuthExpired = () => setUser(null)
+    const onAuthExpired = () => {
+      void clearAuthCache().finally(() => setUser(null))
+    }
     window.addEventListener('pokemonamethyst:auth-expired', onAuthExpired)
     return () => window.removeEventListener('pokemonamethyst:auth-expired', onAuthExpired)
   }, [])
@@ -68,8 +70,7 @@ export default function App() {
         <Route path="movimentos" element={<MovimentosCatalogo />} />
         <Route path="personalidades" element={<PersonalidadesCatalogo />} />
         <Route path="species" element={<MestreSpecies />} />
-        <Route path="geracao" element={<Geracao />} />
-        <Route path="batalha" element={<Batalha />} />
+        <Route path="geracao" element={user?.mestre ? <Geracao /> : <Navigate to="/" replace />} />
         <Route path="captura" element={user?.mestre ? <Captura /> : <Navigate to="/" replace />} />
       </Route>
       <Route path="*" element={<FallbackRoute user={user} />} />

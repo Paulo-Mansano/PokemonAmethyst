@@ -28,7 +28,7 @@ public class PokemonAtualizarRequestDto {
     private String spriteCustomizadoUrl;
     private List<CondicaoStatus> statusAtuais;
 
-    @Size(max = 8, message = "Máximo de 8 ataques")
+    @Size(max = 6, message = "Máximo de 6 ataques")
     private List<String> movimentoIds;
 
     public Integer getPokedexId() { return pokedexId; }

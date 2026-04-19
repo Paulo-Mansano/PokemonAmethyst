@@ -27,7 +27,7 @@ public class PokemonRequestDto {
     private String itemSeguradoId;
     private Integer staminaMaxima;
 
-    @Size(max = 8, message = "Máximo de 8 ataques")
+    @Size(max = 6, message = "Máximo de 6 ataques")
     private List<String> movimentoIds;
 
     public int getStaminaMaximaOrDefault() {

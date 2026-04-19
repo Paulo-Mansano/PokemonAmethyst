@@ -1,5 +1,6 @@
 import { NavLink } from 'react-router-dom'
 import { logout } from '../api'
+import { clearAuthCache } from '../query/queryClient'
 
 const SIDEBAR_WIDTH_EXPANDED = 240
 const SIDEBAR_WIDTH_COLLAPSED = 56
@@ -7,10 +8,12 @@ const SIDEBAR_WIDTH_COLLAPSED = 56
 const navItems = [
   { to: '/', end: true, label: 'Ficha', title: 'Ficha do personagem', icon: IconUser },
   { to: '/pokemons', end: false, label: 'Pokémon', title: 'Pokémon', icon: IconPokemon },
-  { to: '/geracao', end: false, label: 'Geração', title: 'Gerar Pokémon', icon: IconSpark },
-  { to: '/batalha', end: false, label: 'Batalha', title: 'Sistema de batalha', icon: IconBattle },
   { to: '/captura', end: false, label: 'Captura', title: 'Sistema de captura', icon: IconCatch },
   { to: '/mochila', end: false, label: 'Mochila', title: 'Mochila', icon: IconBag },
+]
+
+const navItemsMestreExtras = [
+  { to: '/geracao', end: false, label: 'Geração', title: 'Gerar Pokémon', icon: IconSpark },
 ]
 
 const navItemsMestre = [
@@ -126,11 +129,13 @@ function IconChevronRight() {
 export default function Sidebar({ user, onLogout, expanded, onToggle }) {
   const handleLogout = async () => {
     await logout()
+    await clearAuthCache()
     onLogout()
   }
 
   const items = [
     ...navItems.filter((item) => user?.mestre || item.to !== '/captura'),
+    ...(user?.mestre ? navItemsMestreExtras : []),
     ...(user?.mestre ? navItemsMestre : []),
   ]
 

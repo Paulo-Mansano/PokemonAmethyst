@@ -4,7 +4,6 @@ import { getMeuPerfil, getUsuario, criarPokemon, getPokemon, atualizarPokemon, c
 import { usePlayerTarget } from '../context/PlayerTargetContext'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { queryKeys } from '../query/queryKeys'
-import { uploadPokemonSprite, isPokemonSpriteUploadConfigured } from '../lib/supabaseStorage'
 
 const PAGE_SIZE = 20
 const SPECIES_CACHE_KEY = 'pokemonamethyst:species-local-cache:v1'
@@ -69,6 +68,7 @@ function formatMovimentoNomeExibicao(m) {
 const POKEBOLAS = ['POKEBALL', 'GREATBALL', 'ULTRABALL', 'MASTERBALL', 'SAFARIBALL', 'LUXURYBALL', 'FRIENDLYBALL', 'OUTRA']
 const ESPECIALIZACOES = ['VELOCISTA', 'ATACANTE_FISICO', 'ATACANTE_ESPECIAL', 'TANQUE', 'SUPORTE', 'UTILITARIO']
 const CONDICOES_STATUS = ['PARALISADO', 'ENVENENADO', 'DORMINDO', 'QUEIMADO', 'CONGELADO', 'CONFUSO']
+const MAX_ATAQUES_POR_POKEMON = 6
 
 const ATRIBUTO_EDIT_FIELD_MAP = {
   atr_ataque: 'atrAtaque',
@@ -175,10 +175,7 @@ function ExpandedForm({
   onEvoluir,
   pendingResumo,
   pendingEvolucaoPokedexId,
-  onSelecionarSprite,
-  spriteUploadLoading,
 }) {
-  const spriteUploadReady = isPokemonSpriteUploadConfigured()
   const [movimentoBusca, setMovimentoBusca] = useState('')
   const [xpGanho, setXpGanho] = useState('')
   const set = (key, value) => setExpandedEdit((e) => (e ? { ...e, [key]: value } : e))
@@ -214,6 +211,8 @@ function ExpandedForm({
   const staminaPercent = 100
   const isMestre = !!usuarioMestre?.mestre
   const saldoAtual = Number(expandedEdit.pontosDistribuicaoDisponiveis) || 0
+  const habilidadeSelecionada = listaHabilidades.find((hab) => hab.id === (expandedEdit.habilidadeId || '')) || null
+  const habilidadeDescricao = (habilidadeSelecionada?.descricao || habilidadeSelecionada?.descricaoEfeito || '').trim()
   const bonusHpStamina = Math.max(1, Math.min(10, Math.max(1, Number(expandedEdit.nivel) || 1)))
   const hpMaximoRascunho = (Math.max(0, Number(expandedEdit.hpBaseRng) || 0)
     + Math.max(0, Number(expandedEdit.atrHp) || 0)
@@ -223,15 +222,15 @@ function ExpandedForm({
     + bonusHpStamina)
 
   const atributoRows = [
-    { key: 'atr_ataque', label: 'Ataque', valor: Number(expandedEdit.atrAtaque) || 0 },
-    { key: 'atr_defesa', label: 'Defesa', valor: Number(expandedEdit.atrDefesa) || 0 },
-    { key: 'atr_ataque_especial', label: 'Ataque especial', valor: Number(expandedEdit.atrAtaqueEspecial) || 0 },
-    { key: 'atr_defesa_especial', label: 'Defesa especial', valor: Number(expandedEdit.atrDefesaEspecial) || 0 },
-    { key: 'atr_speed', label: 'Velocidade', valor: Number(expandedEdit.atrSpeed) || 0 },
-    { key: 'atr_hp', label: 'HP investido', valor: Number(expandedEdit.atrHp) || 0 },
-    { key: 'atr_stamina', label: 'Stamina investida', valor: Number(expandedEdit.atrStamina) || 0 },
-    { key: 'atr_tecnica', label: 'Técnica investida', valor: Number(expandedEdit.atrTecnica) || 0 },
-    { key: 'atr_respeito', label: 'Respeito investido', valor: Number(expandedEdit.atrRespeito) || 0 },
+    { key: 'atr_ataque', label: 'Ataque', valor: Number(expandedEdit.atrAtaque) || 0, total: Number(expandedEdit.ataque) || 0 },
+    { key: 'atr_defesa', label: 'Defesa', valor: Number(expandedEdit.atrDefesa) || 0, total: Number(expandedEdit.defesa) || 0 },
+    { key: 'atr_ataque_especial', label: 'Ataque especial', valor: Number(expandedEdit.atrAtaqueEspecial) || 0, total: Number(expandedEdit.ataqueEspecial) || 0 },
+    { key: 'atr_defesa_especial', label: 'Defesa especial', valor: Number(expandedEdit.atrDefesaEspecial) || 0, total: Number(expandedEdit.defesaEspecial) || 0 },
+    { key: 'atr_speed', label: 'Velocidade', valor: Number(expandedEdit.atrSpeed) || 0, total: Number(expandedEdit.speed) || 0 },
+    { key: 'atr_hp', label: 'HP investido', valor: Number(expandedEdit.atrHp) || 0, total: hpMaximoRascunho },
+    { key: 'atr_stamina', label: 'Stamina investida', valor: Number(expandedEdit.atrStamina) || 0, total: staminaMaximaRascunho },
+    { key: 'atr_tecnica', label: 'Técnica investida', valor: Number(expandedEdit.atrTecnica) || 0, total: Number(expandedEdit.tecnica) || 0 },
+    { key: 'atr_respeito', label: 'Respeito investido', valor: Number(expandedEdit.atrRespeito) || 0, total: Number(expandedEdit.respeito) || 0 },
   ]
 
   return (
@@ -357,24 +356,6 @@ function ExpandedForm({
         <div className="pokemon-expanded-main-column">
           <div className="pokemon-edit-section pokemon-edit-section--glass">
             <h4>Identificação</h4>
-            <div className="pokemon-expanded-inline-fields">
-              <Field label="Pokédex #">
-                <input
-                  type="number"
-                  min={1}
-                  value={expandedEdit.pokedexId}
-                  className="pokemon-edit-input"
-                  readOnly
-                />
-              </Field>
-              <Field label="URL da imagem">
-                <input
-                  value={expandedEdit.imagemUrl}
-                  className="pokemon-edit-input"
-                  readOnly
-                />
-              </Field>
-            </div>
             <div className="pokemon-expanded-inline-fields">
               <Field label="Tipo primário">
                 <select
@@ -545,93 +526,8 @@ function ExpandedForm({
           </div>
 
           <div className="pokemon-edit-section pokemon-edit-section--glass pokemon-expanded-atributos">
-            <h4>Atributos</h4>
-            <div className="pokemon-expanded-atributos-grid">
-              <Field label="HP máximo">
-                <input
-                  type="number"
-                  min={1}
-                  value={hpMaximoRascunho}
-                  className="pokemon-edit-input pokemon-edit-input--num"
-                  readOnly
-                />
-              </Field>
-              <Field label="Stamina máxima">
-                <input
-                  type="number"
-                  min={1}
-                  value={staminaMaximaRascunho}
-                  className="pokemon-edit-input pokemon-edit-input--num"
-                  readOnly
-                />
-              </Field>
-              <Field label="Ataque">
-                <input
-                  type="number"
-                  min={0}
-                  value={expandedEdit.ataque}
-                  className="pokemon-edit-input pokemon-edit-input--num"
-                  readOnly
-                />
-              </Field>
-              <Field label="Ataque especial">
-                <input
-                  type="number"
-                  min={0}
-                  value={expandedEdit.ataqueEspecial}
-                  className="pokemon-edit-input pokemon-edit-input--num"
-                  readOnly
-                />
-              </Field>
-              <Field label="Defesa">
-                <input
-                  type="number"
-                  min={0}
-                  value={expandedEdit.defesa}
-                  className="pokemon-edit-input pokemon-edit-input--num"
-                  readOnly
-                />
-              </Field>
-              <Field label="Defesa especial">
-                <input
-                  type="number"
-                  min={0}
-                  value={expandedEdit.defesaEspecial}
-                  className="pokemon-edit-input pokemon-edit-input--num"
-                  readOnly
-                />
-              </Field>
-              <Field label="Velocidade">
-                <input
-                  type="number"
-                  min={0}
-                  value={expandedEdit.speed}
-                  className="pokemon-edit-input pokemon-edit-input--num"
-                  readOnly
-                />
-              </Field>
-              <Field label="Técnica">
-                <input
-                  type="number"
-                  min={0}
-                  value={expandedEdit.tecnica}
-                  className="pokemon-edit-input pokemon-edit-input--num"
-                  readOnly
-                />
-              </Field>
-              <Field label="Respeito">
-                <input
-                  type="number"
-                  min={0}
-                  value={expandedEdit.respeito}
-                  className="pokemon-edit-input pokemon-edit-input--num"
-                  readOnly
-                />
-              </Field>
-            </div>
-
+            <h4>Atributos e distribuição</h4>
             <div style={{ marginTop: '1rem', paddingTop: '1rem', borderTop: '1px solid var(--border)' }}>
-              <h5 style={{ margin: '0 0 0.75rem' }}>Distribuição de atributos livres</h5>
               <p style={{ margin: '0 0 0.75rem', color: saldoAtual < 0 ? 'var(--danger)' : 'var(--text-muted)' }}>
                 Classe IV: <strong>{expandedEdit.ivClass || '—'}</strong> | Pontos disponíveis: <strong>{saldoAtual}</strong>
               </p>
@@ -643,36 +539,37 @@ function ExpandedForm({
               <p style={{ margin: '0 0 0.75rem', color: 'var(--text-muted)' }}>
                 A distribuição é aplicada no banco somente ao clicar em <strong>Salvar</strong>.
               </p>
-              <div style={{ display: 'grid', gap: '0.5rem' }}>
+              <div className="pokemon-atributo-list">
                 {atributoRows.map((row) => {
                   const custo = custoParaProximo ? custoParaProximo(row.key, row.valor) : 1
                   const bloqueadoPlayer = !isMestre && saldoAtual < custo
-                  const field = ATRIBUTO_EDIT_FIELD_MAP[row.key]
                   return (
-                    <div key={row.key} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '0.75rem' }}>
-                      <span style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-                        <span>{row.label}:</span>
+                    <div key={row.key} className="pokemon-atributo-row">
+                      <div className="pokemon-atributo-info">
+                        <span className="pokemon-atributo-label">{row.label}</span>
+                        <span className="pokemon-atributo-total">Total {row.total}</span>
+                      </div>
+                      <div className="pokemon-atributo-controls">
                         <input
                           type="number"
                           min={0}
                           value={row.valor}
                           className="pokemon-edit-input pokemon-edit-input--num"
-                          style={{ width: 88 }}
                           onChange={(e) => onSetAtributoValor && onSetAtributoValor(row.key, e.target.value)}
                           onBlur={(e) => onSetAtributoValor && onSetAtributoValor(row.key, e.target.value)}
                           inputMode="numeric"
-                          aria-label={`Valor de ${row.label}`}
+                          aria-label={`Valor investido de ${row.label}`}
                         />
-                      </span>
-                      <button
-                        type="button"
-                        className="btn btn-secondary btn-sm"
-                        disabled={alocandoAtributo || bloqueadoPlayer}
-                        onClick={() => onAlocarAtributo && onAlocarAtributo(row.key)}
-                        title={`Custo atual: ${custo}`}
-                      >
-                        +1 (custo {custo})
-                      </button>
+                        <button
+                          type="button"
+                          className="btn btn-secondary btn-sm"
+                          disabled={alocandoAtributo || bloqueadoPlayer}
+                          onClick={() => onAlocarAtributo && onAlocarAtributo(row.key)}
+                          title={`Custo atual: ${custo}`}
+                        >
+                          +1 (custo {custo})
+                        </button>
+                      </div>
                     </div>
                   )
                 })}
@@ -698,6 +595,22 @@ function ExpandedForm({
                   <option key={hab.id} value={hab.id}>{hab.nome || hab.nomeEn || hab.id}</option>
                 ))}
               </select>
+              <div className="pokemon-habilidade-preview">
+                {habilidadeSelecionada ? (
+                  <>
+                    <p className="pokemon-habilidade-preview-title">
+                      {habilidadeSelecionada.nome || habilidadeSelecionada.nomeEn || 'Habilidade selecionada'}
+                    </p>
+                    <p className="pokemon-habilidade-preview-desc">
+                      {habilidadeDescricao || 'Descrição ainda não disponível para esta habilidade.'}
+                    </p>
+                  </>
+                ) : (
+                  <p className="pokemon-habilidade-preview-desc">
+                    Selecione uma habilidade para visualizar a descrição aqui.
+                  </p>
+                )}
+              </div>
             </Field>
             <Field label="Item segurado">
               <select
@@ -710,32 +623,6 @@ function ExpandedForm({
                   <option key={item.id} value={item.id}>{item.nome || item.id}</option>
                 ))}
               </select>
-            </Field>
-            <Field label="Sprite customizado">
-              <label
-                className="btn btn-secondary btn-sm"
-                style={{ display: 'inline-flex', alignItems: 'center', gap: '0.5rem', cursor: spriteUploadReady && !spriteUploadLoading ? 'pointer' : 'not-allowed', opacity: spriteUploadReady ? 1 : 0.75 }}
-              >
-                {spriteUploadLoading ? 'Enviando...' : (spriteUploadReady ? 'Selecionar imagem' : 'Upload indisponível')}
-                <input
-                  type="file"
-                  accept="image/*"
-                  onChange={onSelecionarSprite}
-                  disabled={!spriteUploadReady || spriteUploadLoading}
-                  style={{ display: 'none' }}
-                />
-              </label>
-              <input
-                value={expandedEdit.spriteCustomizadoUrl || ''}
-                className="pokemon-edit-input"
-                placeholder="URL pública do sprite customizado"
-                readOnly
-              />
-              {!spriteUploadReady && (
-                <small style={{ color: 'var(--text-muted)' }}>
-                  Configure `VITE_SUPABASE_URL` e `VITE_SUPABASE_ANON_KEY` para liberar o upload no site.
-                </small>
-              )}
             </Field>
             <div className="pokemon-edit-field">
               <label>Condições de status</label>
@@ -757,7 +644,7 @@ function ExpandedForm({
       </div>
 
       <div className="pokemon-edit-section pokemon-edit-section--full pokemon-edit-section--glass">
-        <h4>Golpes &amp; Técnicas ({movimentosAtuais.length}/8)</h4>
+        <h4>Golpes &amp; Técnicas ({movimentosAtuais.length}/{MAX_ATAQUES_POR_POKEMON})</h4>
         <div className="pokemon-movimentos-list">
           {movimentosAtuais.map((m) => (
             <div
@@ -797,7 +684,7 @@ function ExpandedForm({
             </div>
           ))}
         </div>
-        {movimentosAtuais.length < 8 && (
+        {movimentosAtuais.length < MAX_ATAQUES_POR_POKEMON && (
           <div className="pokemon-movimento-add">
             <input
               type="text"
@@ -872,7 +759,6 @@ export default function PokemonList() {
   const [expandedLoading, setExpandedLoading] = useState(false)
   const [alocandoAtributo, setAlocandoAtributo] = useState(false)
   const [evolucoesPossiveis, setEvolucoesPossiveis] = useState([])
-  const [spriteUploadLoading, setSpriteUploadLoading] = useState(false)
   const [pendingXpGanhoTotal, setPendingXpGanhoTotal] = useState(0)
   const [pendingAlocacoes, setPendingAlocacoes] = useState({})
   const [pendingEvolucaoPokedexId, setPendingEvolucaoPokedexId] = useState(null)
@@ -998,7 +884,6 @@ export default function PokemonList() {
       setPendingAlocacoes({})
       setPendingEvolucaoPokedexId(null)
       setPendingResetTiposEspecie(false)
-      setSpriteUploadLoading(false)
       setConfirmarTopUp(null)
     } else {
       setExpandedEdit(null)
@@ -1008,7 +893,7 @@ export default function PokemonList() {
   useEffect(() => {
     if (!popupAprendizagemAberta) return
     const ids = expandedEdit?.movimentoIds || []
-    if (ids.length >= 8) {
+    if (ids.length >= MAX_ATAQUES_POR_POKEMON) {
       if (!substituirMovimentoId || !ids.includes(substituirMovimentoId)) {
         setSubstituirMovimentoId(ids[0] || '')
       }
@@ -1393,7 +1278,7 @@ export default function PokemonList() {
     if (!oferta || !expandedPokemon || !expandedEdit) return
     setErro('')
     const idsAtuais = expandedEdit?.movimentoIds || []
-    const noLimite = idsAtuais.length >= 8
+    const noLimite = idsAtuais.length >= MAX_ATAQUES_POR_POKEMON
     let nextMovimentos = idsAtuais
     if (noLimite) {
       const substituto = idsAtuais.includes(substituirMovimentoId) ? substituirMovimentoId : (idsAtuais[0] || null)
@@ -1415,7 +1300,7 @@ export default function PokemonList() {
 
   const addMovimento = (id) => {
     setExpandedEdit((e) => {
-      if (!e || (e.movimentoIds || []).length >= 8) return e
+      if (!e || (e.movimentoIds || []).length >= MAX_ATAQUES_POR_POKEMON) return e
       if ((e.movimentoIds || []).includes(id)) return e
       return { ...e, movimentoIds: [...(e.movimentoIds || []), id] }
     })
@@ -1438,22 +1323,6 @@ export default function PokemonList() {
       }
     })
     setPendingResetTiposEspecie(true)
-  }
-
-  const handleSelecionarSprite = async (event) => {
-    const file = event.target.files && event.target.files[0]
-    event.target.value = ''
-    if (!file || !expandedPokemon?.id || !expandedEdit) return
-    setErro('')
-    setSpriteUploadLoading(true)
-    try {
-      const { publicUrl } = await uploadPokemonSprite(file, expandedPokemon.id)
-      setExpandedEdit((current) => (!current ? current : { ...current, spriteCustomizadoUrl: publicUrl }))
-    } catch (err) {
-      setErro(err.message || 'Erro ao enviar sprite customizado')
-    } finally {
-      setSpriteUploadLoading(false)
-    }
   }
 
   const salvarPokemonExpanded = async (bonusDistribuicao = 0) => {
@@ -1697,8 +1566,6 @@ export default function PokemonList() {
                         onEvoluir={handleEvoluir}
                         pendingResumo={pendingResumo}
                         pendingEvolucaoPokedexId={pendingEvolucaoPokedexId}
-                        onSelecionarSprite={handleSelecionarSprite}
-                        spriteUploadLoading={spriteUploadLoading}
                       />
                     ) : null}
                   </div>
@@ -1804,8 +1671,6 @@ export default function PokemonList() {
                         onEvoluir={handleEvoluir}
                         pendingResumo={pendingResumo}
                         pendingEvolucaoPokedexId={pendingEvolucaoPokedexId}
-                        onSelecionarSprite={handleSelecionarSprite}
-                        spriteUploadLoading={spriteUploadLoading}
                       />
                     ) : null}
                   </div>
@@ -1928,7 +1793,7 @@ export default function PokemonList() {
                   Aceitar <b>{ofertasAprendizagem[ofertaIdx].nome}</b> ({ofertasAprendizagem[ofertaIdx].tipo})?
                 </p>
 
-                {(expandedEdit.movimentoIds || []).length >= 8 && (
+                {(expandedEdit.movimentoIds || []).length >= MAX_ATAQUES_POR_POKEMON && (
                   <div style={{ marginBottom: '0.75rem' }}>
                     <label style={{ display: 'block', marginBottom: '0.25rem' }}>Selecione um ataque para substituir</label>
                     <select
@@ -1960,7 +1825,7 @@ export default function PokemonList() {
                   <button
                     type="button"
                     className="btn btn-primary"
-                    disabled={xpLoading || ((expandedEdit.movimentoIds || []).length >= 8 && !substituirMovimentoId)}
+                    disabled={xpLoading || ((expandedEdit.movimentoIds || []).length >= MAX_ATAQUES_POR_POKEMON && !substituirMovimentoId)}
                     onClick={handleAceitarOfertaAprendizagem}
                   >
                     Aceitar

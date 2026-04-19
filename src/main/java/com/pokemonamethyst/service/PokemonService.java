@@ -33,7 +33,7 @@ import com.pokemonamethyst.web.dto.PokemonEvolucaoOpcaoDto;
 public class PokemonService {
 
     private static final int MAX_POKEMONS_NO_TIME = 6;
-    private static final int MAX_MOVIMENTOS_POR_POKEMON = 8;
+    private static final int MAX_MOVIMENTOS_POR_POKEMON = 6;
     private static final int NIVEL_INICIAL = 1;
     private static final int POKEDEX_MIN = 1;
     private static final int POKEDEX_MAX = 1025;
@@ -106,7 +106,7 @@ public class PokemonService {
     }
 
     @Transactional
-    public Pokemon gerarSelvagem(String perfilId, Integer pokedexId, String idOuNome, Integer nivel) {
+    public Pokemon gerarSelvagem(String perfilId, Integer pokedexId, String idOuNome, Integer nivel, boolean distribuirStatusAutomaticamente) {
         int nivelFinal = Math.max(1, Math.min(100, nivel == null ? 5 : nivel));
         int pokedexEscolhido;
         if (pokedexId != null && pokedexId > 0) {
@@ -133,8 +133,42 @@ public class PokemonService {
         pokemon.setMovimentosConhecidos(
                 new ArrayList<>(pokemonLearnsetService.escolherMovimentosAoCriarPokemon(pokemon.getSpecies(), nivelFinal))
         );
+        if (distribuirStatusAutomaticamente) {
+            distribuirStatusAutomaticamente(pokemon);
+        }
         pokemonStatService.sincronizarMaximos(pokemon);
         return pokemonRepository.save(pokemon);
+    }
+
+    private void distribuirStatusAutomaticamente(Pokemon pokemon) {
+        if (pokemon == null) {
+            return;
+        }
+        List<String> atributosDistribuiveis = List.of(
+                "atr_ataque",
+                "atr_defesa",
+                "atr_ataque_especial",
+                "atr_defesa_especial",
+                "atr_speed",
+                "atr_hp",
+                "atr_stamina"
+        );
+
+        int tentativas = 0;
+        while (pokemon.getPontosDistribuicaoDisponiveis() > 0 && tentativas < 5000) {
+            int saldo = pokemon.getPontosDistribuicaoDisponiveis();
+            List<String> elegiveis = atributosDistribuiveis.stream()
+                    .filter(atributo -> pokemonStatService.custoParaProximoPonto(pokemon, atributo) <= saldo)
+                    .toList();
+            if (elegiveis.isEmpty()) {
+                break;
+            }
+            String escolhido = elegiveis.get(ThreadLocalRandom.current().nextInt(elegiveis.size()));
+            pokemonStatService.alocarPontos(pokemon, escolhido, 1);
+            tentativas++;
+        }
+        pokemon.setHpAtual(pokemonStatService.calcularHpMaximo(pokemon));
+        pokemonStatService.sincronizarMaximos(pokemon);
     }
 
     @Transactional

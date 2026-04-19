@@ -83,10 +83,22 @@ public class PokemonStatService {
         if (quantidade <= 0) {
             throw new RegraNegocioException("Quantidade deve ser maior que zero.");
         }
+        Integer hpAtualAntes = pokemon.getHpAtual();
+        int hpMaximoAntes = calcularHpMaximo(pokemon);
         for (int i = 0; i < quantidade; i++) {
             alocarUmPonto(pokemon, atributo, ignorarLimiteDeSaldo);
         }
         sincronizarMaximos(pokemon);
+        if ("atr_hp".equals(atributo)) {
+            int hpMaximoDepois = calcularHpMaximo(pokemon);
+            if (hpAtualAntes == null) {
+                pokemon.setHpAtual(hpMaximoDepois);
+            } else if (hpMaximoAntes > 0 && hpMaximoDepois > 0) {
+                double proporcao = Math.max(0d, Math.min(1d, hpAtualAntes.doubleValue() / hpMaximoAntes));
+                int hpAtualDepois = (int) Math.round(hpMaximoDepois * proporcao);
+                pokemon.setHpAtual(Math.max(0, Math.min(hpAtualDepois, hpMaximoDepois)));
+            }
+        }
     }
 
     public int custoParaProximoPonto(Pokemon pokemon, String atributo) {

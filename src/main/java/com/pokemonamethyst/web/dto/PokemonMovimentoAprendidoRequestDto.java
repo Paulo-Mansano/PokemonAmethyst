@@ -7,7 +7,7 @@ public class PokemonMovimentoAprendidoRequestDto {
     @NotBlank
     private String movimentoId;
 
-    // Opcional: quando o Pokémon já tiver no limite de ataques (8), define qual movimento será substituído.
+    // Opcional: quando o Pokémon já tiver no limite de ataques (6), define qual movimento será substituído.
     private String substituirMovimentoId;
 
     public String getMovimentoId() {

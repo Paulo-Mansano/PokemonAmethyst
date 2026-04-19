@@ -1,13 +1,12 @@
 import { useEffect, useMemo, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
-import { getPokemons, tentarCapturaPokemon, atualizarEstadoPokemon } from '../api'
+import { getPokemons, tentarCapturaPokemon } from '../api'
 import { usePlayerTarget } from '../context/PlayerTargetContext'
 import { queryKeys } from '../query/queryKeys'
 
 export default function Captura() {
   const { playerId, readyForPlayerApi } = usePlayerTarget()
-  const navigate = useNavigate()
   const queryClient = useQueryClient()
   const [erro, setErro] = useState('')
   const [mensagem, setMensagem] = useState('')
@@ -57,18 +56,6 @@ export default function Captura() {
     }
   }
 
-  const voltarParaBatalha = async () => {
-    if (!pokemonId) return
-    try {
-      await atualizarEstadoPokemon(pokemonId, 'EM_BATALHA', playerId)
-      queryClient.invalidateQueries({ queryKey: queryKeys.pokemons(playerId) })
-      localStorage.setItem('battleDefensorId', pokemonId)
-      navigate('/batalha')
-    } catch (e) {
-      setErro(e.message || 'Erro ao voltar para batalha')
-    }
-  }
-
   if (!readyForPlayerApi) {
     return (
       <div className="container container--wide">
@@ -111,7 +98,6 @@ export default function Captura() {
             <button className="btn btn-primary" onClick={tentar}>Tentar captura</button>
             <button className="btn btn-secondary" onClick={() => resolverCaptura(false)}>Falhou</button>
             <button className="btn btn-primary" onClick={() => resolverCaptura(true)}>Sucesso</button>
-            <button className="btn btn-secondary" onClick={voltarParaBatalha}>Voltar para batalha</button>
           </div>
         </div>
       )}

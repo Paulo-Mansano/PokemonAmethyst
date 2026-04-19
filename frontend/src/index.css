@@ -586,7 +586,7 @@ input, select, textarea {
 .pokemon-banner-list {
   display: flex;
   flex-direction: column;
-  gap: 1rem;
+  gap: 1.25rem;
 }
 
 .pokemon-banner-card {
@@ -608,8 +608,8 @@ input, select, textarea {
   display: flex;
   align-items: center;
   gap: 1.5rem;
-  padding: 1.25rem 1.5rem;
-  min-height: 120px;
+  padding: 1.5rem 1.75rem;
+  min-height: 240px;
 }
 
 .pokemon-banner-image {
@@ -677,7 +677,7 @@ input, select, textarea {
 
 .pokemon-banner-expanded {
   border-top: 1px solid var(--border);
-  padding: 1.25rem 1.5rem;
+  padding: 1.5rem 1.75rem;
   background: var(--bg);
 }
 
@@ -1049,7 +1049,7 @@ input, select, textarea {
 
 .pokemon-expanded-main-grid {
   display: grid;
-  grid-template-columns: 320px 1fr;
+  grid-template-columns: 1fr;
   gap: 24px;
   margin-bottom: 24px;
 }
@@ -1083,6 +1083,65 @@ input, select, textarea {
   gap: 16px;
 }
 
+.pokemon-atributo-list {
+  display: grid;
+  gap: 0.65rem;
+}
+
+.pokemon-atributo-row {
+  display: grid;
+  grid-template-columns: minmax(180px, 1fr) auto;
+  align-items: center;
+  gap: 0.75rem 1rem;
+  padding: 0.6rem 0.75rem;
+  background: rgba(255, 255, 255, 0.03);
+  border: 1px solid rgba(148, 163, 184, 0.25);
+  border-radius: 10px;
+}
+
+.pokemon-atributo-info {
+  display: flex;
+  flex-direction: column;
+  gap: 0.2rem;
+}
+
+.pokemon-atributo-label {
+  font-weight: 600;
+  color: var(--text);
+}
+
+.pokemon-atributo-total {
+  font-size: 0.85rem;
+  color: var(--text-muted);
+}
+
+.pokemon-atributo-controls {
+  display: flex;
+  align-items: center;
+  gap: 0.55rem;
+}
+
+.pokemon-habilidade-preview {
+  margin-top: 0.65rem;
+  min-height: 120px;
+  padding: 0.75rem 0.85rem;
+  border-radius: 10px;
+  border: 1px solid rgba(148, 163, 184, 0.32);
+  background: rgba(15, 23, 42, 0.55);
+}
+
+.pokemon-habilidade-preview-title {
+  margin: 0 0 0.4rem;
+  font-weight: 700;
+  color: var(--text);
+}
+
+.pokemon-habilidade-preview-desc {
+  margin: 0;
+  line-height: 1.45;
+  color: var(--text-muted);
+}
+
 /* Container central da ficha de Pokémon expandido */
 .pokemon-expanded-form {
   max-width: 1200px;
@@ -1104,6 +1163,19 @@ input, select, textarea {
   .pokemon-expanded-avatar {
     width: 120px;
     height: 120px;
+  }
+
+  .pokemon-banner-card-inner {
+    min-height: 200px;
+    padding: 1.25rem;
+  }
+
+  .pokemon-atributo-row {
+    grid-template-columns: 1fr;
+  }
+
+  .pokemon-atributo-controls {
+    justify-content: flex-start;
   }
 }
 

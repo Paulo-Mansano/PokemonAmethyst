@@ -99,7 +99,13 @@ public class PokemonController {
             @RequestParam(value = "playerId", required = false) String playerId,
             @Valid @RequestBody PokemonGeracaoRequestDto dto) {
         String perfilId = perfilService.resolvePerfilId(principal, playerId);
-        Pokemon pokemon = pokemonService.gerarSelvagem(perfilId, dto.getPokedexId(), dto.getIdOuNome(), dto.getNivel());
+        Pokemon pokemon = pokemonService.gerarSelvagem(
+            perfilId,
+            dto.getPokedexId(),
+            dto.getIdOuNome(),
+            dto.getNivel(),
+            Boolean.TRUE.equals(dto.getDistribuirStatusAutomaticamente())
+        );
         return ResponseEntity.status(HttpStatus.CREATED).body(PokemonResponseDto.from(pokemon));
     }
 

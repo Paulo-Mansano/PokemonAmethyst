@@ -6,6 +6,7 @@ import jakarta.validation.constraints.Min;
 public class PokemonGeracaoRequestDto {
     private Integer pokedexId;
     private String idOuNome;
+    private Boolean distribuirStatusAutomaticamente;
 
     @Min(1)
     @Max(100)
@@ -33,5 +34,13 @@ public class PokemonGeracaoRequestDto {
 
     public void setNivel(Integer nivel) {
         this.nivel = nivel;
+    }
+
+    public Boolean getDistribuirStatusAutomaticamente() {
+        return distribuirStatusAutomaticamente;
+    }
+
+    public void setDistribuirStatusAutomaticamente(Boolean distribuirStatusAutomaticamente) {
+        this.distribuirStatusAutomaticamente = distribuirStatusAutomaticamente;
     }
 }

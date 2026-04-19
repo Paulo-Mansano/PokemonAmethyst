@@ -23,10 +23,13 @@ public class AuthService {
         if (usuarioRepository.existsByNomeUsuario(nomeUsuario)) {
             throw new RegraNegocioException("Nome de usuário já cadastrado.");
         }
+        if (isMestre) {
+            throw new RegraNegocioException("Cadastro de conta de mestre não é permitido.");
+        }
         Usuario usuario = new Usuario();
         usuario.setNomeUsuario(nomeUsuario);
         usuario.setSenhaHash(passwordEncoder.encode(senha));
-        usuario.setMestre(isMestre);
+        usuario.setMestre(false);
         return usuarioRepository.save(usuario);
     }
 }

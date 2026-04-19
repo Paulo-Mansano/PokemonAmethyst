@@ -26,7 +26,7 @@ import java.util.stream.Collectors;
 public class PokemonLearnsetService {
 
     /** Máximo de golpes conhecidos por Pokémon (deve alinhar com {@code PokemonService}). */
-    public static final int MAX_MOVIMENTOS_POR_POKEMON = 8;
+    public static final int MAX_MOVIMENTOS_POR_POKEMON = 6;
 
     /**
      * Ordem canônica do learnset: método (LEVEL_UP primeiro), nível crescente, ordem da PokéAPI, id.

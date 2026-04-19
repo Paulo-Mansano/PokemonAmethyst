@@ -1,6 +1,7 @@
 import { useState, useRef } from 'react'
 import { useNavigate, useLocation } from 'react-router-dom'
 import { login, registro, getMeuPerfil, getMestreJogadores } from '../api'
+import { clearAuthCache } from '../query/queryClient'
 
 const TAB_KEY = 'pokemonamethyst:login-tab'
 const SEM_PERFIL_KEY = 'pokemonamethyst:login-sem-perfil'
@@ -79,7 +80,6 @@ export default function Login({ onLogin }) {
   const [nomeUsuario, setNomeUsuario] = useState('')
   const [senha, setSenha] = useState('')
   const [mostrarSenha, setMostrarSenha] = useState(false)
-  const [mestre, setMestre] = useState(false)
   const [erro, setErro] = useState('')
   const [loading, setLoading] = useState(false)
 
@@ -91,9 +91,10 @@ export default function Login({ onLogin }) {
     setLoading(true)
     try {
       if (tab === 'registro') {
-        await registro(nome, senha, mestre)
+        await registro(nome, senha)
       }
       const user = await login(nome, senha)
+      await clearAuthCache()
       onLogin(user)
       let perfil = null
       if (user.mestre) {
@@ -194,17 +195,6 @@ export default function Login({ onLogin }) {
               </button>
             </div>
           </div>
-          {tab === 'registro' && (
-            <div className="form-group" style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-              <input
-                type="checkbox"
-                id="mestre"
-                checked={mestre}
-                onChange={(e) => setMestre(e.target.checked)}
-              />
-              <label htmlFor="mestre" style={{ marginBottom: 0 }}>Conta de Mestre</label>
-            </div>
-          )}
           {erro && (
             <p role="alert" style={{ color: 'var(--danger)', marginBottom: '1rem', fontSize: '0.9rem' }}>
               {erro}

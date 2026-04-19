@@ -11,3 +11,8 @@ export const queryClient = new QueryClient({
   },
 })
 
+export async function clearAuthCache() {
+  await queryClient.cancelQueries()
+  queryClient.clear()
+}
+
