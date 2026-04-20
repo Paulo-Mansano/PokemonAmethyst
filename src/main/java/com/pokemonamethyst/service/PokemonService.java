@@ -151,7 +151,9 @@ public class PokemonService {
                 "atr_defesa_especial",
                 "atr_speed",
                 "atr_hp",
-                "atr_stamina"
+            "atr_stamina",
+            "atr_tecnica",
+            "atr_respeito"
         );
 
         int tentativas = 0;

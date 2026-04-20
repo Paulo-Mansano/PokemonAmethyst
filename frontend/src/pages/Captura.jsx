@@ -114,6 +114,7 @@ export default function Captura() {
           <h3>{pokemon.apelido || pokemon.especie}</h3>
           <p>Nível {pokemon.nivel}</p>
           <p>HP atual/máximo: {pokemon.hpAtual}/{pokemon.hpMaximo}</p>
+          <p>Técnica/Respeito: {pokemon.tecnica ?? 0}/{pokemon.respeito ?? 0}</p>
           <p>Status: {(pokemon.statusAtuais || []).join(', ') || 'Nenhum'}</p>
           <p>Origem: {pokemon.origem} | Estado: {pokemon.estado}</p>
           <div className="battle-actions">

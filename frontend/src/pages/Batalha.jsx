@@ -230,6 +230,7 @@ export default function Batalha() {
             <>
               <p>{atacante.apelido || atacante.especie} - Lv {atacante.nivel}</p>
               <p style={{ color: 'var(--text-muted)' }}>Atk: {atacante.ataque} | Sp.Atk: {atacante.ataqueEspecial}</p>
+              <p style={{ color: 'var(--text-muted)' }}>Técnica: {atacante.tecnica ?? 0} | Respeito: {atacante.respeito ?? 0}</p>
               <div className="form-group">
                 <label>Golpe</label>
                 <select value={movimentoId} onChange={(e) => {
@@ -260,6 +261,9 @@ export default function Batalha() {
               <p>{defensor.apelido || defensor.especie} - Lv {defensor.nivel}</p>
               <p style={{ color: 'var(--text-muted)' }}>
                 Def: {defensor.defesa} | Sp.Def: {defensor.defesaEspecial}
+              </p>
+              <p style={{ color: 'var(--text-muted)' }}>
+                Técnica: {defensor.tecnica ?? 0} | Respeito: {defensor.respeito ?? 0}
               </p>
               <p style={{ color: 'var(--text-muted)' }}>
                 HP: {defensor.hpAtual}/{defensor.hpMaximo}

@@ -53,6 +53,8 @@ const ATRIBUTOS_ALOCAVEIS = [
   { key: 'atr_speed', label: 'SPE', field: 'atrSpeed' },
   { key: 'atr_hp', label: 'HP', field: 'atrHp' },
   { key: 'atr_stamina', label: 'ST', field: 'atrStamina' },
+  { key: 'atr_tecnica', label: 'TEC', field: 'atrTecnica' },
+  { key: 'atr_respeito', label: 'RES', field: 'atrRespeito' },
 ]
 
 const ATRIBUTO_EDIT_FIELD_MAP = Object.fromEntries(
@@ -67,6 +69,8 @@ const ATRIBUTO_TOTAL_FIELD_MAP = {
   atr_speed: 'speed',
   atr_hp: 'hpMaximo',
   atr_stamina: 'staminaMaxima',
+  atr_tecnica: 'tecnica',
+  atr_respeito: 'respeito',
 }
 
 function custoParaProximoPonto(atributo, valorAtual) {
@@ -143,6 +147,8 @@ function editStateFromPokemon(p) {
     atrSpeed: p.atrSpeed ?? 0,
     atrHp: p.atrHp ?? 0,
     atrStamina: p.atrStamina ?? 0,
+    atrTecnica: p.atrTecnica ?? p.tecnica ?? 0,
+    atrRespeito: p.atrRespeito ?? p.respeito ?? 0,
     tecnica: p.tecnica ?? 0,
     respeito: p.respeito ?? 0,
     hpMaximo: p.hpMaximo ?? 0,
@@ -683,7 +689,7 @@ export default function Geracao() {
             })}
           </div>
           <p style={{ marginTop: '0.75rem', color: 'var(--text-muted)' }}>
-            Totais: HP {expandedEdit.hpMaximo ?? 0} | ST {expandedEdit.staminaMaxima ?? 0} | ATK {expandedEdit.ataque ?? 0} | DEF {expandedEdit.defesa ?? 0} | SPA {expandedEdit.ataqueEspecial ?? 0} | SPD {expandedEdit.defesaEspecial ?? 0} | SPE {expandedEdit.speed ?? 0}
+            Totais: HP {expandedEdit.hpMaximo ?? 0} | ST {expandedEdit.staminaMaxima ?? 0} | ATK {expandedEdit.ataque ?? 0} | DEF {expandedEdit.defesa ?? 0} | SPA {expandedEdit.ataqueEspecial ?? 0} | SPD {expandedEdit.defesaEspecial ?? 0} | SPE {expandedEdit.speed ?? 0} | TEC {totalAtributoNoRascunho('atr_tecnica', expandedPokemon, expandedEdit)} | RES {totalAtributoNoRascunho('atr_respeito', expandedPokemon, expandedEdit)}
           </p>
           {usuarioMestre && (
             <p style={{ marginTop: '0.35rem', color: 'var(--text-muted)' }}>
@@ -789,6 +795,7 @@ export default function Geracao() {
             <span>Origem: {pokemon.origem || 'SELVAGEM'}</span>
             <span>HP {pokemon.hpAtual}/{pokemon.hpMaximo}</span>
             <span>Pontos: {pokemon.pontosDistribuicaoDisponiveis ?? 0}</span>
+            <span>Tec/Res: {pokemon.tecnica ?? 0}/{pokemon.respeito ?? 0}</span>
             <span className="pokemon-banner-tipos">
               {[pokemon.tipoPrimario, pokemon.tipoSecundario].filter(Boolean).map((tipo) => (
                 <span key={tipo} className={`pokemon-type-tag pokemon-type-${String(tipo).toLowerCase()}`}>{tipo}</span>

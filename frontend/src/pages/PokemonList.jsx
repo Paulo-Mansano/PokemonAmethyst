@@ -1520,6 +1520,7 @@ export default function PokemonList() {
                           ))}
                       </span>
                       <span>{formatGenero(p.genero)}</span>
+                      <span>Tec/Res: {p.tecnica ?? 0}/{p.respeito ?? 0}</span>
                       {p.habilidadeAtivaNome && <span>Hab.: {p.habilidadeAtivaNome}</span>}
                       {p.personalidade && <span>{p.personalidade}</span>}
                       {p.berryFavorita && <span>Fruta: {p.berryFavorita}</span>}
@@ -1622,6 +1623,7 @@ export default function PokemonList() {
                           ))}
                       </span>
                       <span>{formatGenero(p.genero)}</span>
+                      <span>Tec/Res: {p.tecnica ?? 0}/{p.respeito ?? 0}</span>
                       {p.habilidadeAtivaNome && <span>Hab.: {p.habilidadeAtivaNome}</span>}
                       {p.personalidade && <span>{p.personalidade}</span>}
                       {p.berryFavorita && <span>Fruta: {p.berryFavorita}</span>}
