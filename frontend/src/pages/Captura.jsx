@@ -42,11 +42,33 @@ export default function Captura() {
     try {
       const resposta = await tentarCapturaPokemon(pokemonId, sucesso, playerId)
       const atualizado = resposta.pokemon
-      queryClient.setQueryData(queryKeys.pokemons(playerId), (prev = []) =>
-        prev.map((p) => (p.id === atualizado.id ? atualizado : p))
-      )
-      queryClient.invalidateQueries({ queryKey: queryKeys.perfil(playerId) })
+
+      queryClient.setQueryData(queryKeys.pokemons(playerId), (prev = []) => {
+        const lista = Array.isArray(prev) ? prev : []
+        const existe = lista.some((p) => p.id === atualizado.id)
+        if (!existe) return [atualizado, ...lista]
+        return lista.map((p) => (p.id === atualizado.id ? atualizado : p))
+      })
+
+      queryClient.setQueryData(queryKeys.pokemonsSelvagens(playerId), (prev = []) => {
+        const lista = Array.isArray(prev) ? prev : []
+        if (sucesso) {
+          return lista.filter((p) => p.id !== atualizado.id)
+        }
+        const existe = lista.some((p) => p.id === atualizado.id)
+        if (!existe) return [atualizado, ...lista]
+        return lista.map((p) => (p.id === atualizado.id ? atualizado : p))
+      })
+
+      await Promise.all([
+        queryClient.invalidateQueries({ queryKey: queryKeys.perfil(playerId) }),
+        queryClient.invalidateQueries({ queryKey: queryKeys.pokemons(playerId) }),
+        queryClient.invalidateQueries({ queryKey: queryKeys.pokemonsSelvagens(playerId) }),
+      ])
+
       if (sucesso) {
+        setPokemonId('')
+        localStorage.removeItem('capturePokemonId')
         setMensagem('Captura bem-sucedida. Pokémon agora pertence ao treinador.')
       } else {
         setMensagem('A captura falhou. Pokémon permanece disponível.')

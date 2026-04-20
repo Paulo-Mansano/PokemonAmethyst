@@ -799,9 +799,6 @@ export default function Geracao() {
         <div className="pokemon-banner-actions" onClick={(evt) => evt.stopPropagation()}>
           <button className="btn btn-secondary" onClick={() => enviarParaCaptura(pokemon)}>Enviar para captura</button>
           <button className="btn btn-secondary" onClick={() => salvarParaDepois(pokemon)}>Salvar para depois</button>
-          <button className="btn btn-secondary" disabled title="Evolução desabilitada para Pokémon na aba Selvagem.">
-            Evoluir (desabilitado)
-          </button>
           <button className="btn btn-danger" onClick={() => deletar(pokemon)}>Deletar</button>
         </div>
       </div>
