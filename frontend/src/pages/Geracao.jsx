@@ -464,9 +464,7 @@ export default function Geracao() {
         setAlocandoAtributo(true)
         try {
           for (const [atributo, quantidade] of alocacoesPendentes) {
-            for (let i = 0; i < Number(quantidade); i += 1) {
-              await alocarAtributosPokemon(expandedPokemon.id, atributo, 1, playerId)
-            }
+            await alocarAtributosPokemon(expandedPokemon.id, atributo, Number(quantidade), playerId)
           }
         } finally {
           setAlocandoAtributo(false)
