@@ -250,6 +250,18 @@ export async function alocarAtributosPokemon(id, atributo, quantidade = 1, playe
   return res.json()
 }
 
+export async function desalocarAtributosPokemon(id, atributo, quantidade = 1, playerId) {
+  const res = await request(withPlayerQuery(`/perfis/meu/pokemons/${id}/atributos/desalocar`, playerId), {
+    method: 'POST',
+    body: JSON.stringify({ atributo, quantidade }),
+  })
+  if (!res.ok) {
+    const data = await res.json().catch(() => ({}))
+    throw new Error(data.mensagem || 'Erro ao desalocar atributos')
+  }
+  return res.json()
+}
+
 export async function listarEvolucoesPossiveisPokemon(id, playerId) {
   const res = await request(withPlayerQuery(`/perfis/meu/pokemons/${id}/evolucoes-possiveis`, playerId))
   if (!res.ok) {

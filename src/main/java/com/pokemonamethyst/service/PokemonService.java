@@ -732,6 +732,16 @@ public class PokemonService {
         return pokemonRepository.save(pokemon);
     }
 
+    @Transactional
+    public Pokemon desalocarAtributo(String pokemonId, String perfilId, String atributo, int quantidade, boolean isMestre) {
+        if (!isMestre) {
+            throw new RegraNegocioException("Apenas mestre pode reduzir atributos investidos.");
+        }
+        Pokemon pokemon = buscarPorIdEPerfil(pokemonId, perfilId);
+        pokemonStatService.desalocarPontos(pokemon, atributo, quantidade);
+        return pokemonRepository.save(pokemon);
+    }
+
     @Transactional(readOnly = true)
     public List<PokemonEvolucaoOpcaoDto> listarEvolucoesPossiveis(String pokemonId, String perfilId) {
         Pokemon pokemon = buscarPorIdEPerfil(pokemonId, perfilId);

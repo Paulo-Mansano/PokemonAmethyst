@@ -101,6 +101,23 @@ public class PokemonStatService {
         }
     }
 
+    public void desalocarPontos(Pokemon pokemon, String atributo, int quantidade) {
+        if (pokemon == null) {
+            throw new RegraNegocioException("Pokémon inválido.");
+        }
+        if (atributo == null || atributo.isBlank()) {
+            throw new RegraNegocioException("Atributo inválido.");
+        }
+        if (quantidade <= 0) {
+            throw new RegraNegocioException("Quantidade deve ser maior que zero.");
+        }
+
+        for (int i = 0; i < quantidade; i++) {
+            desalocarUmPonto(pokemon, atributo);
+        }
+        sincronizarMaximos(pokemon);
+    }
+
     public int custoParaProximoPonto(Pokemon pokemon, String atributo) {
         int valorAtual = obterValorAtual(pokemon, atributo);
         return custoPorRegra(atributo, valorAtual);
@@ -152,6 +169,18 @@ public class PokemonStatService {
         int novoValor = obterValorAtual(pokemon, atributo) + 1;
         definirValorAtual(pokemon, atributo, novoValor);
         pokemon.setPontosDistribuicaoDisponiveis(pokemon.getPontosDistribuicaoDisponiveis() - custo);
+    }
+
+    private void desalocarUmPonto(Pokemon pokemon, String atributo) {
+        int valorAtual = obterValorAtual(pokemon, atributo);
+        if (valorAtual <= 0) {
+            throw new RegraNegocioException("Não há pontos investidos para remover neste atributo.");
+        }
+        int reembolso = custoPorRegra(atributo, valorAtual - 1);
+        definirValorAtual(pokemon, atributo, valorAtual - 1);
+        pokemon.setPontosDistribuicaoDisponiveis(
+                Math.max(0, pokemon.getPontosDistribuicaoDisponiveis() + reembolso)
+        );
     }
 
     private int custoPorRegra(String atributo, int valorAtual) {

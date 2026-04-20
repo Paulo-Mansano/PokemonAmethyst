@@ -270,6 +270,18 @@ public class PokemonController {
         return ResponseEntity.ok(PokemonResponseDto.from(pokemon));
     }
 
+    @PostMapping("/{id}/atributos/desalocar")
+    @Transactional
+    public ResponseEntity<PokemonResponseDto> desalocarAtributos(
+            @AuthenticationPrincipal UsuarioPrincipal principal,
+            @PathVariable String id,
+            @RequestParam(value = "playerId", required = false) String playerId,
+            @Valid @RequestBody PokemonAlocarAtributoRequestDto dto) {
+        String perfilId = perfilService.resolvePerfilId(principal, playerId);
+        Pokemon pokemon = pokemonService.desalocarAtributo(id, perfilId, dto.getAtributo(), dto.getQuantidade(), principal.isMestre());
+        return ResponseEntity.ok(PokemonResponseDto.from(pokemon));
+    }
+
     @GetMapping("/{id}/movimentos-disponiveis")
     @Transactional(readOnly = true)
     public ResponseEntity<List<MovimentoResponseDto>> listarMovimentosDisponiveis(

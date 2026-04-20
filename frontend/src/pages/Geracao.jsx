@@ -10,6 +10,7 @@ import {
   getPokemon,
   atualizarPokemon,
   alocarAtributosPokemon,
+  desalocarAtributosPokemon,
   getMovimentos,
   getMovimentosDisponiveisPokemon,
   getPersonalidades,
@@ -79,6 +80,12 @@ function custoParaProximoPonto(atributo, valorAtual) {
   if (valorSeguro >= 10) return 3
   if (valorSeguro >= 5) return 2
   return 1
+}
+
+function custoParaRemoverPonto(atributo, valorAtual) {
+  const valorSeguro = Math.max(0, Number(valorAtual) || 0)
+  if (valorSeguro <= 0) return 0
+  return custoParaProximoPonto(atributo, valorSeguro - 1)
 }
 
 function totalAtributoNoRascunho(atributo, pokemonBase, editState) {
@@ -435,6 +442,35 @@ export default function Geracao() {
     }))
   }
 
+  const handleDesalocarAtributo = async (atributo) => {
+    if (!expandedPokemon?.id || !usuarioMestre) return
+    setErro('')
+    const campo = ATRIBUTO_EDIT_FIELD_MAP[atributo]
+    if (!campo || !expandedEdit) return
+
+    const valorAtual = Number(expandedEdit[campo]) || 0
+    if (valorAtual <= 0) {
+      setErro(`Não há pontos investidos para reduzir em ${atributo}.`)
+      return
+    }
+    const reembolso = custoParaRemoverPonto(atributo, valorAtual)
+
+    setExpandedEdit((current) => {
+      if (!current) return current
+      const valor = Number(current[campo]) || 0
+      if (valor <= 0) return current
+      return {
+        ...current,
+        [campo]: valor - 1,
+        pontosDistribuicaoDisponiveis: (Number(current.pontosDistribuicaoDisponiveis) || 0) + reembolso,
+      }
+    })
+    setPendingAlocacoes((current) => ({
+      ...current,
+      [atributo]: (Number(current[atributo]) || 0) - 1,
+    }))
+  }
+
   const handleSalvarExpanded = async (e) => {
     e.preventDefault()
     if (!expandedPokemon?.id || !expandedEdit) return
@@ -459,12 +495,17 @@ export default function Geracao() {
         movimentoIds: expandedEdit.movimentoIds || [],
       }, playerId)
 
-      const alocacoesPendentes = Object.entries(pendingAlocacoes).filter(([, quantidade]) => Number(quantidade) > 0)
+      const alocacoesPendentes = Object.entries(pendingAlocacoes).filter(([, quantidade]) => Number(quantidade) !== 0)
       if (alocacoesPendentes.length > 0) {
         setAlocandoAtributo(true)
         try {
           for (const [atributo, quantidade] of alocacoesPendentes) {
-            await alocarAtributosPokemon(expandedPokemon.id, atributo, Number(quantidade), playerId)
+            const quantidadeNumero = Number(quantidade)
+            if (quantidadeNumero > 0) {
+              await alocarAtributosPokemon(expandedPokemon.id, atributo, quantidadeNumero, playerId)
+            } else {
+              await desalocarAtributosPokemon(expandedPokemon.id, atributo, Math.abs(quantidadeNumero), playerId)
+            }
           }
         } finally {
           setAlocandoAtributo(false)
@@ -662,9 +703,11 @@ export default function Geracao() {
             {ATRIBUTOS_ALOCAVEIS.map((attr) => {
               const valor = Number(expandedEdit[attr.field]) || 0
               const custo = custoParaProximoPonto(attr.key, valor)
+              const reembolso = custoParaRemoverPonto(attr.key, valor)
               const total = totalAtributoNoRascunho(attr.key, expandedPokemon, expandedEdit)
               const saldoAtual = Number(expandedEdit.pontosDistribuicaoDisponiveis) || 0
               const bloqueadoPlayer = saldoAtual < custo
+              const bloqueadoDesalocar = valor <= 0
               return (
                 <div className="pokemon-atributo-row" key={attr.key}>
                   <div className="pokemon-atributo-info">
@@ -681,6 +724,17 @@ export default function Geracao() {
                     >
                       +1 (custo {custo})
                     </button>
+                    {usuarioMestre && (
+                      <button
+                        type="button"
+                        className="btn btn-secondary btn-sm"
+                        disabled={alocandoAtributo || bloqueadoDesalocar}
+                        onClick={() => handleDesalocarAtributo(attr.key)}
+                        title={`Reembolso atual: ${reembolso}`}
+                      >
+                        -1 (devolve {reembolso})
+                      </button>
+                    )}
                   </div>
                 </div>
               )
