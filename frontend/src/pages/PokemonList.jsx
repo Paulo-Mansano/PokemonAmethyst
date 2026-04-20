@@ -209,6 +209,14 @@ function ExpandedForm({
 
   const hpPercent = 100
   const staminaPercent = 100
+  const nivelAtual = Math.max(1, Math.min(100, Number(expandedEdit.nivel) || 1))
+  const xpAtual = Math.max(0, Number(expandedEdit.xpAtual) || 0)
+  const xpNivelAtual = 5 * (nivelAtual - 1) * nivelAtual
+  const xpProximoNivel = nivelAtual >= 100 ? xpNivelAtual : 5 * nivelAtual * (nivelAtual + 1)
+  const xpFaixaNivel = Math.max(1, xpProximoNivel - xpNivelAtual)
+  const xpNoNivel = Math.max(0, Math.min(xpFaixaNivel, xpAtual - xpNivelAtual))
+  const xpPercent = nivelAtual >= 100 ? 100 : Math.max(0, Math.min(100, (xpNoNivel / xpFaixaNivel) * 100))
+  const xpFaltanteProximoNivel = nivelAtual >= 100 ? 0 : Math.max(0, xpProximoNivel - xpAtual)
   const isMestre = !!usuarioMestre?.mestre
   const saldoAtual = Number(expandedEdit.pontosDistribuicaoDisponiveis) || 0
   const habilidadeSelecionada = listaHabilidades.find((hab) => hab.id === (expandedEdit.habilidadeId || '')) || null
@@ -347,6 +355,20 @@ function ExpandedForm({
             <div
               className="pokemon-expanded-bar-fill pokemon-expanded-bar-fill--st"
               style={{ width: `${staminaPercent}%` }}
+            />
+          </div>
+        </div>
+        <div className="pokemon-expanded-bar">
+          <div className="pokemon-expanded-bar-header">
+            <span className="pokemon-expanded-bar-label pokemon-expanded-bar-label--xp">XP até próximo nível</span>
+            <span className="pokemon-expanded-bar-value">
+              {nivelAtual >= 100 ? 'Nível máximo' : `Faltam ${xpFaltanteProximoNivel} XP`}
+            </span>
+          </div>
+          <div className="pokemon-expanded-bar-track">
+            <div
+              className="pokemon-expanded-bar-fill pokemon-expanded-bar-fill--xp"
+              style={{ width: `${xpPercent}%` }}
             />
           </div>
         </div>

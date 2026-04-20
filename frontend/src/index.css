@@ -1015,6 +1015,10 @@ input, select, textarea {
   color: #38bdf8;
 }
 
+.pokemon-expanded-bar-label--xp {
+  color: #facc15;
+}
+
 .pokemon-expanded-bar-value {
   color: var(--text-muted);
 }
@@ -1045,6 +1049,10 @@ input, select, textarea {
 
 .pokemon-expanded-bar-fill--st {
   background: #2563eb;
+}
+
+.pokemon-expanded-bar-fill--xp {
+  background: #ca8a04;
 }
 
 .pokemon-expanded-main-grid {
