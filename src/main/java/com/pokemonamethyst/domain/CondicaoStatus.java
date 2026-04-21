@@ -5,6 +5,5 @@ public enum CondicaoStatus {
     ENVENENADO,
     DORMINDO,
     QUEIMADO,
-    CONGELADO,
-    CONFUSO
+    CONGELADO
 }

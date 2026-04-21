@@ -1504,6 +1504,23 @@ input, select, textarea {
   width: 100%;
 }
 
+.capture-v3-stepper input[type='number'],
+.capture-v3-stepper-control input[type='number'],
+.capture-v3-hp-inputs input[type='number'] {
+  -moz-appearance: textfield;
+  appearance: textfield;
+}
+
+.capture-v3-stepper input[type='number']::-webkit-outer-spin-button,
+.capture-v3-stepper input[type='number']::-webkit-inner-spin-button,
+.capture-v3-stepper-control input[type='number']::-webkit-outer-spin-button,
+.capture-v3-stepper-control input[type='number']::-webkit-inner-spin-button,
+.capture-v3-hp-inputs input[type='number']::-webkit-outer-spin-button,
+.capture-v3-hp-inputs input[type='number']::-webkit-inner-spin-button {
+  -webkit-appearance: none;
+  margin: 0;
+}
+
 .capture-v3-stepper-control {
   display: grid;
   grid-template-columns: 34px 1fr 34px;
@@ -1553,6 +1570,13 @@ input, select, textarea {
   background: rgba(31, 8, 74, 0.9);
 }
 
+.capture-v3-quick-result {
+  margin: 0;
+  color: var(--text-muted);
+  font-size: 0.9rem;
+  text-align: center;
+}
+
 .capture-v3-main {
   display: grid;
   gap: 0.95rem;
@@ -1596,6 +1620,31 @@ input, select, textarea {
 .capture-v3-ekg-row {
   display: flex;
   gap: 0.35rem;
+}
+
+.capture-v3-status-row {
+  flex-wrap: wrap;
+  justify-content: flex-end;
+}
+
+.capture-v3-status-btn {
+  width: 30px;
+  height: 30px;
+  display: grid;
+  place-items: center;
+  border-radius: 8px;
+  border: 1px solid rgba(124, 58, 237, 0.45);
+  background: rgba(31, 14, 64, 0.66);
+  color: #e9d5ff;
+  cursor: pointer;
+  font-size: 0.95rem;
+  line-height: 1;
+}
+
+.capture-v3-status-btn.is-active {
+  border-color: #f0abfc;
+  box-shadow: 0 0 0 1px #f0abfc inset, 0 0 14px rgba(240, 171, 252, 0.45);
+  background: rgba(88, 28, 135, 0.8);
 }
 
 .capture-v3-ekg-row span {

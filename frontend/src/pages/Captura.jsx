@@ -22,6 +22,24 @@ const STATUS_BONUS_MAP = {
   ENVENENADO: 2,
 }
 
+const STATUS_CD_REDUCAO_MAP = {
+  NENHUM: 0,
+  DORMINDO: 2,
+  CONGELADO: 2,
+  PARALISADO: 2,
+  QUEIMANDO: 2,
+  ENVENENADO: 2,
+}
+
+const STATUS_ACTIONS = [
+  { value: 'CLEAR', label: 'Ø', title: 'Limpar status' },
+  { value: 'DORMINDO', label: '💤', title: 'Dormindo' },
+  { value: 'CONGELADO', label: '🧊', title: 'Congelado' },
+  { value: 'PARALISADO', label: '⚡', title: 'Paralisado' },
+  { value: 'QUEIMANDO', label: '🔥', title: 'Queimando' },
+  { value: 'ENVENENADO', label: '☠️', title: 'Envenenado' },
+]
+
 const POKEBOLAS_CONTENCAO = [
   'POKE BOLA',
   'GREAT BALL',
@@ -36,12 +54,23 @@ const POKEBOLAS_CONTENCAO = [
 function detectarStatusInicial(statusAtuais) {
   const lista = Array.isArray(statusAtuais) ? statusAtuais : []
   const normalizado = lista.map((s) => String(s || '').toUpperCase())
-  if (normalizado.includes('DORMINDO')) return 'DORMINDO'
-  if (normalizado.includes('CONGELADO')) return 'CONGELADO'
-  if (normalizado.includes('PARALISADO')) return 'PARALISADO'
-  if (normalizado.includes('QUEIMADO') || normalizado.includes('QUEIMANDO')) return 'QUEIMANDO'
-  if (normalizado.includes('ENVENENADO')) return 'ENVENENADO'
-  return 'NENHUM'
+  const set = new Set()
+  if (normalizado.includes('DORMINDO')) set.add('DORMINDO')
+  if (normalizado.includes('CONGELADO')) set.add('CONGELADO')
+  if (normalizado.includes('PARALISADO')) set.add('PARALISADO')
+  if (normalizado.includes('QUEIMADO') || normalizado.includes('QUEIMANDO')) set.add('QUEIMANDO')
+  if (normalizado.includes('ENVENENADO')) set.add('ENVENENADO')
+  return Array.from(set)
+}
+
+function normalizarStatusList(statuses) {
+  return Array.from(new Set((Array.isArray(statuses) ? statuses : [])
+    .map((s) => String(s || '').toUpperCase())
+    .filter((s) => s && s !== 'NENHUM')))
+}
+
+function calcularStatusBonus(statuses, tabela) {
+  return normalizarStatusList(statuses).reduce((total, status) => total + (tabela[status] ?? 0), 0)
 }
 
 function toInt(value, fallback = 0) {
@@ -55,21 +84,24 @@ function calcularTentativaCaptura(input, rolarD20 = () => Math.floor(Math.random
   const respeitoPokemon = Math.max(0, toInt(input.respeitoPokemon, 0))
   const hpRestantePokemon = Math.max(0, toInt(input.hpRestantePokemon, 0))
   const cdBaseCalculada = respeitoPokemon + nivelPokemon + hpRestantePokemon
-  const cdManual = Math.max(0, toInt(input.cdBaseManual, cdBaseCalculada))
+  const statusAtuais = normalizarStatusList(input.statusAtuais || input.status)
+  const statusCdReducao = calcularStatusBonus(statusAtuais, STATUS_CD_REDUCAO_MAP)
+  const cdAuto = Math.max(0, cdBaseCalculada - statusCdReducao)
+  const manualCdOverride = Boolean(input.manualCdOverride)
+  const cdManual = Math.max(0, toInt(input.cdBaseManual, cdAuto))
   const nivelTreinador = Math.max(1, toInt(input.nivelTreinador, 1))
   const dominioTreinador = Math.max(1, toInt(input.dominioTreinador, 1))
   const respeitoTreinador = Math.max(1, toInt(input.respeitoTreinador, 1))
   const bonusTreinador = toInt(input.bonusTreinador, 0)
   const vinculoTreinador = toInt(input.vinculoTreinador, 0)
   const bonusManualMestre = bonusTreinador + vinculoTreinador
-  const status = String(input.status || 'NENHUM').toUpperCase()
-  const bonusStatus = STATUS_BONUS_MAP[status] ?? 0
+  const bonusStatus = calcularStatusBonus(statusAtuais, STATUS_BONUS_MAP)
 
   const diferencaNivel = nivelPokemon > nivelTreinador ? (nivelPokemon - nivelTreinador) : 0
   const dominioEfetivo = Math.max(1, dominioTreinador - diferencaNivel)
   const respeitoEfetivo = Math.max(1, respeitoTreinador - diferencaNivel)
 
-  const dificuldade = cdManual
+  const dificuldade = manualCdOverride ? cdManual : cdAuto
   const d20 = rolarD20()
   const rolagemTotal = d20 + dominioEfetivo + respeitoEfetivo + bonusManualMestre + bonusStatus
   const sucesso = rolagemTotal >= dificuldade
@@ -87,9 +119,36 @@ function calcularTentativaCaptura(input, rolarD20 = () => Math.floor(Math.random
     respeitoEfetivo,
     diferencaNivel,
     cdBaseCalculada,
+    cdAuto,
+    statusCdReducao,
+    manualCdOverride,
     bonusTreinador,
     vinculoTreinador,
-    status,
+    statusAtuais,
+  }
+}
+
+function buildCaptureForm(pokemon, perfil) {
+  if (!pokemon || !perfil) return null
+  const nivelPokemon = Math.max(1, Number(pokemon.nivel) || 1)
+  const respeitoPokemon = Math.max(0, Number(pokemon.respeito) || 0)
+  const hpRestantePokemon = Math.max(0, Number(pokemon.hpAtual) || 0)
+  const cdBase = respeitoPokemon + nivelPokemon + hpRestantePokemon
+  return {
+    nivelPokemon,
+    respeitoPokemon,
+    hpRestantePokemon,
+    hpMaximoPokemon: Math.max(1, Number(pokemon.hpMaximo) || 1),
+    nivelTreinador: Math.max(1, Number(perfil.nivel) || 1),
+    dominioTreinador: Math.max(1, Number(perfil.atributos?.dominio) || 1),
+    respeitoTreinador: Math.max(1, Number(perfil.atributos?.respeito) || 1),
+    vinculoTreinador: 0,
+    bonusTreinador: 0,
+    cdBaseManual: cdBase,
+    manualCdOverride: false,
+    statusAtuais: detectarStatusInicial(pokemon.statusAtuais),
+    tiposNetBall: '',
+    ambienteDuskBall: '',
   }
 }
 
@@ -157,28 +216,42 @@ export default function Captura() {
   useEffect(() => {
     if (!pokemon || !perfil) return
     if (prefillId === pokemon.id) return
-    const nivelPokemon = Math.max(1, Number(pokemon.nivel) || 1)
-    const respeitoPokemon = Math.max(0, Number(pokemon.respeito) || 0)
-    const hpRestantePokemon = Math.max(0, Number(pokemon.hpAtual) || 0)
-    setCaptureForm({
-      nivelPokemon,
-      respeitoPokemon,
-      hpRestantePokemon,
-      hpMaximoPokemon: Math.max(1, Number(pokemon.hpMaximo) || 1),
-      nivelTreinador: Math.max(1, Number(perfil.nivel) || 1),
-      dominioTreinador: Math.max(1, Number(perfil.atributos?.dominio) || 1),
-      respeitoTreinador: Math.max(1, Number(perfil.atributos?.respeito) || 1),
-      vinculoTreinador: 0,
-      bonusTreinador: 0,
-      cdBaseManual: respeitoPokemon + nivelPokemon + hpRestantePokemon,
-      tiposNetBall: '',
-      ambienteDuskBall: '',
-      status: detectarStatusInicial(pokemon.statusAtuais),
-    })
+    setCaptureForm(buildCaptureForm(pokemon, perfil))
     setChanceEstimada(null)
     setPokebolaAtiva('POKE BOLA')
     setPrefillId(pokemon.id)
   }, [pokemon, perfil, prefillId])
+
+  const resetCamposDoBanco = async () => {
+    if (!pokemonId) return
+    setErro('')
+    setMensagem('')
+    const [pokemonsResult, perfilResult] = await Promise.all([
+      pokemonsQuery.refetch(),
+      perfilQuery.refetch(),
+    ])
+    const freshPerfil = perfilResult.data || perfil
+    const freshPokemon = (pokemonsResult.data || []).find((p) => p.id === pokemonId) || pokemon
+    if (!freshPokemon || !freshPerfil) return
+    setCaptureForm(buildCaptureForm(freshPokemon, freshPerfil))
+    setChanceEstimada(null)
+    setPrefillId(freshPokemon.id)
+    setPokebolaAtiva('POKE BOLA')
+  }
+
+  const toggleStatus = (statusValue) => {
+    setCaptureForm((current) => {
+      if (!current) return current
+      if (statusValue === 'CLEAR') {
+        return { ...current, statusAtuais: [] }
+      }
+      const atual = normalizarStatusList(current.statusAtuais)
+      const next = atual.includes(statusValue)
+        ? atual.filter((status) => status !== statusValue)
+        : [...atual, statusValue]
+      return { ...current, statusAtuais: next }
+    })
+  }
 
   const resolverCaptura = async (sucesso) => {
     if (!pokemonId) return
@@ -259,7 +332,13 @@ export default function Captura() {
       + Math.max(1, Number(captureForm.nivelPokemon) || 1)
       + Math.max(0, Number(captureForm.hpRestantePokemon) || 0))
     : 0
-  const cdFinal = captureForm ? Math.max(0, Number(captureForm.cdBaseManual) || cdBase) : 0
+  const statusCdReducaoAtual = captureForm
+    ? calcularStatusBonus(captureForm.statusAtuais, STATUS_CD_REDUCAO_MAP)
+    : 0
+  const cdFinalAuto = Math.max(0, cdBase - statusCdReducaoAtual)
+  const cdFinal = captureForm
+    ? (captureForm.manualCdOverride ? Math.max(0, Number(captureForm.cdBaseManual) || cdFinalAuto) : cdFinalAuto)
+    : 0
   const bonusTotalFixo = captureForm
     ? ((Number(captureForm.vinculoTreinador) || 0) + (Number(captureForm.bonusTreinador) || 0))
     : null
@@ -267,6 +346,7 @@ export default function Captura() {
   const hpMaximo = Math.max(1, Number(captureForm?.hpMaximoPokemon) || 1)
   const hpPercent = Math.max(0, Math.min(100, (hpRestante / hpMaximo) * 100))
   const chanceTexto = chanceEstimada == null ? 'NaN%' : `${chanceEstimada.toFixed(1)}%`
+  const statusAtuaisTexto = captureForm ? normalizarStatusList(captureForm.statusAtuais).join(', ') : ''
 
   if (!readyForPlayerApi) {
     return (
@@ -287,16 +367,6 @@ export default function Captura() {
             <p>SYSTEM VERSION 3.0</p>
           </div>
         </div>
-        <div className="capture-v3-header-right">
-          <div className="capture-v3-metric capture-v3-metric--danger">
-            <span>CHANCE EST.</span>
-            <strong>{chanceTexto}</strong>
-          </div>
-          <div className="capture-v3-metric">
-            <span>CUSTO</span>
-            <strong>10 ST</strong>
-          </div>
-        </div>
       </header>
 
       {erro && <p style={{ color: 'var(--danger)' }}>{erro}</p>}
@@ -310,14 +380,7 @@ export default function Captura() {
               <button
                 type="button"
                 className="capture-v3-icon-btn"
-                onClick={() => {
-                  if (!perfil || !captureForm) return
-                  onChangeCampo('dominioTreinador', Math.max(1, Number(perfil.atributos?.dominio) || 1))
-                  onChangeCampo('respeitoTreinador', Math.max(1, Number(perfil.atributos?.respeito) || 1))
-                  onChangeCampo('nivelTreinador', Math.max(1, Number(perfil.nivel) || 1))
-                  onChangeCampo('vinculoTreinador', 0)
-                  onChangeCampo('bonusTreinador', 0)
-                }}
+                onClick={resetCamposDoBanco}
               >
                 ↻
               </button>
@@ -373,6 +436,9 @@ export default function Captura() {
             >
               Processar Dados
             </button>
+            <p className="capture-v3-quick-result">
+              Chance estimada: <strong>{chanceTexto}</strong>
+            </p>
           </div>
         </aside>
 
@@ -397,8 +463,21 @@ export default function Captura() {
               </select>
             </div>
             <div className="capture-v3-ekg-wrap">
-              <div className="capture-v3-ekg-row">
-                <span>~</span><span>~</span><span>~</span><span>~</span><span>~</span><span>~</span>
+              <div className="capture-v3-ekg-row capture-v3-status-row">
+                {STATUS_ACTIONS.map((status) => {
+                  const active = status.value !== 'CLEAR' && normalizarStatusList(captureForm?.statusAtuais).includes(status.value)
+                  return (
+                    <button
+                      key={status.value}
+                      type="button"
+                      className={`capture-v3-status-btn ${active ? 'is-active' : ''}`}
+                      title={status.title}
+                      onClick={() => toggleStatus(status.value)}
+                    >
+                      {status.label}
+                    </button>
+                  )
+                })}
               </div>
               <span className="capture-v3-rarity">COMUM</span>
             </div>
@@ -485,43 +564,31 @@ export default function Captura() {
               label="CD BASE (MANUAL)"
               min={0}
               value={captureForm?.cdBaseManual ?? cdBase}
-              onChange={(v) => onChangeCampo('cdBaseManual', v)}
+              onChange={(v) => {
+                onChangeCampo('cdBaseManual', v)
+                onChangeCampo('manualCdOverride', true)
+              }}
             />
+            {captureForm?.manualCdOverride && (
+              <button
+                type="button"
+                className="capture-v3-outline-btn"
+                onClick={() => onChangeCampo('manualCdOverride', false)}
+              >
+                Usar CD automático
+              </button>
+            )}
             <label className="capture-v3-stepper">
-              <span className="capture-v3-stepper-label">TIPOS (NET BALL)</span>
+              <span className="capture-v3-stepper-label">STATUS ATUAIS</span>
               <input
                 type="text"
-                placeholder="Ex: Agua, Inseto"
-                value={captureForm?.tiposNetBall ?? ''}
-                onChange={(e) => onChangeCampo('tiposNetBall', e.target.value)}
+                readOnly
+                value={statusAtuaisTexto}
+                placeholder="Selecione pelos botões acima"
               />
-            </label>
-            <label className="capture-v3-stepper">
-              <span className="capture-v3-stepper-label">AMBIENTE (DUSK BALL)</span>
-              <input
-                type="text"
-                placeholder="Ex: Caverna, Noite"
-                value={captureForm?.ambienteDuskBall ?? ''}
-                onChange={(e) => onChangeCampo('ambienteDuskBall', e.target.value)}
-              />
-            </label>
-            <label className="capture-v3-stepper">
-              <span className="capture-v3-stepper-label">STATUS</span>
-              <select value={captureForm?.status ?? 'NENHUM'} onChange={(e) => onChangeCampo('status', e.target.value)}>
-                {STATUS_OPTIONS.map((status) => (
-                  <option key={status.value} value={status.value}>{status.label}</option>
-                ))}
-              </select>
             </label>
           </div>
 
-          <div className="card capture-v3-card">
-            <h3>Banco de Dados</h3>
-            <p className="capture-v3-muted-italic">Nenhum preset salvo na memoria.</p>
-            <button type="button" className="capture-v3-outline-btn">
-              💾 Salvar Configuracao
-            </button>
-          </div>
         </aside>
       </section>
 
@@ -540,6 +607,11 @@ export default function Captura() {
               {' + '}Respeito ({resultadoModal.respeitoEfetivo})
               {' + '}Bônus manual ({resultadoModal.bonusManualMestre})
               {' + '}Bônus status ({resultadoModal.bonusStatus})
+            </p>
+            <p>
+              CD automática: <strong>{resultadoModal.cdAuto}</strong>
+              {' '}| redução por status: -{resultadoModal.statusCdReducao}
+              {' '}| modo manual: {resultadoModal.manualCdOverride ? 'sim' : 'não'}
             </p>
             {resultadoModal.diferencaNivel > 0 && (
               <p style={{ color: 'var(--text-muted)' }}>
