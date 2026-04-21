@@ -66,7 +66,9 @@ public class PokemonController {
     public ResponseEntity<List<PokemonResponseDto>> listarSelvagens(
             @AuthenticationPrincipal UsuarioPrincipal principal,
             @RequestParam(value = "playerId", required = false) String playerId) {
-        String perfilId = perfilService.resolvePerfilId(principal, playerId);
+        String perfilId = principal.isMestre()
+            ? perfilService.buscarMeuPerfil(principal.getId()).getId()
+            : perfilService.resolvePerfilId(principal, playerId);
         List<Pokemon> lista = pokemonService.listarSelvagens(perfilId);
         return ResponseEntity.ok(lista.stream().map(PokemonResponseDto::from).toList());
     }
@@ -98,7 +100,9 @@ public class PokemonController {
             @AuthenticationPrincipal UsuarioPrincipal principal,
             @RequestParam(value = "playerId", required = false) String playerId,
             @Valid @RequestBody PokemonGeracaoRequestDto dto) {
-        String perfilId = perfilService.resolvePerfilId(principal, playerId);
+        String perfilId = principal.isMestre()
+            ? perfilService.buscarMeuPerfil(principal.getId()).getId()
+            : perfilService.resolvePerfilId(principal, playerId);
         Pokemon pokemon = pokemonService.gerarSelvagem(
             perfilId,
             dto.getPokedexId(),
@@ -137,8 +141,20 @@ public class PokemonController {
             @PathVariable String id,
             @RequestParam(value = "playerId", required = false) String playerId,
             @Valid @RequestBody PokemonCapturaRequestDto dto) {
-        String perfilId = perfilService.resolvePerfilId(principal, playerId);
-        PokemonCapturaResponseDto response = pokemonService.tentarCaptura(perfilId, id, Boolean.TRUE.equals(dto.getSucesso()));
+        String perfilDonoSelvagemId;
+        String perfilDestinoCapturaId;
+        if (principal.isMestre()) {
+            perfilDonoSelvagemId = perfilService.buscarMeuPerfil(principal.getId()).getId();
+            perfilDestinoCapturaId = perfilService.resolvePerfilId(principal, playerId);
+        } else {
+            perfilDonoSelvagemId = perfilService.resolvePerfilId(principal, playerId);
+            perfilDestinoCapturaId = perfilDonoSelvagemId;
+        }
+        PokemonCapturaResponseDto response = pokemonService.tentarCaptura(
+                perfilDonoSelvagemId,
+                perfilDestinoCapturaId,
+                id,
+                Boolean.TRUE.equals(dto.getSucesso()));
         return ResponseEntity.ok(response);
     }
 

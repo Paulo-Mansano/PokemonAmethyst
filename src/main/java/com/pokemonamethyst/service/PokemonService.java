@@ -105,6 +105,11 @@ public class PokemonService {
                 .orElseThrow(() -> new RecursoNaoEncontradoException("Pokémon não encontrado."));
     }
 
+    public Pokemon buscarSelvagemPorIdEPerfilDono(String id, String perfilDonoId) {
+        return pokemonRepository.findByIdAndPerfilIdAndOrigemComRelacionamentos(id, perfilDonoId, OrigemPokemon.SELVAGEM)
+                .orElseThrow(() -> new RecursoNaoEncontradoException("Pokémon selvagem não encontrado."));
+    }
+
     @Transactional
     public Pokemon gerarSelvagem(String perfilId, Integer pokedexId, String idOuNome, Integer nivel, boolean distribuirStatusAutomaticamente) {
         int nivelFinal = Math.max(1, Math.min(100, nivel == null ? 5 : nivel));
@@ -538,9 +543,12 @@ public class PokemonService {
     }
 
     @Transactional
-    public PokemonCapturaResponseDto tentarCaptura(String perfilId, String pokemonId, boolean sucesso) {
-        Pokemon pokemon = buscarPorIdEPerfil(pokemonId, perfilId);
+    public PokemonCapturaResponseDto tentarCaptura(String perfilDonoSelvagemId, String perfilDestinoCapturaId, String pokemonId, boolean sucesso) {
+        Pokemon pokemon = buscarSelvagemPorIdEPerfilDono(pokemonId, perfilDonoSelvagemId);
         if (sucesso) {
+            PerfilJogador perfilDestino = perfilRepository.findById(perfilDestinoCapturaId)
+                    .orElseThrow(() -> new RecursoNaoEncontradoException("Perfil de destino não encontrado."));
+            pokemon.setPerfil(perfilDestino);
             pokemon.setOrigem(OrigemPokemon.TREINADOR);
             pokemon.setEstado(EstadoPokemon.ATIVO);
             pokemon.setOrdemTime(null);

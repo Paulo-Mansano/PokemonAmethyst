@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from 'react'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
-import { getItens, getMeuPerfil, getPokemons, tentarCapturaPokemon } from '../api'
+import { getItens, getMeuPerfil, getPokemonsSelvagens, tentarCapturaPokemon } from '../api'
 import { usePlayerTarget } from '../context/PlayerTargetContext'
 import { queryKeys } from '../query/queryKeys'
 
@@ -175,8 +175,8 @@ export default function Captura() {
   const [pokebolaAtiva, setPokebolaAtiva] = useState('')
 
   const pokemonsQuery = useQuery({
-    queryKey: queryKeys.pokemons(playerId),
-    queryFn: () => getPokemons(playerId),
+    queryKey: queryKeys.pokemonsSelvagensOwner(),
+    queryFn: () => getPokemonsSelvagens(),
     enabled: readyForPlayerApi,
     staleTime: 60 * 1000,
   })
@@ -281,7 +281,7 @@ export default function Captura() {
       return lista.map((p) => (p.id === atualizado.id ? atualizado : p))
     })
 
-    queryClient.setQueryData(queryKeys.pokemonsSelvagens(playerId), (prev = []) => {
+    queryClient.setQueryData(queryKeys.pokemonsSelvagensOwner(), (prev = []) => {
       const lista = Array.isArray(prev) ? prev : []
       if (sucesso) {
         return lista.filter((p) => p.id !== atualizado.id)
@@ -294,7 +294,7 @@ export default function Captura() {
     await Promise.all([
       queryClient.invalidateQueries({ queryKey: queryKeys.perfil(playerId) }),
       queryClient.invalidateQueries({ queryKey: queryKeys.pokemons(playerId) }),
-      queryClient.invalidateQueries({ queryKey: queryKeys.pokemonsSelvagens(playerId) }),
+      queryClient.invalidateQueries({ queryKey: queryKeys.pokemonsSelvagensOwner() }),
     ])
 
     if (sucesso) {

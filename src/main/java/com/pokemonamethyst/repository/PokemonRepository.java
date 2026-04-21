@@ -85,4 +85,21 @@ public interface PokemonRepository extends JpaRepository<Pokemon, String> {
             ORDER BY p.ordemTime ASC
             """)
     List<Pokemon> findByPerfilIdAndOrigemComRelacionamentos(String perfilId, OrigemPokemon origem);
+
+    @Query("""
+            SELECT DISTINCT p
+            FROM Pokemon p
+            LEFT JOIN FETCH p.species
+            LEFT JOIN FETCH p.habilidadeAtiva
+            LEFT JOIN FETCH p.personalidade
+            LEFT JOIN FETCH p.itemSegurado
+            LEFT JOIN FETCH p.movimentosConhecidos
+            WHERE p.id = :id
+              AND p.perfil.id = :perfilId
+              AND p.origem = :origem
+            """)
+    Optional<Pokemon> findByIdAndPerfilIdAndOrigemComRelacionamentos(
+            @Param("id") String id,
+            @Param("perfilId") String perfilId,
+            @Param("origem") OrigemPokemon origem);
 }

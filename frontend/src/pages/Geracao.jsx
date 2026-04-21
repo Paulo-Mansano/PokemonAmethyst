@@ -172,7 +172,7 @@ function editStateFromPokemon(p) {
 }
 
 export default function Geracao() {
-  const { playerId, readyForPlayerApi } = usePlayerTarget()
+  const { readyForPlayerApi } = usePlayerTarget()
   const navigate = useNavigate()
   const queryClient = useQueryClient()
   const [erro, setErro] = useState('')
@@ -199,8 +199,8 @@ export default function Geracao() {
   const usuarioMestre = !!usuarioQuery.data?.mestre
 
   const selvagensQuery = useQuery({
-    queryKey: queryKeys.pokemonsSelvagens(playerId),
-    queryFn: () => getPokemonsSelvagens(playerId),
+    queryKey: queryKeys.pokemonsSelvagensOwner(),
+    queryFn: () => getPokemonsSelvagens(),
     enabled: readyForPlayerApi,
     staleTime: 60 * 1000,
   })
@@ -240,16 +240,9 @@ export default function Geracao() {
   const listaItens = itensQuery.data || []
 
   const upsertPokemonCaches = (pokemon) => {
-    queryClient.setQueryData(queryKeys.pokemonsSelvagens(playerId), (prev = []) => {
+    queryClient.setQueryData(queryKeys.pokemonsSelvagensOwner(), (prev = []) => {
       const lista = Array.isArray(prev) ? prev : []
       return [pokemon, ...lista.filter((p) => p.id !== pokemon.id)]
-    })
-    queryClient.setQueryData(queryKeys.pokemons(playerId), (prev = []) => {
-      const lista = Array.isArray(prev) ? prev : []
-      if (lista.some((p) => p.id === pokemon.id)) {
-        return lista.map((p) => (p.id === pokemon.id ? pokemon : p))
-      }
-      return [pokemon, ...lista]
     })
   }
 
@@ -261,13 +254,10 @@ export default function Geracao() {
         idOuNome: speciesBusca?.trim() ? speciesBusca.trim() : null,
         nivel: Number(nivel) || 5,
         distribuirStatusAutomaticamente: modoDistribuicao === 'AUTOMATICO',
-      }, playerId)
+      })
       setGerado(pokemon)
       upsertPokemonCaches(pokemon)
-      await Promise.all([
-        queryClient.invalidateQueries({ queryKey: queryKeys.perfil(playerId) }),
-        queryClient.invalidateQueries({ queryKey: queryKeys.pokemons(playerId) }),
-      ])
+      await queryClient.invalidateQueries({ queryKey: queryKeys.pokemonsSelvagensOwner() })
     } catch (e) {
       setErro(e.message || 'Erro ao gerar Pokémon')
     } finally {
@@ -293,8 +283,8 @@ export default function Geracao() {
     setExpandedLoading(true)
     try {
       const [full, disponiveis] = await Promise.all([
-        getPokemon(pokemon.id, playerId),
-        getMovimentosDisponiveisPokemon(pokemon.id, playerId).catch(() => []),
+        getPokemon(pokemon.id),
+        getMovimentosDisponiveisPokemon(pokemon.id).catch(() => []),
       ])
       setExpandedPokemon(full)
       setExpandedEdit(editStateFromPokemon(full))
@@ -309,7 +299,7 @@ export default function Geracao() {
   }
 
   const syncExpandedPokemon = async (pokemonId) => {
-    const atualizado = await getPokemon(pokemonId, playerId)
+    const atualizado = await getPokemon(pokemonId)
     upsertPokemonCaches(atualizado)
     if (gerado?.id === pokemonId) {
       setGerado(atualizado)
@@ -318,7 +308,7 @@ export default function Geracao() {
       setExpandedPokemon(atualizado)
       setExpandedEdit(editStateFromPokemon(atualizado))
       setPendingAlocacoes({})
-      const disponiveis = await getMovimentosDisponiveisPokemon(pokemonId, playerId).catch(() => [])
+      const disponiveis = await getMovimentosDisponiveisPokemon(pokemonId).catch(() => [])
       setMovimentosDisponiveis(Array.isArray(disponiveis) ? disponiveis : [])
       setMovimentoAdicionarId('')
     }
@@ -327,12 +317,9 @@ export default function Geracao() {
 
   const enviarParaCaptura = async (pokemon) => {
     try {
-      const atualizado = await atualizarEstadoPokemon(pokemon.id, 'CAPTURAVEL', playerId)
+      const atualizado = await atualizarEstadoPokemon(pokemon.id, 'CAPTURAVEL')
       upsertPokemonCaches(atualizado)
-      await Promise.all([
-        queryClient.invalidateQueries({ queryKey: queryKeys.pokemonsSelvagens(playerId) }),
-        queryClient.invalidateQueries({ queryKey: queryKeys.pokemons(playerId) }),
-      ])
+      await queryClient.invalidateQueries({ queryKey: queryKeys.pokemonsSelvagensOwner() })
       localStorage.setItem('capturePokemonId', pokemon.id)
       navigate('/captura')
     } catch (e) {
@@ -342,12 +329,9 @@ export default function Geracao() {
 
   const salvarParaDepois = async (pokemon) => {
     try {
-      const atualizado = await atualizarEstadoPokemon(pokemon.id, 'ATIVO', playerId)
+      const atualizado = await atualizarEstadoPokemon(pokemon.id, 'ATIVO')
       upsertPokemonCaches(atualizado)
-      await Promise.all([
-        queryClient.invalidateQueries({ queryKey: queryKeys.pokemonsSelvagens(playerId) }),
-        queryClient.invalidateQueries({ queryKey: queryKeys.pokemons(playerId) }),
-      ])
+      await queryClient.invalidateQueries({ queryKey: queryKeys.pokemonsSelvagensOwner() })
     } catch (e) {
       setErro(e.message || 'Erro ao salvar Pokémon')
     }
@@ -355,7 +339,7 @@ export default function Geracao() {
 
   const deletar = async (pokemon) => {
     try {
-      await excluirPokemon(pokemon.id, playerId)
+      await excluirPokemon(pokemon.id)
       if (gerado?.id === pokemon.id) {
         setGerado(null)
       }
@@ -364,16 +348,10 @@ export default function Geracao() {
         setExpandedPokemon(null)
         setExpandedEdit(null)
       }
-      queryClient.setQueryData(queryKeys.pokemonsSelvagens(playerId), (prev = []) =>
+      queryClient.setQueryData(queryKeys.pokemonsSelvagensOwner(), (prev = []) =>
         (Array.isArray(prev) ? prev : []).filter((p) => p.id !== pokemon.id)
       )
-      queryClient.setQueryData(queryKeys.pokemons(playerId), (prev = []) =>
-        (Array.isArray(prev) ? prev : []).filter((p) => p.id !== pokemon.id)
-      )
-      await Promise.all([
-        queryClient.invalidateQueries({ queryKey: queryKeys.perfil(playerId) }),
-        queryClient.invalidateQueries({ queryKey: queryKeys.pokemons(playerId) }),
-      ])
+      await queryClient.invalidateQueries({ queryKey: queryKeys.pokemonsSelvagensOwner() })
     } catch (e) {
       setErro(e.message || 'Erro ao deletar Pokémon')
     }
@@ -493,7 +471,7 @@ export default function Geracao() {
         habilidadeId: expandedEdit.habilidadeId || null,
         statusAtuais: expandedEdit.statusAtuais?.length ? expandedEdit.statusAtuais : null,
         movimentoIds: expandedEdit.movimentoIds || [],
-      }, playerId)
+      })
 
       const alocacoesPendentes = Object.entries(pendingAlocacoes).filter(([, quantidade]) => Number(quantidade) !== 0)
       if (alocacoesPendentes.length > 0) {
@@ -502,9 +480,9 @@ export default function Geracao() {
           for (const [atributo, quantidade] of alocacoesPendentes) {
             const quantidadeNumero = Number(quantidade)
             if (quantidadeNumero > 0) {
-              await alocarAtributosPokemon(expandedPokemon.id, atributo, quantidadeNumero, playerId)
+              await alocarAtributosPokemon(expandedPokemon.id, atributo, quantidadeNumero)
             } else {
-              await desalocarAtributosPokemon(expandedPokemon.id, atributo, Math.abs(quantidadeNumero), playerId)
+              await desalocarAtributosPokemon(expandedPokemon.id, atributo, Math.abs(quantidadeNumero))
             }
           }
         } finally {
@@ -513,10 +491,7 @@ export default function Geracao() {
       }
 
       await syncExpandedPokemon(expandedPokemon.id)
-      await Promise.all([
-        queryClient.invalidateQueries({ queryKey: queryKeys.pokemonsSelvagens(playerId) }),
-        queryClient.invalidateQueries({ queryKey: queryKeys.pokemons(playerId) }),
-      ])
+      await queryClient.invalidateQueries({ queryKey: queryKeys.pokemonsSelvagensOwner() })
     } catch (err) {
       setErro(err.message || 'Erro ao salvar Pokémon')
     } finally {

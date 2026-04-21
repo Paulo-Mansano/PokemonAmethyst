@@ -8,6 +8,7 @@ export const queryKeys = {
   perfil: (playerId) => ['perfil', playerId ?? 'self'],
   pokemons: (playerId) => ['pokemons', playerId ?? 'self'],
   pokemonsSelvagens: (playerId) => ['pokemons', 'selvagens', playerId ?? 'self'],
+  pokemonsSelvagensOwner: () => ['pokemons', 'selvagens', 'owner'],
   pokemon: (playerId, pokemonId) => ['pokemon', playerId ?? 'self', pokemonId],
   pokemonMovimentosDisponiveis: (playerId, pokemonId) => ['pokemon', playerId ?? 'self', pokemonId, 'movimentos-disponiveis'],
   mochila: (playerId) => ['mochila', playerId ?? 'self'],
