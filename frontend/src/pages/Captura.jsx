@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from 'react'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
-import { getMeuPerfil, getPokemons, tentarCapturaPokemon } from '../api'
+import { getItens, getMeuPerfil, getPokemons, tentarCapturaPokemon } from '../api'
 import { usePlayerTarget } from '../context/PlayerTargetContext'
 import { queryKeys } from '../query/queryKeys'
 
@@ -38,17 +38,6 @@ const STATUS_ACTIONS = [
   { value: 'PARALISADO', label: '⚡', title: 'Paralisado' },
   { value: 'QUEIMANDO', label: '🔥', title: 'Queimando' },
   { value: 'ENVENENADO', label: '☠️', title: 'Envenenado' },
-]
-
-const POKEBOLAS_CONTENCAO = [
-  'POKE BOLA',
-  'GREAT BALL',
-  'ULTRA BALL',
-  'NET BALL',
-  'DUSK BALL',
-  'HEAL BALL',
-  'SELO DE LIGACAO',
-  'MASTER BALL',
 ]
 
 function detectarStatusInicial(statusAtuais) {
@@ -183,7 +172,7 @@ export default function Captura() {
   const [prefillId, setPrefillId] = useState('')
   const [quickRolls, setQuickRolls] = useState(100)
   const [chanceEstimada, setChanceEstimada] = useState(null)
-  const [pokebolaAtiva, setPokebolaAtiva] = useState('POKE BOLA')
+  const [pokebolaAtiva, setPokebolaAtiva] = useState('')
 
   const pokemonsQuery = useQuery({
     queryKey: queryKeys.pokemons(playerId),
@@ -201,6 +190,24 @@ export default function Captura() {
   })
   const perfil = perfilQuery.data
 
+  const itensQuery = useQuery({
+    queryKey: queryKeys.catalogo.itens,
+    queryFn: getItens,
+    enabled: readyForPlayerApi,
+    staleTime: 15 * 60 * 1000,
+    gcTime: 24 * 60 * 60 * 1000,
+  })
+  const itensCatalogo = Array.isArray(itensQuery.data) ? itensQuery.data : []
+  const pokebolasDisponiveis = useMemo(() => {
+    const ballComoPalavra = /\bball\b/i
+    const temBallIsolado = (txt) => ballComoPalavra.test(String(txt || ''))
+    return itensCatalogo
+      .filter((item) => {
+        return temBallIsolado(item.nome) || temBallIsolado(item.nomeEn)
+      })
+      .sort((a, b) => String(a.nome || '').localeCompare(String(b.nome || ''), 'pt-BR'))
+  }, [itensCatalogo])
+
   useEffect(() => {
     if (pokemonId) {
       localStorage.setItem('capturePokemonId', pokemonId)
@@ -214,11 +221,21 @@ export default function Captura() {
   const pokemon = useMemo(() => pokemons.find((p) => p.id === pokemonId) || null, [pokemons, pokemonId])
 
   useEffect(() => {
+    if (pokebolasDisponiveis.length === 0) {
+      setPokebolaAtiva('')
+      return
+    }
+    const existe = pokebolasDisponiveis.some((item) => item.id === pokebolaAtiva)
+    if (!existe) {
+      setPokebolaAtiva(pokebolasDisponiveis[0].id)
+    }
+  }, [pokebolasDisponiveis, pokebolaAtiva])
+
+  useEffect(() => {
     if (!pokemon || !perfil) return
     if (prefillId === pokemon.id) return
     setCaptureForm(buildCaptureForm(pokemon, perfil))
     setChanceEstimada(null)
-    setPokebolaAtiva('POKE BOLA')
     setPrefillId(pokemon.id)
   }, [pokemon, perfil, prefillId])
 
@@ -236,7 +253,6 @@ export default function Captura() {
     setCaptureForm(buildCaptureForm(freshPokemon, freshPerfil))
     setChanceEstimada(null)
     setPrefillId(freshPokemon.id)
-    setPokebolaAtiva('POKE BOLA')
   }
 
   const toggleStatus = (statusValue) => {
@@ -339,9 +355,6 @@ export default function Captura() {
   const cdFinal = captureForm
     ? (captureForm.manualCdOverride ? Math.max(0, Number(captureForm.cdBaseManual) || cdFinalAuto) : cdFinalAuto)
     : 0
-  const bonusTotalFixo = captureForm
-    ? ((Number(captureForm.vinculoTreinador) || 0) + (Number(captureForm.bonusTreinador) || 0))
-    : null
   const hpRestante = Math.max(0, Number(captureForm?.hpRestantePokemon) || 0)
   const hpMaximo = Math.max(1, Number(captureForm?.hpMaximoPokemon) || 1)
   const hpPercent = Math.max(0, Math.min(100, (hpRestante / hpMaximo) * 100))
@@ -359,16 +372,6 @@ export default function Captura() {
 
   return (
     <div className="container container--wide capture-v3-page">
-      <header className="capture-v3-header card">
-        <div className="capture-v3-header-left">
-          <div className="capture-v3-logo-icon">🎲</div>
-          <div>
-            <h1>Simulador Amethyst</h1>
-            <p>SYSTEM VERSION 3.0</p>
-          </div>
-        </div>
-      </header>
-
       {erro && <p style={{ color: 'var(--danger)' }}>{erro}</p>}
       {mensagem && <p style={{ color: 'var(--accent)' }}>{mensagem}</p>}
 
@@ -410,10 +413,6 @@ export default function Captura() {
                 value={captureForm?.bonusTreinador ?? 0}
                 onChange={(v) => onChangeCampo('bonusTreinador', v)}
               />
-            </div>
-            <div className="capture-v3-bonus-footer">
-              <span>BONUS TOTAL FIXO</span>
-              <strong>{bonusTotalFixo == null ? '+NaN' : `+${bonusTotalFixo}`}</strong>
             </div>
           </div>
 
@@ -535,19 +534,27 @@ export default function Captura() {
           </div>
 
           <div className="capture-v3-contencao">
-            <span className="capture-v3-kicker">MODULO DE CONTENCAO</span>
-            <div className="capture-v3-balls-grid">
-              {POKEBOLAS_CONTENCAO.map((ball) => (
+            <span className="capture-v3-kicker">POKÉBOLA</span>
+            <div className="capture-v3-balls-scroll">
+              {pokebolasDisponiveis.map((ball) => (
                 <button
-                  key={ball}
+                  key={ball.id}
                   type="button"
-                  className={`capture-v3-ball-btn ${pokebolaAtiva === ball ? 'is-active' : ''}`}
-                  onClick={() => setPokebolaAtiva(ball)}
+                  className={`capture-v3-ball-btn ${pokebolaAtiva === ball.id ? 'is-active' : ''}`}
+                  onClick={() => setPokebolaAtiva(ball.id)}
                 >
-                  {ball}
+                  {ball.imagemUrl ? (
+                    <img src={ball.imagemUrl} alt="" className="capture-v3-ball-icon" />
+                  ) : (
+                    <span className="capture-v3-ball-icon capture-v3-ball-icon--placeholder" />
+                  )}
+                  <span className="capture-v3-ball-label">{ball.nome || ball.nomeEn || 'Ball'}</span>
                 </button>
               ))}
             </div>
+            {pokebolasDisponiveis.length === 0 && (
+              <p className="capture-v3-muted-italic">Nenhuma Pokébola encontrada no catalogo com "ball" no nome.</p>
+            )}
           </div>
         </main>
 

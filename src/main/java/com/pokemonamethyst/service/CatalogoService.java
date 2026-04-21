@@ -9,6 +9,7 @@ import com.pokemonamethyst.domain.Tipagem;
 import com.pokemonamethyst.exception.RecursoNaoEncontradoException;
 import com.pokemonamethyst.repository.HabilidadeRepository;
 import com.pokemonamethyst.repository.ItemRepository;
+import com.pokemonamethyst.repository.MochilaItemRepository;
 import com.pokemonamethyst.repository.MovimentoRepository;
 import com.pokemonamethyst.repository.PersonalidadeRepository;
 import org.springframework.stereotype.Service;
@@ -22,13 +23,16 @@ public class CatalogoService {
     private final MovimentoRepository movimentoRepository;
     private final HabilidadeRepository habilidadeRepository;
     private final ItemRepository itemRepository;
+    private final MochilaItemRepository mochilaItemRepository;
     private final PersonalidadeRepository personalidadeRepository;
 
     public CatalogoService(MovimentoRepository movimentoRepository, HabilidadeRepository habilidadeRepository,
-                           ItemRepository itemRepository, PersonalidadeRepository personalidadeRepository) {
+                           ItemRepository itemRepository, MochilaItemRepository mochilaItemRepository,
+                           PersonalidadeRepository personalidadeRepository) {
         this.movimentoRepository = movimentoRepository;
         this.habilidadeRepository = habilidadeRepository;
         this.itemRepository = itemRepository;
+        this.mochilaItemRepository = mochilaItemRepository;
         this.personalidadeRepository = personalidadeRepository;
     }
 
@@ -172,5 +176,12 @@ public class CatalogoService {
         if (preco != null) item.setPreco(preco);
         if (imagemUrl != null) item.setImagemUrl(imagemUrl.isBlank() ? null : imagemUrl);
         return itemRepository.save(item);
+    }
+
+    @Transactional
+    public void excluirItem(String id) {
+        Item item = buscarItem(id);
+        mochilaItemRepository.deleteAllByItemId(item.getId());
+        itemRepository.delete(item);
     }
 }

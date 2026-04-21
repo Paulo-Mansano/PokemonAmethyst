@@ -577,6 +577,16 @@ export async function atualizarItem(id, body) {
   return res.json();
 }
 
+export async function excluirItem(id) {
+  const res = await request(`/mestre/itens/${encodeURIComponent(id)}`, {
+    method: 'DELETE',
+  });
+  if (!res.ok) {
+    const data = await res.json().catch(() => ({}));
+    throw new Error(data.mensagem || 'Erro ao excluir item');
+  }
+}
+
 export async function atualizarImagensItens() {
   const res = await request('/mestre/pokeapi/atualizar-imagens-itens', { method: 'POST' });
   if (!res.ok) {

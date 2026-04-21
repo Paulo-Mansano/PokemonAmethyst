@@ -1779,25 +1779,50 @@ input, select, textarea {
   gap: 0.55rem;
 }
 
-.capture-v3-balls-grid {
-  display: grid;
-  grid-template-columns: repeat(4, minmax(0, 1fr));
+.capture-v3-balls-scroll {
+  display: flex;
   gap: 0.5rem;
+  overflow-x: auto;
+  padding-bottom: 0.25rem;
+  scrollbar-width: thin;
 }
 
 .capture-v3-ball-btn {
+  flex: 0 0 auto;
+  min-width: 150px;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.55rem;
   border-radius: 10px;
   border: 1px solid rgba(124, 58, 237, 0.24);
   background: rgba(45, 20, 90, 0.48);
   color: #ddd6fe;
-  padding: 0.7rem 0.3rem;
+  padding: 0.6rem;
   font-size: 0.78rem;
   cursor: pointer;
+  text-align: left;
 }
 
 .capture-v3-ball-btn.is-active {
   border-color: #c084fc;
   box-shadow: 0 0 0 1px #c084fc inset, 0 0 18px rgba(192, 132, 252, 0.45);
+}
+
+.capture-v3-ball-icon {
+  width: 28px;
+  height: 28px;
+  object-fit: contain;
+  flex: 0 0 auto;
+}
+
+.capture-v3-ball-icon--placeholder {
+  border-radius: 999px;
+  border: 1px dashed rgba(192, 132, 252, 0.6);
+  background: rgba(91, 33, 182, 0.25);
+}
+
+.capture-v3-ball-label {
+  white-space: nowrap;
 }
 
 .capture-v3-muted-italic {

@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { getItens, importarItemPokeApi, listarItensPokeApi, atualizarItem, criarItem, atualizarImagensItens, getUsuario } from '../api'
+import { getItens, importarItemPokeApi, listarItensPokeApi, atualizarItem, criarItem, atualizarImagensItens, getUsuario, excluirItem } from '../api'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { queryKeys } from '../query/queryKeys'
 
@@ -18,6 +18,7 @@ export default function ItensCatalogo() {
   const [savingEdit, setSavingEdit] = useState(false)
   const [editErro, setEditErro] = useState('')
   const [atualizandoImagens, setAtualizandoImagens] = useState(false)
+  const [excluindoItemId, setExcluindoItemId] = useState(null)
 
   const userQuery = useQuery({
     queryKey: queryKeys.auth.usuario,
@@ -157,6 +158,31 @@ export default function ItensCatalogo() {
     }
   }
 
+  const handleExcluirItem = async (item) => {
+    if (!item?.id) return
+    const nome = item.nome || item.nomeEn || 'item'
+    const confirmar = window.confirm(`Excluir o item "${nome}" do banco e remover de todos os inventarios?`)
+    if (!confirmar) return
+    setErro('')
+    setInfo('')
+    setExcluindoItemId(item.id)
+    try {
+      await excluirItem(item.id)
+      if (editingItem?.id === item.id) {
+        setEditingItem(null)
+      }
+      setInfo(`Item "${nome}" excluido com sucesso.`)
+      await Promise.all([
+        queryClient.invalidateQueries({ queryKey: queryKeys.catalogo.itens }),
+        queryClient.invalidateQueries({ queryKey: ['mochila'] }),
+      ])
+    } catch (e) {
+      setErro(e.message || 'Erro ao excluir item')
+    } finally {
+      setExcluindoItemId(null)
+    }
+  }
+
   if (userQuery.isLoading || itensQuery.isLoading) {
     return <div className="container">Carregando catálogo de itens...</div>
   }
@@ -271,7 +297,7 @@ export default function ItensCatalogo() {
                   <th>Descrição</th>
                   <th>Peso</th>
                   <th>Preço</th>
-                  <th style={{ width: 90 }}></th>
+                  <th style={{ width: 180 }}></th>
                 </tr>
               </thead>
               <tbody>
@@ -290,9 +316,20 @@ export default function ItensCatalogo() {
                     <td>{i.peso}</td>
                     <td>{i.preco}</td>
                     <td>
-                      <button type="button" className="btn btn-secondary" style={{ fontSize: '0.85rem' }} onClick={() => handleEditar(i)}>
-                        Editar
-                      </button>
+                      <div style={{ display: 'flex', gap: '0.5rem' }}>
+                        <button type="button" className="btn btn-secondary" style={{ fontSize: '0.85rem' }} onClick={() => handleEditar(i)}>
+                          Editar
+                        </button>
+                        <button
+                          type="button"
+                          className="btn btn-danger"
+                          style={{ fontSize: '0.85rem' }}
+                          onClick={() => handleExcluirItem(i)}
+                          disabled={excluindoItemId === i.id}
+                        >
+                          {excluindoItemId === i.id ? 'Excluindo...' : 'Excluir'}
+                        </button>
+                      </div>
                     </td>
                   </tr>
                 ))}

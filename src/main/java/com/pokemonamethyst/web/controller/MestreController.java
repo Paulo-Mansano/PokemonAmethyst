@@ -37,6 +37,7 @@ import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.bind.annotation.DeleteMapping;
 
 import java.util.List;
 import java.util.Map;
@@ -202,6 +203,13 @@ public class MestreController {
                 dto.getImagemUrl()
         );
         return ResponseEntity.ok(ItemResponseDto.from(item));
+    }
+
+    @DeleteMapping("/itens/{id}")
+    @Transactional
+    public ResponseEntity<Void> excluirItem(@PathVariable String id) {
+        catalogoService.excluirItem(id);
+        return ResponseEntity.noContent().build();
     }
 
     @PostMapping("/pokeapi/atualizar-imagens-itens")
