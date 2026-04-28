@@ -16,6 +16,7 @@ import {
   getPersonalidades,
   getHabilidades,
   getItens,
+  getMeuPerfil,
 } from '../api'
 import { usePlayerTarget } from '../context/PlayerTargetContext'
 import { queryKeys } from '../query/queryKeys'
@@ -172,7 +173,7 @@ function editStateFromPokemon(p) {
 }
 
 export default function Geracao() {
-  const { readyForPlayerApi } = usePlayerTarget()
+  const { playerId, readyForPlayerApi } = usePlayerTarget()
   const navigate = useNavigate()
   const queryClient = useQueryClient()
   const [erro, setErro] = useState('')
@@ -197,6 +198,15 @@ export default function Geracao() {
     staleTime: 10 * 60 * 1000,
   })
   const usuarioMestre = !!usuarioQuery.data?.mestre
+
+  const perfilDonoQuery = useQuery({
+    queryKey: queryKeys.perfil('owner'),
+    queryFn: () => getMeuPerfil(),
+    enabled: readyForPlayerApi,
+    staleTime: 15 * 60 * 1000,
+    gcTime: 24 * 60 * 60 * 1000,
+  })
+  const perfilDono = perfilDonoQuery.data || null
 
   const selvagensQuery = useQuery({
     queryKey: queryKeys.pokemonsSelvagensOwner(),
@@ -254,7 +264,7 @@ export default function Geracao() {
         idOuNome: speciesBusca?.trim() ? speciesBusca.trim() : null,
         nivel: Number(nivel) || 5,
         distribuirStatusAutomaticamente: modoDistribuicao === 'AUTOMATICO',
-      })
+      }, perfilDono?.id)
       setGerado(pokemon)
       upsertPokemonCaches(pokemon)
       await queryClient.invalidateQueries({ queryKey: queryKeys.pokemonsSelvagensOwner() })
@@ -283,8 +293,8 @@ export default function Geracao() {
     setExpandedLoading(true)
     try {
       const [full, disponiveis] = await Promise.all([
-        getPokemon(pokemon.id),
-        getMovimentosDisponiveisPokemon(pokemon.id).catch(() => []),
+        getPokemon(pokemon.id, perfilDono?.id),
+        getMovimentosDisponiveisPokemon(pokemon.id, perfilDono?.id).catch(() => []),
       ])
       setExpandedPokemon(full)
       setExpandedEdit(editStateFromPokemon(full))
@@ -299,7 +309,7 @@ export default function Geracao() {
   }
 
   const syncExpandedPokemon = async (pokemonId) => {
-    const atualizado = await getPokemon(pokemonId)
+    const atualizado = await getPokemon(pokemonId, perfilDono?.id)
     upsertPokemonCaches(atualizado)
     if (gerado?.id === pokemonId) {
       setGerado(atualizado)
@@ -308,7 +318,7 @@ export default function Geracao() {
       setExpandedPokemon(atualizado)
       setExpandedEdit(editStateFromPokemon(atualizado))
       setPendingAlocacoes({})
-      const disponiveis = await getMovimentosDisponiveisPokemon(pokemonId).catch(() => [])
+      const disponiveis = await getMovimentosDisponiveisPokemon(pokemonId, perfilDono?.id).catch(() => [])
       setMovimentosDisponiveis(Array.isArray(disponiveis) ? disponiveis : [])
       setMovimentoAdicionarId('')
     }
@@ -317,7 +327,7 @@ export default function Geracao() {
 
   const enviarParaCaptura = async (pokemon) => {
     try {
-      const atualizado = await atualizarEstadoPokemon(pokemon.id, 'CAPTURAVEL')
+      const atualizado = await atualizarEstadoPokemon(pokemon.id, 'CAPTURAVEL', perfilDono?.id)
       upsertPokemonCaches(atualizado)
       await queryClient.invalidateQueries({ queryKey: queryKeys.pokemonsSelvagensOwner() })
       localStorage.setItem('capturePokemonId', pokemon.id)
@@ -329,7 +339,7 @@ export default function Geracao() {
 
   const salvarParaDepois = async (pokemon) => {
     try {
-      const atualizado = await atualizarEstadoPokemon(pokemon.id, 'ATIVO')
+      const atualizado = await atualizarEstadoPokemon(pokemon.id, 'ATIVO', perfilDono?.id)
       upsertPokemonCaches(atualizado)
       await queryClient.invalidateQueries({ queryKey: queryKeys.pokemonsSelvagensOwner() })
     } catch (e) {
@@ -339,7 +349,7 @@ export default function Geracao() {
 
   const deletar = async (pokemon) => {
     try {
-      await excluirPokemon(pokemon.id)
+      await excluirPokemon(pokemon.id, perfilDono?.id)
       if (gerado?.id === pokemon.id) {
         setGerado(null)
       }
@@ -471,7 +481,7 @@ export default function Geracao() {
         habilidadeId: expandedEdit.habilidadeId || null,
         statusAtuais: expandedEdit.statusAtuais?.length ? expandedEdit.statusAtuais : null,
         movimentoIds: expandedEdit.movimentoIds || [],
-      })
+      }, perfilDono?.id)
 
       const alocacoesPendentes = Object.entries(pendingAlocacoes).filter(([, quantidade]) => Number(quantidade) !== 0)
       if (alocacoesPendentes.length > 0) {
@@ -480,9 +490,9 @@ export default function Geracao() {
           for (const [atributo, quantidade] of alocacoesPendentes) {
             const quantidadeNumero = Number(quantidade)
             if (quantidadeNumero > 0) {
-              await alocarAtributosPokemon(expandedPokemon.id, atributo, quantidadeNumero)
+              await alocarAtributosPokemon(expandedPokemon.id, atributo, quantidadeNumero, perfilDono?.id)
             } else {
-              await desalocarAtributosPokemon(expandedPokemon.id, atributo, Math.abs(quantidadeNumero))
+              await desalocarAtributosPokemon(expandedPokemon.id, atributo, Math.abs(quantidadeNumero), perfilDono?.id)
             }
           }
         } finally {

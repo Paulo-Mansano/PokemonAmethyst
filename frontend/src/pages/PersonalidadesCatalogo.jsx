@@ -109,38 +109,46 @@ export default function PersonalidadesCatalogo() {
       {info && <p style={{ color: 'var(--success)', marginBottom: '1rem' }}>{info}</p>}
 
       <div className="card">
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '0.5rem', marginBottom: '0.75rem' }}>
-          <h3 style={{ margin: 0 }}>Personalidades cadastradas ({personalidades.length})</h3>
+        <div style={{ display: 'grid', gridTemplateColumns: '1fr auto 1fr', alignItems: 'center', gap: '0.5rem', marginBottom: '0.75rem' }}>
+          <span aria-hidden />
+          <h3 style={{ margin: 0, textAlign: 'center' }}>Personalidades cadastradas ({personalidades.length})</h3>
           <button
             type="button"
             className="btn btn-primary"
-            style={{ fontSize: '0.85rem' }}
+            style={{ fontSize: '0.85rem', justifySelf: 'end' }}
             onClick={handleAbrirCriar}
           >
             Criar personalidade
           </button>
         </div>
-        <p style={{ color: 'var(--text-muted)', fontSize: '0.9rem', marginTop: 0, marginBottom: '0.75rem' }}>
+        <p style={{ color: 'var(--text-muted)', fontSize: '0.9rem', marginTop: 0, marginBottom: '0.75rem', textAlign: 'center' }}>
           Todas as personalidades são autorais (não vêm da PokéAPI).
         </p>
         {personalidades.length === 0 ? (
-          <p style={{ color: 'var(--text-muted)' }}>Nenhuma personalidade. Clique em &quot;Criar personalidade&quot;.</p>
+          <p style={{ color: 'var(--text-muted)', textAlign: 'center' }}>Nenhuma personalidade. Clique em &quot;Criar personalidade&quot;.</p>
         ) : (
           <div style={{ overflowX: 'auto' }}>
-            <table className="table">
+            <table className="table" style={{ width: '100%' }}>
               <thead>
                 <tr>
-                  <th>Nome</th>
-                  <th style={{ width: 90 }}></th>
+                  <th style={{ textAlign: 'center' }}>Nome</th>
+                  <th style={{ width: 90, textAlign: 'right' }}></th>
                 </tr>
               </thead>
               <tbody>
                 {personalidades.map((p) => (
                   <tr key={p.id}>
-                    <td>{p.nome}</td>
-                    <td>
-                      <button type="button" className="btn btn-secondary" style={{ fontSize: '0.85rem' }} onClick={() => handleEditar(p)}>
-                        Editar
+                    <td style={{ textAlign: 'center' }}>{p.nome}</td>
+                    <td style={{ textAlign: 'right' }}>
+                      <button
+                        type="button"
+                        className="btn btn-secondary"
+                        style={{ fontSize: '0.9rem', lineHeight: 1, padding: '0.45rem 0.55rem' }}
+                        onClick={() => handleEditar(p)}
+                        aria-label={`Editar personalidade ${p.nome}`}
+                        title="Editar"
+                      >
+                        <span aria-hidden>📝</span>
                       </button>
                     </td>
                   </tr>

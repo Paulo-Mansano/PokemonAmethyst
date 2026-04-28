@@ -36,7 +36,9 @@ public class PerfilJogadorController {
         if (principal == null) {
             return ResponseEntity.status(HttpStatus.UNAUTHORIZED).build();
         }
-        PerfilJogador perfil = perfilService.obterPerfilAlvo(principal, playerId);
+        PerfilJogador perfil = (principal.isMestre() && (playerId == null || playerId.isBlank()))
+                ? perfilService.buscarPorUsuarioId(principal.getId())
+                : perfilService.obterPerfilAlvo(principal, playerId);
         List<com.pokemonamethyst.domain.Pokemon> time = pokemonService.listarTimePrincipal(perfil.getId());
         List<com.pokemonamethyst.domain.Pokemon> box = pokemonService.listarBox(perfil.getId());
         return ResponseEntity.ok(PerfilJogadorResponseDto.from(perfil, time, box));

@@ -5,6 +5,7 @@ import { clearAuthCache } from '../query/queryClient'
 
 const TAB_KEY = 'pokemonamethyst:login-tab'
 const SEM_PERFIL_KEY = 'pokemonamethyst:login-sem-perfil'
+const REMEMBER_USER_KEY = 'pokemonamethyst:remember-user'
 
 function isSafeRedirectPath(pathname) {
   if (typeof pathname !== 'string' || !pathname.startsWith('/') || pathname.startsWith('//')) return false
@@ -77,9 +78,22 @@ export default function Login({ onLogin }) {
     }
   }
 
-  const [nomeUsuario, setNomeUsuario] = useState('')
+  const [nomeUsuario, setNomeUsuario] = useState(() => {
+    try {
+      return localStorage.getItem(REMEMBER_USER_KEY) || ''
+    } catch {
+      return ''
+    }
+  })
   const [senha, setSenha] = useState('')
   const [mostrarSenha, setMostrarSenha] = useState(false)
+  const [lembrarDeMim, setLembrarDeMim] = useState(() => {
+    try {
+      return !!localStorage.getItem(REMEMBER_USER_KEY)
+    } catch {
+      return false
+    }
+  })
   const [erro, setErro] = useState('')
   const [loading, setLoading] = useState(false)
 
@@ -95,6 +109,12 @@ export default function Login({ onLogin }) {
       }
       const user = await login(nome, senha)
       await clearAuthCache()
+      try {
+        if (lembrarDeMim) localStorage.setItem(REMEMBER_USER_KEY, nome)
+        else localStorage.removeItem(REMEMBER_USER_KEY)
+      } catch {
+        /* ignore */
+      }
       onLogin(user)
       let perfil = null
       if (user.mestre) {
@@ -195,6 +215,14 @@ export default function Login({ onLogin }) {
               </button>
             </div>
           </div>
+          <label style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '1rem', color: 'var(--text-muted)', fontSize: '0.95rem' }}>
+            <input
+              type="checkbox"
+              checked={lembrarDeMim}
+              onChange={(e) => setLembrarDeMim(e.target.checked)}
+            />
+            <span>Lembrar de mim</span>
+          </label>
           {erro && (
             <p role="alert" style={{ color: 'var(--danger)', marginBottom: '1rem', fontSize: '0.9rem' }}>
               {erro}

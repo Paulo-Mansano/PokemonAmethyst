@@ -212,6 +212,21 @@ body {
   max-width: min(100%, 28rem);
 }
 
+.master-player-bar__search {
+  min-width: 220px;
+  max-width: min(100%, 28rem);
+  padding: 0.5rem 0.75rem;
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  color: var(--text);
+}
+
+.master-player-bar__search:focus {
+  outline: none;
+  border-color: var(--accent);
+}
+
 .master-player-bar__hint {
   font-size: 0.85rem;
   color: var(--text-muted);

@@ -86,9 +86,9 @@ function calcularTentativaCaptura(input, rolarD20 = () => Math.floor(Math.random
   const bonusManualMestre = bonusTreinador + vinculoTreinador
   const bonusStatus = calcularStatusBonus(statusAtuais, STATUS_BONUS_MAP)
 
-  const diferencaNivel = nivelPokemon > nivelTreinador ? (nivelPokemon - nivelTreinador) : 0
-  const dominioEfetivo = Math.max(1, dominioTreinador - diferencaNivel)
-  const respeitoEfetivo = Math.max(1, respeitoTreinador - diferencaNivel)
+  const penalidadeNivel = Math.max(0, nivelPokemon - nivelTreinador)
+  const dominioEfetivo = Math.max(1, dominioTreinador - penalidadeNivel)
+  const respeitoEfetivo = Math.max(1, respeitoTreinador - penalidadeNivel)
 
   const dificuldade = manualCdOverride ? cdManual : cdAuto
   const d20 = rolarD20()
@@ -102,18 +102,20 @@ function calcularTentativaCaptura(input, rolarD20 = () => Math.floor(Math.random
     d20,
     bonusStatus,
     bonusManualMestre,
+    bonusTreinador,
+    vinculoTreinador,
     dominioOriginal: dominioTreinador,
     respeitoOriginal: respeitoTreinador,
     dominioEfetivo,
     respeitoEfetivo,
-    diferencaNivel,
+    penalidadeNivel,
     cdBaseCalculada,
     cdAuto,
     statusCdReducao,
     manualCdOverride,
-    bonusTreinador,
-    vinculoTreinador,
     statusAtuais,
+    nivelPokemon,
+    nivelTreinador,
   }
 }
 
@@ -169,7 +171,7 @@ export default function Captura() {
   const [calculando, setCalculando] = useState(false)
   const [resultadoModal, setResultadoModal] = useState(null)
   const [captureForm, setCaptureForm] = useState(null)
-  const [prefillId, setPrefillId] = useState('')
+  const [prefillKey, setPrefillKey] = useState('')
   const [quickRolls, setQuickRolls] = useState(100)
   const [chanceEstimada, setChanceEstimada] = useState(null)
   const [pokebolaAtiva, setPokebolaAtiva] = useState('')
@@ -186,7 +188,8 @@ export default function Captura() {
     queryKey: queryKeys.perfil(playerId),
     queryFn: () => getMeuPerfil(playerId),
     enabled: readyForPlayerApi,
-    staleTime: 60 * 1000,
+    staleTime: 5 * 60 * 1000,
+    refetchOnWindowFocus: false,
   })
   const perfil = perfilQuery.data
 
@@ -219,6 +222,7 @@ export default function Captura() {
     [pokemons]
   )
   const pokemon = useMemo(() => pokemons.find((p) => p.id === pokemonId) || null, [pokemons, pokemonId])
+  const perfilChave = perfil?.id || playerId || 'self'
 
   useEffect(() => {
     if (pokebolasDisponiveis.length === 0) {
@@ -233,26 +237,24 @@ export default function Captura() {
 
   useEffect(() => {
     if (!pokemon || !perfil) return
-    if (prefillId === pokemon.id) return
+    const currentKey = `${pokemon.id}:${perfilChave}`
+    if (prefillKey === currentKey) return
     setCaptureForm(buildCaptureForm(pokemon, perfil))
     setChanceEstimada(null)
-    setPrefillId(pokemon.id)
-  }, [pokemon, perfil, prefillId])
+    setPrefillKey(currentKey)
+  }, [pokemon, perfil, perfilChave, prefillKey])
 
   const resetCamposDoBanco = async () => {
     if (!pokemonId) return
     setErro('')
     setMensagem('')
-    const [pokemonsResult, perfilResult] = await Promise.all([
-      pokemonsQuery.refetch(),
-      perfilQuery.refetch(),
-    ])
-    const freshPerfil = perfilResult.data || perfil
-    const freshPokemon = (pokemonsResult.data || []).find((p) => p.id === pokemonId) || pokemon
+    const freshPerfil = perfilQuery.data || perfil
+    const freshPokemon = pokemonsQuery.data?.find((p) => p.id === pokemonId) || pokemon
     if (!freshPokemon || !freshPerfil) return
     setCaptureForm(buildCaptureForm(freshPokemon, freshPerfil))
     setChanceEstimada(null)
-    setPrefillId(freshPokemon.id)
+    setPrefillKey(`${freshPokemon.id}:${freshPerfil.id || playerId || 'self'}`)
+    void perfilQuery.refetch()
   }
 
   const toggleStatus = (statusValue) => {
@@ -299,7 +301,7 @@ export default function Captura() {
 
     if (sucesso) {
       setPokemonId('')
-      setPrefillId('')
+      setPrefillKey('')
       setCaptureForm(null)
       localStorage.removeItem('capturePokemonId')
       setMensagem('Captura bem-sucedida. Pokémon agora pertence ao treinador.')
@@ -493,6 +495,12 @@ export default function Captura() {
             </div>
           </div>
 
+          {captureForm && captureForm.nivelPokemon > captureForm.nivelTreinador && (
+            <p className="capture-v3-muted-italic" style={{ marginTop: '-0.1rem' }}>
+              Penalidade de nível aplicada: -{captureForm.nivelPokemon - captureForm.nivelTreinador} em Domínio e Respeito.
+            </p>
+          )}
+
           <div className="capture-v3-hp-block">
             <div className="capture-v3-hp-label-row">
               <span>HP Alvo</span>
@@ -612,7 +620,8 @@ export default function Captura() {
               Rolagem: <strong>{resultadoModal.rolagemTotal}</strong> = d20 ({resultadoModal.d20})
               {' + '}Domínio ({resultadoModal.dominioEfetivo})
               {' + '}Respeito ({resultadoModal.respeitoEfetivo})
-              {' + '}Bônus manual ({resultadoModal.bonusManualMestre})
+              {' + '}Bônus manual ({resultadoModal.bonusTreinador})
+              {' + '}Vínculo ({resultadoModal.vinculoTreinador})
               {' + '}Bônus status ({resultadoModal.bonusStatus})
             </p>
             <p>
@@ -620,9 +629,9 @@ export default function Captura() {
               {' '}| redução por status: -{resultadoModal.statusCdReducao}
               {' '}| modo manual: {resultadoModal.manualCdOverride ? 'sim' : 'não'}
             </p>
-            {resultadoModal.diferencaNivel > 0 && (
+            {resultadoModal.penalidadeNivel > 0 && (
               <p style={{ color: 'var(--text-muted)' }}>
-                Penalidade de nível aplicada: -{resultadoModal.diferencaNivel} em Domínio e Respeito
+                Penalidade de nível aplicada: -{resultadoModal.penalidadeNivel} em Domínio e Respeito
                 (originais {resultadoModal.dominioOriginal}/{resultadoModal.respeitoOriginal}).
               </p>
             )}
