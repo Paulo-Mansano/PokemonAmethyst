@@ -6,7 +6,9 @@ import com.pokemonamethyst.domain.Movimento;
 import com.pokemonamethyst.domain.PerfilJogador;
 import com.pokemonamethyst.domain.Personalidade;
 import com.pokemonamethyst.domain.PokemonSpecies;
+import com.pokemonamethyst.domain.Usuario;
 import com.pokemonamethyst.repository.PerfilJogadorRepository;
+import com.pokemonamethyst.service.AuthService;
 import com.pokemonamethyst.service.CatalogoService;
 import com.pokemonamethyst.service.PokeApiService;
 import com.pokemonamethyst.service.PokemonService;
@@ -27,6 +29,9 @@ import com.pokemonamethyst.web.dto.PokemonSpeciesResumoDto;
 import com.pokemonamethyst.web.dto.PokemonTiposMestreRequestDto;
 import com.pokemonamethyst.web.dto.PokeApiItemBuscaResponseDto;
 import com.pokemonamethyst.web.dto.PokeApiItemResumoDto;
+import com.pokemonamethyst.web.dto.UsuarioResponseDto;
+import com.pokemonamethyst.web.dto.auth.RegistroRequestDto;
+import jakarta.validation.Valid;
 import org.springframework.http.ResponseEntity;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -51,15 +56,24 @@ public class MestreController {
     private final PokeApiService pokeApiService;
     private final CatalogoService catalogoService;
     private final PokemonSpeciesConfigService speciesConfigService;
+    private final AuthService authService;
 
     public MestreController(PerfilJogadorRepository perfilRepository, PokemonService pokemonService,
                             PokeApiService pokeApiService, CatalogoService catalogoService,
-                            PokemonSpeciesConfigService speciesConfigService) {
+                            PokemonSpeciesConfigService speciesConfigService,
+                            AuthService authService) {
         this.perfilRepository = perfilRepository;
         this.pokemonService = pokemonService;
         this.pokeApiService = pokeApiService;
         this.catalogoService = catalogoService;
         this.speciesConfigService = speciesConfigService;
+        this.authService = authService;
+    }
+
+    @PostMapping("/usuarios/mestre")
+    public ResponseEntity<UsuarioResponseDto> criarContaMestre(@Valid @RequestBody RegistroRequestDto dto) {
+        Usuario usuario = authService.registrarMestre(dto.getNomeUsuario(), dto.getSenha());
+        return ResponseEntity.ok(UsuarioResponseDto.from(usuario));
     }
 
     @PostMapping("/pokeapi/importar-movimentos")
@@ -275,6 +289,13 @@ public class MestreController {
                 dto.getDescricaoEfeito()
         );
         return ResponseEntity.ok(MovimentoResponseDto.from(m));
+    }
+
+    @DeleteMapping("/movimentos/{id}")
+    @Transactional
+    public ResponseEntity<Void> excluirMovimento(@PathVariable String id) {
+        catalogoService.excluirMovimento(id);
+        return ResponseEntity.noContent().build();
     }
 
     @PostMapping("/personalidades")

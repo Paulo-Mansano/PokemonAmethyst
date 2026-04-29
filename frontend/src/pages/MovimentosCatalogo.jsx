@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { getMovimentos, importarMovimentosPokeApi, criarMovimento, atualizarMovimento, getUsuario } from '../api'
+import { getMovimentos, importarMovimentosPokeApi, criarMovimento, atualizarMovimento, excluirMovimento, getUsuario } from '../api'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { queryKeys } from '../query/queryKeys'
 
@@ -60,6 +60,9 @@ export default function MovimentosCatalogo() {
   const [savingEdit, setSavingEdit] = useState(false)
   const [editErro, setEditErro] = useState('')
   const [importing, setImporting] = useState(false)
+  const [busca, setBusca] = useState('')
+  const [filtroTipo, setFiltroTipo] = useState('')
+  const [filtroCategoria, setFiltroCategoria] = useState('')
 
   const userQuery = useQuery({
     queryKey: queryKeys.auth.usuario,
@@ -177,12 +180,37 @@ export default function MovimentosCatalogo() {
     }
   }
 
+  const handleExcluir = async (item) => {
+    if (!item?.id) return
+    const confirmar = window.confirm(`Excluir o movimento \"${item.nome || item.id}\"?\n\nEle também será removido dos vínculos de espécies e de Pokémons que o conhecem.`)
+    if (!confirmar) return
+
+    setErro('')
+    setInfo('')
+    try {
+      await excluirMovimento(item.id)
+      setInfo(`Movimento excluído: ${item.nome || item.id}`)
+      queryClient.invalidateQueries({ queryKey: queryKeys.catalogo.movimentos })
+    } catch (e) {
+      setErro(e.message || 'Erro ao excluir movimento')
+    }
+  }
+
   if (userQuery.isLoading || movimentosQuery.isLoading) {
     return <div className="container">Carregando catálogo de movimentos...</div>
   }
 
   const user = userQuery.data
   const movimentos = movimentosQuery.data || []
+  const termoBusca = (busca || '').trim().toLowerCase()
+  const movimentosFiltrados = movimentos.filter((m) => {
+    if (filtroTipo && m.tipo !== filtroTipo) return false
+    if (filtroCategoria && m.categoria !== filtroCategoria) return false
+    if (!termoBusca) return true
+    const nomePt = (m.nome || '').toLowerCase()
+    const nomeEn = (m.nomeEn || '').toLowerCase()
+    return nomePt.includes(termoBusca) || nomeEn.includes(termoBusca)
+  })
 
   if (!user?.mestre) {
     return (
@@ -227,11 +255,34 @@ export default function MovimentosCatalogo() {
             </button>
           </div>
         </div>
-        {movimentos.length === 0 ? (
+
+        <div style={{ display: 'grid', gridTemplateColumns: '2fr 1fr 1fr', gap: '0.75rem', marginBottom: '1rem' }}>
+          <input
+            type="text"
+            className="input"
+            placeholder="Pesquisar por nome do ataque..."
+            value={busca}
+            onChange={(e) => setBusca(e.target.value)}
+          />
+          <select className="input" value={filtroTipo} onChange={(e) => setFiltroTipo(e.target.value)}>
+            <option value="">Todos os tipos</option>
+            {TIPAGENS.map((t) => (
+              <option key={t} value={t}>{t}</option>
+            ))}
+          </select>
+          <select className="input" value={filtroCategoria} onChange={(e) => setFiltroCategoria(e.target.value)}>
+            <option value="">Todas as categorias</option>
+            {CATEGORIAS.map((c) => (
+              <option key={c} value={c}>{c}</option>
+            ))}
+          </select>
+        </div>
+
+        {movimentosFiltrados.length === 0 ? (
           <p style={{ color: 'var(--text-muted)' }}>Nenhum movimento. Use &quot;Criar movimento&quot; ou &quot;Importar todos da PokéAPI&quot;.</p>
         ) : (
           <div className="movimentos-grid">
-            {movimentos.map((m) => (
+            {movimentosFiltrados.map((m) => (
               <div key={m.id} className="movimento-card card" style={{ background: getMoveCardBackground(m) }}>
                 <div className="movimento-card-header">
                   <h4 className="movimento-card-nome">{m.nome}</h4>
@@ -251,6 +302,9 @@ export default function MovimentosCatalogo() {
                 <div className="movimento-card-actions">
                   <button type="button" className="btn btn-secondary" style={{ fontSize: '0.85rem' }} onClick={() => handleEditar(m)}>
                     Editar
+                  </button>
+                  <button type="button" className="btn btn-danger" style={{ fontSize: '0.85rem' }} onClick={() => handleExcluir(m)}>
+                    Excluir
                   </button>
                 </div>
               </div>

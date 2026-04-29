@@ -12,6 +12,8 @@ import com.pokemonamethyst.repository.ItemRepository;
 import com.pokemonamethyst.repository.MochilaItemRepository;
 import com.pokemonamethyst.repository.MovimentoRepository;
 import com.pokemonamethyst.repository.PersonalidadeRepository;
+import com.pokemonamethyst.repository.PokemonRepository;
+import com.pokemonamethyst.repository.PokemonSpeciesMovimentoRepository;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -25,15 +27,21 @@ public class CatalogoService {
     private final ItemRepository itemRepository;
     private final MochilaItemRepository mochilaItemRepository;
     private final PersonalidadeRepository personalidadeRepository;
+    private final PokemonSpeciesMovimentoRepository speciesMovimentoRepository;
+    private final PokemonRepository pokemonRepository;
 
     public CatalogoService(MovimentoRepository movimentoRepository, HabilidadeRepository habilidadeRepository,
                            ItemRepository itemRepository, MochilaItemRepository mochilaItemRepository,
-                           PersonalidadeRepository personalidadeRepository) {
+                           PersonalidadeRepository personalidadeRepository,
+                           PokemonSpeciesMovimentoRepository speciesMovimentoRepository,
+                           PokemonRepository pokemonRepository) {
         this.movimentoRepository = movimentoRepository;
         this.habilidadeRepository = habilidadeRepository;
         this.itemRepository = itemRepository;
         this.mochilaItemRepository = mochilaItemRepository;
         this.personalidadeRepository = personalidadeRepository;
+        this.speciesMovimentoRepository = speciesMovimentoRepository;
+        this.pokemonRepository = pokemonRepository;
     }
 
     public List<Movimento> listarMovimentos() {
@@ -107,6 +115,14 @@ public class CatalogoService {
         if (dadoDeDano != null) m.setDadoDeDano(dadoDeDano.isBlank() ? null : dadoDeDano);
         if (descricaoEfeito != null) m.setDescricaoEfeito(descricaoEfeito);
         return movimentoRepository.save(m);
+    }
+
+    @Transactional
+    public void excluirMovimento(String id) {
+        Movimento movimento = buscarMovimento(id);
+        speciesMovimentoRepository.deleteByMovimentoId(movimento.getId());
+        pokemonRepository.deleteMovimentoVinculosEmInstancias(movimento.getId());
+        movimentoRepository.delete(movimento);
     }
 
     public List<Personalidade> listarPersonalidades() {

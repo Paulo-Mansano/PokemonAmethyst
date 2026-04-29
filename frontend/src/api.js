@@ -500,6 +500,28 @@ export async function atualizarMovimento(id, body) {
   return res.json();
 }
 
+export async function excluirMovimento(id) {
+  const res = await request(`/mestre/movimentos/${encodeURIComponent(id)}`, {
+    method: 'DELETE',
+  });
+  if (!res.ok) {
+    const data = await res.json().catch(() => ({}));
+    throw new Error(data.mensagem || 'Erro ao excluir movimento');
+  }
+}
+
+export async function criarContaMestre(nomeUsuario, senha) {
+  const res = await request('/mestre/usuarios/mestre', {
+    method: 'POST',
+    body: JSON.stringify({ nomeUsuario, senha, mestre: true }),
+  });
+  if (!res.ok) {
+    const data = await res.json().catch(() => ({}));
+    throw new Error(mensagemErroApi(data) || 'Falha ao criar conta mestre');
+  }
+  return res.json();
+}
+
 export async function getPersonalidades() {
   const res = await request('/personalidades');
   if (!res.ok) throw new Error('Erro ao carregar personalidades');

@@ -32,4 +32,16 @@ public class AuthService {
         usuario.setMestre(false);
         return usuarioRepository.save(usuario);
     }
+
+    @Transactional
+    public Usuario registrarMestre(String nomeUsuario, String senha) {
+        if (usuarioRepository.existsByNomeUsuario(nomeUsuario)) {
+            throw new RegraNegocioException("Nome de usuário já cadastrado.");
+        }
+        Usuario usuario = new Usuario();
+        usuario.setNomeUsuario(nomeUsuario);
+        usuario.setSenhaHash(passwordEncoder.encode(senha));
+        usuario.setMestre(true);
+        return usuarioRepository.save(usuario);
+    }
 }

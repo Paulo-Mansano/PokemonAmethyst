@@ -31,4 +31,8 @@ public interface PokemonSpeciesMovimentoRepository extends JpaRepository<Pokemon
     @Modifying(clearAutomatically = true, flushAutomatically = true)
     @Query("DELETE FROM PokemonSpeciesMovimento m WHERE m.species.id = :speciesId")
     void deleteBySpeciesId(@Param("speciesId") String speciesId);
+
+        @Modifying(clearAutomatically = true, flushAutomatically = true)
+        @Query("DELETE FROM PokemonSpeciesMovimento m WHERE m.movimento.id = :movimentoId")
+        void deleteByMovimentoId(@Param("movimentoId") String movimentoId);
 }

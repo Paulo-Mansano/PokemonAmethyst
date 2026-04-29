@@ -230,15 +230,15 @@ function ExpandedForm({
     + bonusHpStamina)
 
   const atributoRows = [
-    { key: 'atr_ataque', label: 'Ataque', valor: Number(expandedEdit.atrAtaque) || 0, total: Number(expandedEdit.ataque) || 0 },
-    { key: 'atr_defesa', label: 'Defesa', valor: Number(expandedEdit.atrDefesa) || 0, total: Number(expandedEdit.defesa) || 0 },
-    { key: 'atr_ataque_especial', label: 'Ataque especial', valor: Number(expandedEdit.atrAtaqueEspecial) || 0, total: Number(expandedEdit.ataqueEspecial) || 0 },
-    { key: 'atr_defesa_especial', label: 'Defesa especial', valor: Number(expandedEdit.atrDefesaEspecial) || 0, total: Number(expandedEdit.defesaEspecial) || 0 },
-    { key: 'atr_speed', label: 'Velocidade', valor: Number(expandedEdit.atrSpeed) || 0, total: Number(expandedEdit.speed) || 0 },
+    { key: 'atr_ataque', label: 'Ataque', valor: Number(expandedEdit.atrAtaque) || 0, total: Number(expandedEdit.atrAtaque) || 0 },
+    { key: 'atr_defesa', label: 'Defesa', valor: Number(expandedEdit.atrDefesa) || 0, total: Number(expandedEdit.atrDefesa) || 0 },
+    { key: 'atr_ataque_especial', label: 'Ataque especial', valor: Number(expandedEdit.atrAtaqueEspecial) || 0, total: Number(expandedEdit.atrAtaqueEspecial) || 0 },
+    { key: 'atr_defesa_especial', label: 'Defesa especial', valor: Number(expandedEdit.atrDefesaEspecial) || 0, total: Number(expandedEdit.atrDefesaEspecial) || 0 },
+    { key: 'atr_speed', label: 'Velocidade', valor: Number(expandedEdit.atrSpeed) || 0, total: Number(expandedEdit.atrSpeed) || 0 },
     { key: 'atr_hp', label: 'HP investido', valor: Number(expandedEdit.atrHp) || 0, total: hpMaximoRascunho },
     { key: 'atr_stamina', label: 'Stamina investida', valor: Number(expandedEdit.atrStamina) || 0, total: staminaMaximaRascunho },
-    { key: 'atr_tecnica', label: 'Técnica investida', valor: Number(expandedEdit.atrTecnica) || 0, total: Number(expandedEdit.tecnica) || 0 },
-    { key: 'atr_respeito', label: 'Respeito investido', valor: Number(expandedEdit.atrRespeito) || 0, total: Number(expandedEdit.respeito) || 0 },
+    { key: 'atr_tecnica', label: 'Técnica investida', valor: Number(expandedEdit.atrTecnica) || 0, total: Number(expandedEdit.atrTecnica) || 0 },
+    { key: 'atr_respeito', label: 'Respeito investido', valor: Number(expandedEdit.atrRespeito) || 0, total: Number(expandedEdit.atrRespeito) || 0 },
   ]
 
   return (
@@ -1048,13 +1048,6 @@ export default function PokemonList() {
       [campo]: novo,
       pontosDistribuicaoDisponiveis: saldoNovo,
     }
-    if (atributo === 'atr_tecnica') {
-      nextEdit.tecnica = novo
-    }
-    if (atributo === 'atr_respeito') {
-      nextEdit.respeito = novo
-    }
-
     setExpandedEdit(nextEdit)
     setPendingAlocacoes(construirPendenciasAtributo(nextEdit, expandedPokemon))
   }
@@ -1388,8 +1381,6 @@ export default function PokemonList() {
         pokebolaCaptura: expandedEdit.pokebolaCaptura || undefined,
         itemSeguradoId: expandedEdit.itemSeguradoId || null,
         spriteCustomizadoUrl: expandedEdit.spriteCustomizadoUrl || null,
-        tecnica: expandedEdit.tecnica,
-        respeito: expandedEdit.respeito,
         pontosDistribuicaoBonus: Math.max(0, Number(bonusDistribuicao) || 0),
         habilidadeId: expandedEdit.habilidadeId || null,
         statusAtuais: expandedEdit.statusAtuais?.length ? expandedEdit.statusAtuais : null,

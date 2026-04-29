@@ -22,6 +22,7 @@ const navItemsMestre = [
   { to: '/habilidades', end: false, label: 'Habilidades', title: 'Catálogo de habilidades', icon: IconSpark },
   { to: '/movimentos', end: false, label: 'Ataques/Movimentos', title: 'Catálogo de ataques e movimentos', icon: IconMove },
   { to: '/personalidades', end: false, label: 'Personalidade', title: 'Catálogo de personalidades', icon: IconSmile },
+  { to: '/mestres', end: false, label: 'Contas Mestre', title: 'Criar outras contas mestre', icon: IconUser },
 ]
 
 function IconUser() {

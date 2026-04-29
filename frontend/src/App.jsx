@@ -9,6 +9,7 @@ import ItensCatalogo from './pages/ItensCatalogo'
 import HabilidadesCatalogo from './pages/HabilidadesCatalogo'
 import MovimentosCatalogo from './pages/MovimentosCatalogo'
 import PersonalidadesCatalogo from './pages/PersonalidadesCatalogo'
+import ContasMestre from './pages/ContasMestre'
 import Geracao from './pages/Geracao'
 import Captura from './pages/Captura'
 import MestreSpecies from './pages/MestreSpecies'
@@ -68,6 +69,7 @@ export default function App() {
         <Route path="itens" element={<ItensCatalogo />} />
         <Route path="habilidades" element={<HabilidadesCatalogo />} />
         <Route path="movimentos" element={<MovimentosCatalogo />} />
+        <Route path="mestres" element={user?.mestre ? <ContasMestre /> : <Navigate to="/" replace />} />
         <Route path="personalidades" element={<PersonalidadesCatalogo />} />
         <Route path="species" element={<MestreSpecies />} />
         <Route path="geracao" element={user?.mestre ? <Geracao /> : <Navigate to="/" replace />} />

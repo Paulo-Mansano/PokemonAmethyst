@@ -4,6 +4,7 @@ import com.pokemonamethyst.domain.Pokemon;
 import com.pokemonamethyst.domain.OrigemPokemon;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
+import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.repository.query.Param;
 
 import java.util.List;
@@ -102,4 +103,8 @@ public interface PokemonRepository extends JpaRepository<Pokemon, String> {
             @Param("id") String id,
             @Param("perfilId") String perfilId,
             @Param("origem") OrigemPokemon origem);
+
+        @Modifying(clearAutomatically = true, flushAutomatically = true)
+        @Query(value = "DELETE FROM pokemon_instance_movimento WHERE movimento_id = :movimentoId", nativeQuery = true)
+        void deleteMovimentoVinculosEmInstancias(@Param("movimentoId") String movimentoId);
 }

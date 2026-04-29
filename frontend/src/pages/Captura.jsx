@@ -392,13 +392,19 @@ export default function Captura() {
             </div>
             <div className="capture-v3-trainer-grid">
               <NumericStepper
-                label="DOMINIO"
+                label="NIVEL"
+                min={1}
+                value={captureForm?.nivelTreinador ?? 1}
+                onChange={(v) => onChangeCampo('nivelTreinador', v)}
+              />
+              <NumericStepper
+                label="DOMINIO (base)"
                 min={1}
                 value={captureForm?.dominioTreinador ?? 1}
                 onChange={(v) => onChangeCampo('dominioTreinador', v)}
               />
               <NumericStepper
-                label="RESPEITO"
+                label="RESPEITO (base)"
                 min={1}
                 value={captureForm?.respeitoTreinador ?? 1}
                 onChange={(v) => onChangeCampo('respeitoTreinador', v)}
@@ -415,6 +421,18 @@ export default function Captura() {
                 value={captureForm?.bonusTreinador ?? 0}
                 onChange={(v) => onChangeCampo('bonusTreinador', v)}
               />
+              {captureForm && captureForm.nivelPokemon > captureForm.nivelTreinador && (
+                <>
+                  <div style={{ gridColumn: '1 / -1', fontSize: '0.85rem', color: 'var(--text-muted)', marginTop: '0.25rem' }}>
+                    <p style={{ margin: '0.25rem 0' }}>
+                      <strong>Domínio efetivo:</strong> {Math.max(1, (captureForm.dominioTreinador || 1) - (captureForm.nivelPokemon - captureForm.nivelTreinador))}
+                    </p>
+                    <p style={{ margin: '0.25rem 0' }}>
+                      <strong>Respeito efetivo:</strong> {Math.max(1, (captureForm.respeitoTreinador || 1) - (captureForm.nivelPokemon - captureForm.nivelTreinador))}
+                    </p>
+                  </div>
+                </>
+              )}
             </div>
           </div>
 
