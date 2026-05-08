@@ -130,7 +130,8 @@ public class PokemonService {
                 100,
                 null,
                 null,
-                nivelFinal
+                nivelFinal,
+                null
         );
         pokemon.setOrigem(OrigemPokemon.SELVAGEM);
         pokemon.setEstado(EstadoPokemon.ATIVO);
@@ -181,7 +182,7 @@ public class PokemonService {
     @Transactional
     public Pokemon criar(String perfilId, Integer pokedexId, String apelido, Genero genero, Pokebola pokebolaCaptura,
                          int staminaMaxima, List<String> movimentoIds,
-                         String personalidadeId, Integer nivelInicial) {
+                         String personalidadeId, Integer nivelInicial, Integer pontosDistribuicaoInicial) {
         if (pokedexId == null || pokedexId <= 0) {
             throw new RegraNegocioException("Para criar um Pokémon, informe um pokedexId válido da PokéAPI.");
         }
@@ -222,6 +223,18 @@ public class PokemonService {
         pokemon.setOrigem(OrigemPokemon.TREINADOR);
         pokemon.setEstado(EstadoPokemon.ATIVO);
         pokemonGenerationService.inicializarPokemonNovo(pokemon);
+        // Caso o chamador tenha especificado um valor de pontos iniciais, valide e aplique
+        if (pontosDistribuicaoInicial != null) {
+            PokemonIVClass classe = pokemon.getIvClass();
+            if (classe == null) classe = PokemonIVClass.fromBst(0);
+            int min = classe.getPontosMin();
+            int max = classe.getPontosMax();
+            int solicitado = Math.max(0, pontosDistribuicaoInicial);
+            if (solicitado < min || solicitado > max) {
+                throw new RegraNegocioException("pontosDistribuicaoInicial fora do intervalo permitido para a classe IV: " + min + "-" + max);
+            }
+            pokemon.setPontosDistribuicaoDisponiveis(solicitado);
+        }
         if (nivelBase > NIVEL_INICIAL) {
             pokemonStatService.concederPontosPorNivel(pokemon, NIVEL_INICIAL, nivelBase);
         }

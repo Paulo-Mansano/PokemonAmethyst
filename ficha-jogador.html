@@ -1,0 +1,873 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Ficha do Treinador</title>
+<link href="https://fonts.googleapis.com/css2?family=Rajdhani:wght@400;500;600;700&family=Oxanium:wght@300;400;500;600;700&family=Press+Start+2P&display=swap" rel="stylesheet">
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  :root {
+    --bg-deep:    #0b0e1a;
+    --bg-card:    #111525;
+    --bg-raised:  #171d35;
+    --bg-input:   #0e1220;
+    --border:     rgba(255,255,255,0.07);
+    --border-glow:rgba(255,218,0,0.3);
+
+    --yellow:     #FFDA00;
+    --yellow-dim: #b89d00;
+    --red:        #FF4655;
+    --blue:       #4FC3F7;
+    --green:      #4ADE80;
+    --purple:     #a78bfa;
+    --orange:     #FB923C;
+
+    --text-primary:   #F0EEE8;
+    --text-secondary: #8A91A8;
+    --text-muted:     #4A5068;
+
+    --font-display: 'Oxanium', sans-serif;
+    --font-body:    'Rajdhani', sans-serif;
+    --font-pixel:   'Press Start 2P', monospace;
+
+    --radius-sm: 6px;
+    --radius-md: 10px;
+    --radius-lg: 16px;
+  }
+
+  body {
+    background: var(--bg-deep);
+    color: var(--text-primary);
+    font-family: var(--font-body);
+    font-size: 16px;
+    min-height: 100vh;
+    padding: 2rem 1rem;
+  }
+
+  body::before {
+    content: '';
+    position: fixed;
+    inset: 0;
+    background:
+      radial-gradient(ellipse 60% 40% at 80% 10%, rgba(255,218,0,0.04) 0%, transparent 60%),
+      radial-gradient(ellipse 50% 50% at 10% 90%, rgba(79,195,247,0.04) 0%, transparent 60%);
+    pointer-events: none;
+    z-index: 0;
+  }
+
+  .page {
+    max-width: 900px;
+    margin: 0 auto;
+    position: relative;
+    z-index: 1;
+  }
+
+  /* ── Header ─────────────────────────────── */
+  .page-header {
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+    margin-bottom: 2rem;
+  }
+
+  .pokeball-icon {
+    width: 36px;
+    height: 36px;
+    flex-shrink: 0;
+  }
+
+  .page-title {
+    font-family: var(--font-pixel);
+    font-size: 11px;
+    color: var(--yellow);
+    letter-spacing: 0.08em;
+    line-height: 1.6;
+  }
+
+  .page-subtitle {
+    font-family: var(--font-display);
+    font-size: 13px;
+    color: var(--text-muted);
+    letter-spacing: 0.15em;
+    text-transform: uppercase;
+  }
+
+  /* ── Cards ───────────────────────────────── */
+  .card {
+    background: var(--bg-card);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-lg);
+    padding: 1.5rem;
+    margin-bottom: 1rem;
+    position: relative;
+    overflow: hidden;
+  }
+
+  .card::before {
+    content: '';
+    position: absolute;
+    top: 0; left: 0; right: 0;
+    height: 2px;
+    background: linear-gradient(90deg, transparent, var(--yellow), transparent);
+    opacity: 0.4;
+  }
+
+  .card-title {
+    font-family: var(--font-display);
+    font-size: 11px;
+    font-weight: 600;
+    letter-spacing: 0.2em;
+    text-transform: uppercase;
+    color: var(--yellow);
+    margin-bottom: 1.25rem;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+
+  .card-title svg {
+    width: 14px;
+    height: 14px;
+    opacity: 0.8;
+  }
+
+  /* ── Identity row ────────────────────────── */
+  .identity-grid {
+    display: grid;
+    grid-template-columns: 1fr auto;
+    gap: 1rem;
+    align-items: end;
+  }
+
+  .field-label {
+    font-family: var(--font-display);
+    font-size: 11px;
+    letter-spacing: 0.18em;
+    text-transform: uppercase;
+    color: var(--text-muted);
+    margin-bottom: 6px;
+  }
+
+  input[type="text"],
+  input[type="number"],
+  select {
+    background: var(--bg-input);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-sm);
+    color: var(--text-primary);
+    font-family: var(--font-display);
+    font-size: 15px;
+    font-weight: 500;
+    padding: 10px 14px;
+    width: 100%;
+    transition: border-color 0.2s, box-shadow 0.2s;
+    outline: none;
+    -webkit-appearance: none;
+    appearance: none;
+  }
+
+  input[type="text"]:focus,
+  input[type="number"]:focus,
+  select:focus {
+    border-color: rgba(255,218,0,0.4);
+    box-shadow: 0 0 0 3px rgba(255,218,0,0.06);
+  }
+
+  select {
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 12 8'%3E%3Cpath d='M1 1l5 5 5-5' stroke='%238A91A8' stroke-width='1.5' fill='none' stroke-linecap='round'/%3E%3C/svg%3E");
+    background-repeat: no-repeat;
+    background-position: right 12px center;
+    background-size: 12px;
+    padding-right: 36px;
+    cursor: pointer;
+  }
+
+  .class-badge {
+    background: rgba(255,218,0,0.1);
+    border: 1px solid rgba(255,218,0,0.25);
+    border-radius: var(--radius-sm);
+    color: var(--yellow);
+    font-family: var(--font-display);
+    font-size: 13px;
+    font-weight: 700;
+    letter-spacing: 0.1em;
+    padding: 10px 16px;
+    white-space: nowrap;
+  }
+
+  /* ── Level & XP ──────────────────────────── */
+  .level-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 10px;
+  }
+
+  .level-badge {
+    font-family: var(--font-pixel);
+    font-size: 9px;
+    color: var(--yellow);
+    background: rgba(255,218,0,0.08);
+    border: 1px solid rgba(255,218,0,0.2);
+    border-radius: var(--radius-sm);
+    padding: 6px 12px;
+    letter-spacing: 0.05em;
+  }
+
+  .xp-label {
+    font-family: var(--font-display);
+    font-size: 12px;
+    color: var(--text-muted);
+    letter-spacing: 0.1em;
+  }
+
+  .xp-track {
+    background: var(--bg-input);
+    border-radius: 99px;
+    height: 8px;
+    overflow: hidden;
+    margin-bottom: 1rem;
+    border: 1px solid var(--border);
+  }
+
+  .xp-fill {
+    height: 100%;
+    border-radius: 99px;
+    background: linear-gradient(90deg, #b89d00, var(--yellow));
+    transition: width 0.6s cubic-bezier(0.34, 1.56, 0.64, 1);
+    position: relative;
+  }
+
+  .xp-fill::after {
+    content: '';
+    position: absolute;
+    right: 0;
+    top: 0; bottom: 0;
+    width: 16px;
+    background: rgba(255,255,255,0.35);
+    filter: blur(3px);
+  }
+
+  .xp-input-row {
+    display: flex;
+    gap: 8px;
+  }
+
+  .xp-input-row input {
+    flex: 1;
+  }
+
+  .btn {
+    background: var(--yellow);
+    border: none;
+    border-radius: var(--radius-sm);
+    color: #0b0e1a;
+    cursor: pointer;
+    font-family: var(--font-display);
+    font-size: 13px;
+    font-weight: 700;
+    letter-spacing: 0.1em;
+    padding: 0 18px;
+    transition: filter 0.15s, transform 0.1s;
+    white-space: nowrap;
+    flex-shrink: 0;
+  }
+
+  .btn:hover { filter: brightness(1.1); }
+  .btn:active { transform: scale(0.97); }
+
+  .btn-outline {
+    background: transparent;
+    border: 1px solid var(--border);
+    color: var(--text-secondary);
+  }
+
+  .btn-outline:hover {
+    border-color: rgba(255,218,0,0.3);
+    color: var(--yellow);
+    filter: none;
+  }
+
+  .btn-save {
+    background: var(--yellow);
+    color: #0b0e1a;
+    padding: 12px 28px;
+    font-size: 14px;
+    border-radius: var(--radius-md);
+    margin-top: 0.5rem;
+  }
+
+  /* ── Recursos ────────────────────────────── */
+  .money-row {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+  }
+
+  .money-symbol {
+    font-family: var(--font-display);
+    font-size: 18px;
+    font-weight: 700;
+    color: var(--yellow);
+    background: rgba(255,218,0,0.08);
+    border: 1px solid rgba(255,218,0,0.2);
+    border-radius: var(--radius-sm);
+    padding: 8px 14px;
+  }
+
+  .money-row input {
+    width: 140px;
+  }
+
+  /* ── Derived stats ───────────────────────── */
+  .derived-grid {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 1rem;
+  }
+
+  .derived-stat {
+    background: var(--bg-raised);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-md);
+    padding: 1rem 1.25rem;
+    position: relative;
+    overflow: hidden;
+  }
+
+  .derived-stat::before {
+    content: '';
+    position: absolute;
+    bottom: 0; left: 0;
+    width: 100%;
+    height: 2px;
+  }
+
+  .derived-stat.hp::before    { background: var(--red); }
+  .derived-stat.stamina::before { background: var(--blue); }
+  .derived-stat.hab::before   { background: var(--green); }
+
+  .derived-label {
+    font-family: var(--font-display);
+    font-size: 11px;
+    letter-spacing: 0.2em;
+    text-transform: uppercase;
+    color: var(--text-secondary);
+    margin-bottom: 8px;
+  }
+
+  .derived-value {
+    font-family: var(--font-pixel);
+    font-size: 20px;
+    line-height: 1;
+  }
+
+  .derived-stat.hp    .derived-value { color: var(--red); }
+  .derived-stat.stamina .derived-value { color: var(--blue); }
+  .derived-stat.hab   .derived-value { color: var(--green); }
+
+  /* ── Base attrs ──────────────────────────── */
+  .points-info {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin-bottom: 1.25rem;
+    font-family: var(--font-display);
+    font-size: 13px;
+    color: var(--text-secondary);
+  }
+
+  .points-badge {
+    background: rgba(167,139,250,0.12);
+    border: 1px solid rgba(167,139,250,0.25);
+    border-radius: 99px;
+    color: var(--purple);
+    font-weight: 700;
+    font-size: 14px;
+    padding: 2px 12px;
+  }
+
+  .attrs-grid {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 10px;
+  }
+
+  .attr-card {
+    background: var(--bg-raised);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-md);
+    padding: 12px;
+    transition: border-color 0.2s;
+  }
+
+  .attr-card:hover {
+    border-color: rgba(255,218,0,0.2);
+  }
+
+  .attr-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 10px;
+  }
+
+  .attr-name {
+    font-family: var(--font-display);
+    font-size: 11px;
+    font-weight: 600;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    color: var(--text-secondary);
+  }
+
+  .attr-val {
+    font-family: var(--font-pixel);
+    font-size: 11px;
+    color: var(--yellow);
+  }
+
+  .star-badge {
+    font-size: 12px;
+    line-height: 1;
+    margin-left: 2px;
+  }
+
+  .attr-controls {
+    display: flex;
+    gap: 6px;
+    align-items: center;
+  }
+
+  .attr-controls input {
+    flex: 1;
+    padding: 6px 8px;
+    font-size: 14px;
+    min-width: 0;
+    text-align: center;
+  }
+
+  .add-btn {
+    background: rgba(167,139,250,0.12);
+    border: 1px solid rgba(167,139,250,0.25);
+    border-radius: var(--radius-sm);
+    color: var(--purple);
+    cursor: pointer;
+    font-family: var(--font-display);
+    font-size: 11px;
+    font-weight: 700;
+    padding: 6px 8px;
+    transition: background 0.15s, transform 0.1s;
+    white-space: nowrap;
+    flex-shrink: 0;
+  }
+
+  .add-btn:hover { background: rgba(167,139,250,0.22); }
+  .add-btn:active { transform: scale(0.96); }
+
+  .add-btn.double {
+    background: rgba(255,218,0,0.08);
+    border-color: rgba(255,218,0,0.2);
+    color: var(--yellow);
+  }
+
+  .add-btn.double:hover { background: rgba(255,218,0,0.16); }
+
+  /* ── Team ────────────────────────────────── */
+  .team-title {
+    font-family: var(--font-display);
+    font-size: 11px;
+    font-weight: 600;
+    letter-spacing: 0.2em;
+    text-transform: uppercase;
+    color: var(--text-muted);
+    margin-bottom: 1rem;
+  }
+
+  .team-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(130px, 1fr));
+    gap: 10px;
+  }
+
+  .team-slot {
+    background: var(--bg-raised);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-md);
+    padding: 12px 14px;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    transition: border-color 0.2s;
+    cursor: default;
+  }
+
+  .team-slot:hover {
+    border-color: rgba(255,218,0,0.2);
+  }
+
+  .slot-ball {
+    width: 28px;
+    height: 28px;
+    flex-shrink: 0;
+  }
+
+  .slot-info {}
+
+  .slot-name {
+    font-family: var(--font-display);
+    font-size: 13px;
+    font-weight: 600;
+    color: var(--text-primary);
+    line-height: 1.2;
+  }
+
+  .slot-level {
+    font-family: var(--font-display);
+    font-size: 11px;
+    color: var(--text-muted);
+    margin-top: 1px;
+  }
+
+  .slot-empty {
+    opacity: 0.3;
+    font-family: var(--font-display);
+    font-size: 12px;
+    color: var(--text-muted);
+    text-align: center;
+    width: 100%;
+  }
+
+  /* ── Divider ─────────────────────────────── */
+  hr {
+    border: none;
+    border-top: 1px solid var(--border);
+    margin: 1.25rem 0;
+  }
+
+  /* ── Responsive ──────────────────────────── */
+  @media (max-width: 680px) {
+    .attrs-grid { grid-template-columns: repeat(2, 1fr); }
+    .derived-grid { grid-template-columns: 1fr; }
+    .identity-grid { grid-template-columns: 1fr; }
+  }
+
+  /* ── Animations ──────────────────────────── */
+  @keyframes fadeSlide {
+    from { opacity: 0; transform: translateY(12px); }
+    to   { opacity: 1; transform: translateY(0); }
+  }
+
+  .card {
+    animation: fadeSlide 0.35s ease both;
+  }
+  .card:nth-child(1) { animation-delay: 0.05s; }
+  .card:nth-child(2) { animation-delay: 0.10s; }
+  .card:nth-child(3) { animation-delay: 0.15s; }
+  .card:nth-child(4) { animation-delay: 0.20s; }
+  .card:nth-child(5) { animation-delay: 0.25s; }
+</style>
+</head>
+<body>
+
+<div class="page">
+
+  <!-- Header -->
+  <div class="page-header">
+    <svg class="pokeball-icon" viewBox="0 0 40 40" fill="none" xmlns="http://www.w3.org/2000/svg">
+      <circle cx="20" cy="20" r="19" stroke="#FFDA00" stroke-width="1.5" fill="none"/>
+      <path d="M1 20h38" stroke="#FFDA00" stroke-width="1.2"/>
+      <path d="M1 20a19 19 0 0 1 38 0" fill="rgba(255,218,0,0.08)"/>
+      <circle cx="20" cy="20" r="5.5" stroke="#FFDA00" stroke-width="1.5" fill="#0b0e1a"/>
+      <circle cx="20" cy="20" r="2.5" fill="#FFDA00"/>
+    </svg>
+    <div>
+      <div class="page-title">FICHA DO TREINADOR</div>
+      <div class="page-subtitle">Sistema de RPG Pokémon</div>
+    </div>
+  </div>
+
+  <!-- Identidade -->
+  <div class="card">
+    <div class="card-title">
+      <svg viewBox="0 0 14 14" fill="none"><circle cx="7" cy="4.5" r="2.5" stroke="currentColor" stroke-width="1.2"/><path d="M2 12c0-2.76 2.24-5 5-5s5 2.24 5 5" stroke="currentColor" stroke-width="1.2" stroke-linecap="round"/></svg>
+      Identidade
+    </div>
+
+    <div class="identity-grid">
+      <div>
+        <div class="field-label">Nome do Personagem</div>
+        <input type="text" id="nome" value="Paulo" />
+      </div>
+      <div>
+        <div class="field-label">Classe</div>
+        <select id="classe">
+          <option value="TREINADOR" selected>TREINADOR</option>
+          <option value="PESQUISADOR">PESQUISADOR</option>
+          <option value="RANGER">RANGER</option>
+          <option value="COORDENADOR">COORDENADOR</option>
+          <option value="ESPECIALISTA">ESPECIALISTA</option>
+        </select>
+      </div>
+    </div>
+  </div>
+
+  <!-- XP e Nível -->
+  <div class="card">
+    <div class="card-title">
+      <svg viewBox="0 0 14 14" fill="none"><path d="M7 1l1.6 3.6L13 5.2l-3 3 .7 4.2L7 10.5l-3.7 1.9.7-4.2-3-3L5.4 4.6z" stroke="currentColor" stroke-width="1.1" stroke-linejoin="round"/></svg>
+      Experiência e Nível
+    </div>
+
+    <div class="level-row">
+      <div class="level-badge" id="nivel-label">NÍVEL 1</div>
+      <div class="xp-label" id="xp-label">0 / 20 XP</div>
+    </div>
+    <div class="xp-track">
+      <div class="xp-fill" id="xp-fill" style="width: 0%"></div>
+    </div>
+    <div class="xp-input-row">
+      <input type="number" id="xp-input" placeholder="Quantidade de XP" min="0" />
+      <button class="btn" onclick="ganharXP()">+ XP</button>
+    </div>
+  </div>
+
+  <!-- Recursos -->
+  <div class="card">
+    <div class="card-title">
+      <svg viewBox="0 0 14 14" fill="none"><circle cx="7" cy="7" r="5.5" stroke="currentColor" stroke-width="1.2"/><path d="M7 3.5v7M5 5.5c0-.83.67-1.5 1.5-1.5h1.2c.72 0 1.3.58 1.3 1.3 0 .6-.4 1.12-.97 1.27L6.5 7c-.6.17-1 .7-1 1.32 0 .76.62 1.18 1.5 1.18h1.5" stroke="currentColor" stroke-width="1.1" stroke-linecap="round"/></svg>
+      Recursos
+    </div>
+
+    <div class="field-label">Pokédólares</div>
+    <div class="money-row">
+      <div class="money-symbol">₽</div>
+      <input type="number" id="dinheiro" value="0" min="0" style="width: 160px;" />
+    </div>
+  </div>
+
+  <!-- Atributos Derivados -->
+  <div class="card">
+    <div class="card-title">
+      <svg viewBox="0 0 14 14" fill="none"><path d="M2 11L7 3l5 8H2z" stroke="currentColor" stroke-width="1.2" stroke-linejoin="round"/></svg>
+      Atributos Derivados
+    </div>
+    <div class="derived-grid">
+      <div class="derived-stat hp">
+        <div class="derived-label">HP Máximo</div>
+        <div class="derived-value" id="hp-val">21</div>
+      </div>
+      <div class="derived-stat stamina">
+        <div class="derived-label">Stamina Máxima</div>
+        <div class="derived-value" id="stamina-val">21</div>
+      </div>
+      <div class="derived-stat hab">
+        <div class="derived-label">Habilidade</div>
+        <div class="derived-value" id="hab-val">2</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Atributos Base -->
+  <div class="card">
+    <div class="card-title">
+      <svg viewBox="0 0 14 14" fill="none"><rect x="2" y="2" width="10" height="10" rx="1.5" stroke="currentColor" stroke-width="1.2"/><path d="M5 7h4M7 5v4" stroke="currentColor" stroke-width="1.2" stroke-linecap="round"/></svg>
+      Atributos Base
+    </div>
+
+    <div class="points-info">
+      Pontos disponíveis: <span class="points-badge" id="pts-badge">20</span>
+    </div>
+
+    <div class="attrs-grid" id="attrs-grid">
+      <!-- Gerado por JS -->
+    </div>
+  </div>
+
+  <!-- Salvar -->
+  <div style="display:flex; gap:10px; margin-bottom:1.5rem;">
+    <button class="btn btn-save" onclick="salvar()">Salvar ficha</button>
+    <button class="btn btn-outline" onclick="resetar()" style="padding:12px 20px; border-radius:10px; font-size:14px;">Resetar</button>
+  </div>
+
+  <!-- Time -->
+  <div class="card">
+    <div class="card-title">
+      <svg viewBox="0 0 14 14" fill="none"><circle cx="4" cy="7" r="2.5" stroke="currentColor" stroke-width="1.2"/><circle cx="10" cy="7" r="2.5" stroke="currentColor" stroke-width="1.2"/><path d="M6.5 7h1" stroke="currentColor" stroke-width="1.2" stroke-linecap="round"/></svg>
+      Time Principal
+    </div>
+    <div class="team-grid" id="team-grid">
+      <!-- Gerado por JS -->
+    </div>
+  </div>
+
+</div>
+
+<script>
+const ATTRS = [
+  { id: 'forca',      nome: 'Força',      star: false, custo: 1 },
+  { id: 'speed',      nome: 'Speed',      star: false, custo: 1 },
+  { id: 'int',        nome: 'Inteligência',star: false, custo: 1 },
+  { id: 'tecnica',    nome: 'Técnica',    star: false, custo: 1 },
+  { id: 'sabedoria',  nome: 'Sabedoria',  star: false, custo: 1 },
+  { id: 'percepcao',  nome: 'Percepção',  star: true,  custo: 2 },
+  { id: 'dominio',    nome: 'Domínio',    star: true,  custo: 2 },
+  { id: 'respeito',   nome: 'Respeito',   star: true,  custo: 2 },
+];
+
+const TEAM = [
+  { nome: 'Cottonee', nivel: 1 },
+  { nome: 'Chimchar', nivel: 5 },
+  { nome: 'Meowth',   nivel: 5 },
+  { nome: 'Bonsly',   nivel: 1 },
+  { nome: 'Yamask',   nivel: 5 },
+];
+
+const XP_TABLE = [20,40,80,160,320,640,1280,2560,5120,10240];
+
+let state = {
+  nivel: 1,
+  xp: 0,
+  pontos: 20,
+  attrs: Object.fromEntries(ATTRS.map(a => [a.id, 1])),
+};
+
+function xpParaNivel(n) { return XP_TABLE[Math.min(n-1, XP_TABLE.length-1)]; }
+
+function derivados() {
+  const a = state.attrs;
+  document.getElementById('hp-val').textContent = 20 + a.forca + (state.nivel * 2);
+  document.getElementById('stamina-val').textContent = 20 + a.forca + (state.nivel * 2);
+  document.getElementById('hab-val').textContent = Math.max(1, Math.floor((a.int + a.tecnica) / 4));
+}
+
+function atualizarXP() {
+  const necessario = xpParaNivel(state.nivel);
+  const pct = Math.min(100, (state.xp / necessario) * 100);
+  document.getElementById('xp-fill').style.width = pct + '%';
+  document.getElementById('nivel-label').textContent = 'NÍVEL ' + state.nivel;
+  document.getElementById('xp-label').textContent = state.xp + ' / ' + necessario + ' XP';
+}
+
+function ganharXP() {
+  const input = document.getElementById('xp-input');
+  const val = parseInt(input.value);
+  if (!val || val <= 0) return;
+  state.xp += val;
+  input.value = '';
+  let necessario = xpParaNivel(state.nivel);
+  while (state.xp >= necessario && state.nivel < 10) {
+    state.xp -= necessario;
+    state.nivel++;
+    necessario = xpParaNivel(state.nivel);
+  }
+  atualizarXP();
+  derivados();
+}
+
+function addAttr(id, custo) {
+  if (state.pontos < custo) return;
+  state.attrs[id]++;
+  state.pontos -= custo;
+  document.getElementById('pts-badge').textContent = state.pontos;
+  document.getElementById('attr-val-' + id).textContent = state.attrs[id];
+  document.getElementById('attr-input-' + id).value = state.attrs[id];
+  derivados();
+}
+
+function buildAttrs() {
+  const grid = document.getElementById('attrs-grid');
+  grid.innerHTML = '';
+  ATTRS.forEach(a => {
+    const div = document.createElement('div');
+    div.className = 'attr-card';
+    div.innerHTML = `
+      <div class="attr-header">
+        <div class="attr-name">${a.nome}${a.star ? ' <span class="star-badge">⭐</span>' : ''}</div>
+        <div class="attr-val" id="attr-val-${a.id}">${state.attrs[a.id]}</div>
+      </div>
+      <div class="attr-controls">
+        <input type="number" id="attr-input-${a.id}" value="${state.attrs[a.id]}" min="1" onchange="setAttr('${a.id}', this.value)"/>
+        <button class="add-btn${a.custo > 1 ? ' double' : ''}" onclick="addAttr('${a.id}', ${a.custo})">
+          +1 <span style="opacity:.6;font-size:9px;">(${a.custo}pt)</span>
+        </button>
+      </div>
+    `;
+    grid.appendChild(div);
+  });
+}
+
+function setAttr(id, val) {
+  const novo = Math.max(1, parseInt(val) || 1);
+  const attr = ATTRS.find(a => a.id === id);
+  const diff = novo - state.attrs[id];
+  const custo = diff * attr.custo;
+  if (diff > 0 && state.pontos < custo) {
+    document.getElementById('attr-input-' + id).value = state.attrs[id];
+    return;
+  }
+  state.pontos -= custo;
+  state.attrs[id] = novo;
+  document.getElementById('attr-val-' + id).textContent = novo;
+  document.getElementById('pts-badge').textContent = state.pontos;
+  derivados();
+}
+
+function buildTeam() {
+  const grid = document.getElementById('team-grid');
+  grid.innerHTML = '';
+  for (let i = 0; i < 6; i++) {
+    const poke = TEAM[i];
+    const div = document.createElement('div');
+    div.className = 'team-slot';
+    if (poke) {
+      div.innerHTML = `
+        <svg class="slot-ball" viewBox="0 0 28 28" fill="none">
+          <circle cx="14" cy="14" r="13" stroke="#FFDA00" stroke-width="1" fill="none"/>
+          <path d="M1 14h26" stroke="#FFDA00" stroke-width="0.8"/>
+          <path d="M1 14a13 13 0 0 1 26 0" fill="rgba(255,218,0,0.06)"/>
+          <circle cx="14" cy="14" r="4" stroke="#FFDA00" stroke-width="1" fill="#0b0e1a"/>
+          <circle cx="14" cy="14" r="1.8" fill="#FFDA00"/>
+        </svg>
+        <div class="slot-info">
+          <div class="slot-name">${poke.nome}</div>
+          <div class="slot-level">Nv. ${poke.nivel}</div>
+        </div>
+      `;
+    } else {
+      div.innerHTML = '<div class="slot-empty">— vazio —</div>';
+      div.style.opacity = '0.3';
+    }
+    grid.appendChild(div);
+  }
+}
+
+function salvar() {
+  const btn = event.target;
+  const orig = btn.textContent;
+  btn.textContent = '✓ Salvo!';
+  btn.style.background = 'var(--green)';
+  setTimeout(() => {
+    btn.textContent = orig;
+    btn.style.background = 'var(--yellow)';
+  }, 1800);
+}
+
+function resetar() {
+  if (!confirm('Resetar todos os atributos?')) return;
+  state.pontos = 20;
+  ATTRS.forEach(a => state.attrs[a.id] = 1);
+  document.getElementById('pts-badge').textContent = 20;
+  buildAttrs();
+  derivados();
+}
+
+buildAttrs();
+buildTeam();
+atualizarXP();
+derivados();
+</script>
+</body>
+</html>

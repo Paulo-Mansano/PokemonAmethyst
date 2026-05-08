@@ -72,6 +72,7 @@ class PokemonServiceTest {
                 10,
                 null,
                 null,
+                null,
                 null
         )).isInstanceOf(com.pokemonamethyst.exception.RegraNegocioException.class)
                 .hasMessageContaining("pokedexId");
@@ -144,6 +145,7 @@ class PokemonServiceTest {
                 null,
                 null,
                 10,
+                null,
                 null,
                 null,
                 null
@@ -237,7 +239,8 @@ class PokemonServiceTest {
                                 10,
                                 null,
                                 null,
-                                5
+                                5,
+                                null
                 );
 
                 assertThat(criado.getNivel()).isEqualTo(5);

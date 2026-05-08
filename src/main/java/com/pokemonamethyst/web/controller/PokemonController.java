@@ -81,15 +81,16 @@ public class PokemonController {
             @Valid @RequestBody PokemonRequestDto dto) {
         String perfilId = perfilService.resolvePerfilId(principal, playerId);
         Pokemon pokemon = pokemonService.criar(
-                perfilId,
-                dto.getPokedexId(),
-                dto.getApelido(),
-                dto.getGenero(),
-                dto.getPokebolaCaptura(),
-                dto.getStaminaMaximaOrDefault(),
-                dto.getMovimentoIds(),
-                dto.getPersonalidadeId(),
-                dto.getNivel()
+            perfilId,
+            dto.getPokedexId(),
+            dto.getApelido(),
+            dto.getGenero(),
+            dto.getPokebolaCaptura(),
+            dto.getStaminaMaximaOrDefault(),
+            dto.getMovimentoIds(),
+            dto.getPersonalidadeId(),
+            dto.getNivel(),
+            dto.getPontosDistribuicaoInicial()
         );
         return ResponseEntity.status(HttpStatus.CREATED).body(PokemonResponseDto.from(pokemon));
     }

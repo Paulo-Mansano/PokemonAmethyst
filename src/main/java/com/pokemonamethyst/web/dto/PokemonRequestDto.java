@@ -26,6 +26,7 @@ public class PokemonRequestDto {
     private Pokebola pokebolaCaptura;
     private String itemSeguradoId;
     private Integer staminaMaxima;
+    private Integer pontosDistribuicaoInicial;
 
     @Size(max = 6, message = "Máximo de 6 ataques")
     private List<String> movimentoIds;
@@ -62,4 +63,6 @@ public class PokemonRequestDto {
     public void setStaminaMaxima(Integer staminaMaxima) { this.staminaMaxima = staminaMaxima; }
     public List<String> getMovimentoIds() { return movimentoIds; }
     public void setMovimentoIds(List<String> movimentoIds) { this.movimentoIds = movimentoIds; }
+    public Integer getPontosDistribuicaoInicial() { return pontosDistribuicaoInicial; }
+    public void setPontosDistribuicaoInicial(Integer pontosDistribuicaoInicial) { this.pontosDistribuicaoInicial = pontosDistribuicaoInicial; }
 }

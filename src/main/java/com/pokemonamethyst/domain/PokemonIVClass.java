@@ -57,6 +57,8 @@ public enum PokemonIVClass {
         return rolarInclusivo(staminaMin, staminaMax);
     }
 
+    public int getPontosMin() { return pontosMin; }
+    public int getPontosMax() { return pontosMax; }
     public static PokemonIVClass fromBst(int bst) {
         int bstSeguro = Math.max(0, bst);
         for (PokemonIVClass value : values()) {

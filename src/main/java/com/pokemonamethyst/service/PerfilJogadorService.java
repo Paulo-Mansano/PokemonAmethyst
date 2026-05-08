@@ -13,10 +13,11 @@ import org.springframework.transaction.annotation.Transactional;
 public class PerfilJogadorService {
 
     private static final int PESO_MAXIMO_MOCHILA_PADRAO = 50;
-    private static final int HP_STAMINA_INICIAL = 10;
+    private static final int HP_INICIAL = 21; // 20 + Força(1)
+    private static final int STAMINA_INICIAL = 21; // 20 + Speed(1)
     private static final String PERFIL_NOME_PADRAO = "Treinador";
     private static final int MIN_ATRIBUTO = 1;
-    private static final int HABILIDADE_INICIAL = 1;
+    private static final int HABILIDADE_INICIAL = 2; // 2 + floor(nivel/5) com nivel=1
 
     private static Atributos atributosIniciais() {
         return new Atributos(
@@ -103,8 +104,8 @@ public class PerfilJogadorService {
         if (perfil == null) {
             perfil = new PerfilJogador();
             perfil.setUsuario(usuario);
-            perfil.setHpMaximo(HP_STAMINA_INICIAL);
-            perfil.setStaminaMaxima(HP_STAMINA_INICIAL);
+            perfil.setHpMaximo(HP_INICIAL);
+            perfil.setStaminaMaxima(STAMINA_INICIAL);
             perfil.setHabilidade(HABILIDADE_INICIAL);
             Mochila mochila = new Mochila();
             mochila.setPesoMaximo(PESO_MAXIMO_MOCHILA_PADRAO);

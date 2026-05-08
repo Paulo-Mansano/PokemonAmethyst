@@ -771,6 +771,7 @@ export default function PokemonList() {
   const [catalogoBusca, setCatalogoBusca] = useState('')
   const [catalogoModo, setCatalogoModo] = useState('edit')
   const [catalogoNivelCriacao, setCatalogoNivelCriacao] = useState(5)
+  const [catalogoPontosInicial, setCatalogoPontosInicial] = useState('')
   const [speciesCatalogoLista, setSpeciesCatalogoLista] = useState([])
   const [speciesCatalogoVersion, setSpeciesCatalogoVersion] = useState('')
   const [savingPokemon, setSavingPokemon] = useState(false)
@@ -1247,8 +1248,16 @@ export default function PokemonList() {
     try {
       if (!species) return
       if (catalogoModo === 'create') {
+        if (!usuarioMestre?.mestre) {
+          setCatalogoErro('Apenas usuários marcados como Mestre podem criar Pokémon.')
+          return
+        }
         setFormLoading(true)
-        const created = await criarPokemon({ pokedexId: species.pokedexId, nivel: Number(catalogoNivelCriacao) || 5 }, playerId)
+        const body = { pokedexId: species.pokedexId, nivel: Number(catalogoNivelCriacao) || 5 }
+        if (catalogoPontosInicial !== null && String(catalogoPontosInicial).trim() !== '') {
+          body.pontosDistribuicaoInicial = Number(catalogoPontosInicial)
+        }
+        const created = await criarPokemon(body, playerId)
         await load()
         setExpandedId(created.id)
         setExpandedLoading(true)
@@ -1481,9 +1490,11 @@ export default function PokemonList() {
     <div className="container container--wide">
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem', flexWrap: 'wrap', gap: '0.5rem' }}>
         <h1 style={{ margin: 0 }}>Pokémon</h1>
-        <button type="button" className="btn btn-primary" onClick={handleNovoPokemon} disabled={formLoading}>
-          {formLoading ? 'Criando...' : 'Novo Pokémon'}
-        </button>
+        {usuarioMestre?.mestre && (
+          <button type="button" className="btn btn-primary" onClick={handleNovoPokemon} disabled={formLoading}>
+            {formLoading ? 'Criando...' : 'Novo Pokémon'}
+          </button>
+        )}
       </div>
       {erro && <p style={{ color: 'var(--danger)', marginBottom: '1rem' }}>{erro}</p>}
 
@@ -1714,6 +1725,19 @@ export default function PokemonList() {
                   max={100}
                   value={catalogoNivelCriacao}
                   onChange={(e) => setCatalogoNivelCriacao(Math.max(1, Math.min(100, parseInt(e.target.value, 10) || 1)))}
+                />
+              </div>
+            )}
+
+            {catalogoModo === 'create' && (
+              <div className="form-group" style={{ marginBottom: '0.75rem', maxWidth: 220 }}>
+                <label>Pontos de distribuição iniciais (opcional)</label>
+                <input
+                  type="number"
+                  min={0}
+                  value={catalogoPontosInicial}
+                  onChange={(e) => setCatalogoPontosInicial(e.target.value)}
+                  placeholder="Deixe em branco para sortear"
                 />
               </div>
             )}
