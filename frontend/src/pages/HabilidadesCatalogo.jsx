@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { getHabilidades, importarHabilidadesPokeApi, criarHabilidade, atualizarHabilidade, getUsuario } from '../api'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { queryKeys } from '../query/queryKeys'
@@ -7,6 +7,7 @@ export default function HabilidadesCatalogo() {
   const queryClient = useQueryClient()
   const [erro, setErro] = useState('')
   const [info, setInfo] = useState('')
+  const [busca, setBusca] = useState('')
   const [editingItem, setEditingItem] = useState(null)
   const [creatingItem, setCreatingItem] = useState(false)
   const [editForm, setEditForm] = useState({ nome: '', nomeEn: '', descricao: '' })
@@ -130,6 +131,17 @@ export default function HabilidadesCatalogo() {
     )
   }
 
+  const habilidadesFiltradas = busca.trim()
+    ? habilidades.filter((h) => {
+        const q = busca.trim().toLowerCase()
+        return (h.nome || '').toLowerCase().includes(q) || (h.nomeEn || '').toLowerCase().includes(q)
+      })
+    : habilidades
+
+  const countLabel = busca.trim()
+    ? `${habilidadesFiltradas.length} de ${habilidades.length}`
+    : String(habilidades.length)
+
   return (
     <div className="container">
       <h1 style={{ marginBottom: '1rem' }}>Catálogo de Habilidades</h1>
@@ -139,7 +151,7 @@ export default function HabilidadesCatalogo() {
 
       <div className="card">
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '0.5rem', marginBottom: '0.75rem' }}>
-          <h3 style={{ margin: 0 }}>Habilidades cadastradas ({habilidades.length})</h3>
+          <h3 style={{ margin: 0 }}>Habilidades cadastradas ({countLabel})</h3>
           <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap' }}>
             <button
               type="button"
@@ -160,11 +172,55 @@ export default function HabilidadesCatalogo() {
             </button>
           </div>
         </div>
-        {habilidades.length === 0 ? (
-          <p style={{ color: 'var(--text-muted)' }}>Nenhuma habilidade. Use &quot;Criar habilidade&quot; ou &quot;Importar todas da PokéAPI&quot;.</p>
+
+        {habilidades.length > 0 && (
+          <div style={{ position: 'relative', marginBottom: '1rem' }}>
+            <svg
+              style={{ position: 'absolute', left: '0.75rem', top: '50%', transform: 'translateY(-50%)', color: 'var(--text-muted)', pointerEvents: 'none' }}
+              width="16" height="16" viewBox="0 0 24 24" fill="none"
+              stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"
+              aria-hidden
+            >
+              <circle cx="11" cy="11" r="8" /><path d="m21 21-4.35-4.35" />
+            </svg>
+            <input
+              type="text"
+              value={busca}
+              onChange={(e) => setBusca(e.target.value)}
+              placeholder="Buscar por nome ou nome em inglês..."
+              style={{
+                width: '100%',
+                padding: '0.6rem 0.8rem 0.6rem 2.25rem',
+                background: 'rgba(8, 6, 18, 0.8)',
+                border: '1px solid rgba(168, 85, 247, 0.18)',
+                borderRadius: 'var(--radius)',
+                color: 'var(--text)',
+                fontSize: '0.95rem',
+                outline: 'none',
+                fontFamily: 'inherit',
+                transition: 'border-color 0.2s, box-shadow 0.2s',
+              }}
+              onFocus={(e) => {
+                e.target.style.borderColor = 'rgba(168,85,247,.55)'
+                e.target.style.boxShadow = '0 0 0 3px rgba(168,85,247,.08)'
+              }}
+              onBlur={(e) => {
+                e.target.style.borderColor = 'rgba(168,85,247,.18)'
+                e.target.style.boxShadow = 'none'
+              }}
+            />
+          </div>
+        )}
+
+        {habilidadesFiltradas.length === 0 ? (
+          <p style={{ color: 'var(--text-muted)' }}>
+            {busca.trim()
+              ? `Nenhuma habilidade encontrada para "${busca}".`
+              : 'Nenhuma habilidade. Use "Criar habilidade" ou "Importar todas da PokéAPI".'}
+          </p>
         ) : (
           <div className="habilidades-grid">
-            {habilidades.map((h) => (
+            {habilidadesFiltradas.map((h) => (
               <div key={h.id} className="habilidade-card card">
                 <div className="habilidade-card-header">
                   <h4 className="habilidade-card-nome">{h.nome}</h4>

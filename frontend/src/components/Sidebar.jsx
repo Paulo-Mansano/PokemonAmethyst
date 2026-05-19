@@ -153,7 +153,7 @@ export default function Sidebar({ user, onLogout, expanded, onToggle }) {
           >
             {expanded ? <IconChevronLeft /> : <IconChevronRight />}
           </button>
-          {expanded && <span className="app-sidebar-title">Menu</span>}
+          {expanded && <span className="app-sidebar-title">✦ Amethyst</span>}
         </div>
 
         <nav className="app-sidebar-nav" aria-label="Navegação principal">

@@ -8,6 +8,10 @@ function apiBase() {
 const BASE = apiBase();
 const AUTH_EXPIRED_EVENT = 'pokemonamethyst:auth-expired';
 
+let _suppressAuthExpired = false;
+export function startLoginFlow() { _suppressAuthExpired = true; }
+export function endLoginFlow() { _suppressAuthExpired = false; }
+
 /** Corpo JSON de erro da API: mensagem única ou mapa `erros` (validação). */
 function mensagemErroApi(data) {
   if (!data || typeof data !== 'object') return null;
@@ -42,7 +46,7 @@ async function request(path, options = {}) {
   });
   const safePath = String(path || '');
   const isAuthEndpoint = safePath.startsWith('/auth/login') || safePath.startsWith('/auth/registro');
-  if ((res.status === 401 || res.status === 403) && !isAuthEndpoint) {
+  if ((res.status === 401 || res.status === 403) && !isAuthEndpoint && !_suppressAuthExpired) {
     notifyAuthExpired();
   }
   return res;

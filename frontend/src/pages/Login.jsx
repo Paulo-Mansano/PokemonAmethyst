@@ -1,6 +1,6 @@
 import { useState, useRef } from 'react'
 import { useNavigate, useLocation } from 'react-router-dom'
-import { login, registro, getMeuPerfil, getMestreJogadores } from '../api'
+import { login, registro, getMeuPerfil, getMestreJogadores, startLoginFlow, endLoginFlow } from '../api'
 import { clearAuthCache } from '../query/queryClient'
 
 const TAB_KEY = 'pokemonamethyst:login-tab'
@@ -109,6 +109,7 @@ export default function Login({ onLogin }) {
       }
       const user = await login(nome, senha)
       await clearAuthCache()
+      startLoginFlow()
       try {
         if (lembrarDeMim) localStorage.setItem(REMEMBER_USER_KEY, nome)
         else localStorage.removeItem(REMEMBER_USER_KEY)
@@ -117,13 +118,17 @@ export default function Login({ onLogin }) {
       }
       onLogin(user)
       let perfil = null
-      if (user.mestre) {
-        const jogadores = await getMestreJogadores()
-        if (jogadores.length) {
-          perfil = await getMeuPerfil(jogadores[0].id)
+      try {
+        if (user.mestre) {
+          const jogadores = await getMestreJogadores()
+          if (jogadores.length) {
+            perfil = await getMeuPerfil(jogadores[0].id)
+          }
+        } else {
+          perfil = await getMeuPerfil()
         }
-      } else {
-        perfil = await getMeuPerfil()
+      } catch {
+        /* Cookie cross-site bloqueado: prossegue sem perfil, a página detecta */
       }
       const destino = resolvePostLoginPath(location)
       try {
@@ -146,6 +151,7 @@ export default function Login({ onLogin }) {
         (campo === 'senha' ? refSenha : refUsuario).current?.focus()
       }, 0)
     } finally {
+      endLoginFlow()
       setLoading(false)
     }
   }

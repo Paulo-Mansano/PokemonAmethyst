@@ -33,16 +33,16 @@ const GLOBAL_STYLES = `
   .ficha-root input[type=number]::-webkit-outer-spin-button { -webkit-appearance: none; margin: 0; }
   .ficha-root input[type=number] { -moz-appearance: textfield; }
   .ficha-root input, .ficha-root select {
-    background: #0e1220; border: 1px solid rgba(255,255,255,.07); border-radius: 6px;
-    color: #F0EEE8; font-family: 'Oxanium', sans-serif; font-size: 15px; font-weight: 500;
+    background: #0a0614; border: 1px solid rgba(168,85,247,.15); border-radius: 6px;
+    color: #f0ebff; font-family: 'Oxanium', sans-serif; font-size: 15px; font-weight: 500;
     padding: 10px 14px; width: 100%; outline: none; transition: border-color .2s, box-shadow .2s;
     -webkit-appearance: none; appearance: none;
   }
   .ficha-root input:focus, .ficha-root select:focus {
-    border-color: rgba(255,218,0,.4); box-shadow: 0 0 0 3px rgba(255,218,0,.06);
+    border-color: rgba(168,85,247,.55); box-shadow: 0 0 0 3px rgba(168,85,247,.08);
   }
   .ficha-root select {
-    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 12 8'%3E%3Cpath d='M1 1l5 5 5-5' stroke='%238A91A8' stroke-width='1.5' fill='none' stroke-linecap='round'/%3E%3C/svg%3E");
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 12 8'%3E%3Cpath d='M1 1l5 5 5-5' stroke='%238b7db5' stroke-width='1.5' fill='none' stroke-linecap='round'/%3E%3C/svg%3E");
     background-repeat: no-repeat; background-position: right 12px center; background-size: 12px;
     padding-right: 36px; cursor: pointer;
   }
@@ -57,34 +57,34 @@ const GLOBAL_STYLES = `
   .ficha-card-anim:nth-child(4) { animation-delay: .20s; }
   .ficha-card-anim:nth-child(5) { animation-delay: .25s; }
   .ficha-card-anim:nth-child(6) { animation-delay: .30s; }
-  .ficha-attr-card:hover { border-color: rgba(255,218,0,.2) !important; }
-  .ficha-team-slot:hover { border-color: rgba(255,218,0,.2) !important; }
+  .ficha-attr-card:hover { border-color: rgba(168,85,247,.38) !important; box-shadow: 0 0 20px rgba(168,85,247,.12) !important; }
+  .ficha-team-slot:hover { border-color: rgba(168,85,247,.38) !important; box-shadow: 0 0 20px rgba(168,85,247,.12) !important; }
   .ficha-add-btn:hover   { opacity: .85; }
   .ficha-add-btn:active  { transform: scale(.96); }
-  .ficha-btn-main:hover  { filter: brightness(1.12); }
+  .ficha-btn-main:hover  { filter: brightness(1.12); box-shadow: 0 0 24px rgba(168,85,247,.5); }
   .ficha-btn-main:active { transform: scale(.97); }
-  .ficha-btn-outline:hover { border-color: rgba(255,218,0,.3) !important; color: #FFDA00 !important; }
+  .ficha-btn-outline:hover { border-color: rgba(168,85,247,.5) !important; color: #c084fc !important; box-shadow: 0 0 20px rgba(168,85,247,.2) !important; }
 `
 
 // ─── Subcomponentes SVG ─────────────────────────────────────────────────────────
 
 const Pokeball = ({ size = 36, style }) => (
   <svg width={size} height={size} viewBox="0 0 40 40" fill="none" style={style}>
-    <circle cx="20" cy="20" r="19" stroke="#FFDA00" strokeWidth="1.5" />
-    <line x1="1" y1="20" x2="39" y2="20" stroke="#FFDA00" strokeWidth="1.2" />
-    <path d="M1 20a19 19 0 0 1 38 0" fill="rgba(255,218,0,0.08)" />
-    <circle cx="20" cy="20" r="5.5" stroke="#FFDA00" strokeWidth="1.5" fill="#0b0e1a" />
-    <circle cx="20" cy="20" r="2.5" fill="#FFDA00" />
+    <circle cx="20" cy="20" r="19" stroke="#a855f7" strokeWidth="1.5" />
+    <line x1="1" y1="20" x2="39" y2="20" stroke="#a855f7" strokeWidth="1.2" />
+    <path d="M1 20a19 19 0 0 1 38 0" fill="rgba(168,85,247,0.08)" />
+    <circle cx="20" cy="20" r="5.5" stroke="#a855f7" strokeWidth="1.5" fill="#080612" />
+    <circle cx="20" cy="20" r="2.5" fill="#a855f7" />
   </svg>
 )
 
 const MiniPokeball = () => (
   <svg width="28" height="28" viewBox="0 0 28 28" fill="none" style={{ flexShrink: 0 }}>
-    <circle cx="14" cy="14" r="13" stroke="#FFDA00" strokeWidth="1" />
-    <line x1="1" y1="14" x2="27" y2="14" stroke="#FFDA00" strokeWidth="0.8" />
-    <path d="M1 14a13 13 0 0 1 26 0" fill="rgba(255,218,0,0.06)" />
-    <circle cx="14" cy="14" r="4" stroke="#FFDA00" strokeWidth="1" fill="#0b0e1a" />
-    <circle cx="14" cy="14" r="1.8" fill="#FFDA00" />
+    <circle cx="14" cy="14" r="13" stroke="#a855f7" strokeWidth="1" />
+    <line x1="1" y1="14" x2="27" y2="14" stroke="#a855f7" strokeWidth="0.8" />
+    <path d="M1 14a13 13 0 0 1 26 0" fill="rgba(168,85,247,0.06)" />
+    <circle cx="14" cy="14" r="4" stroke="#a855f7" strokeWidth="1" fill="#080612" />
+    <circle cx="14" cy="14" r="1.8" fill="#a855f7" />
   </svg>
 )
 
@@ -159,9 +159,18 @@ function calcularCustoMudancaAtributo(atributo, nivelInicial, nivelFinal) {
 
 function DerivedStat({ label, value, color }) {
   return (
-    <div style={{ background: '#171d35', border: '1px solid rgba(255,255,255,.07)', borderRadius: 10, padding: '1rem 1.25rem', position: 'relative', overflow: 'hidden' }}>
+    <div style={{
+      background: 'rgba(8, 6, 18, 0.65)',
+      border: '1px solid rgba(168,85,247,.14)',
+      borderRadius: 10,
+      padding: '1rem 1.25rem',
+      position: 'relative',
+      overflow: 'hidden',
+      backdropFilter: 'blur(12px)',
+      WebkitBackdropFilter: 'blur(12px)',
+    }}>
       <div style={{ position: 'absolute', bottom: 0, left: 0, right: 0, height: 2, background: color }} />
-      <div style={{ fontFamily: "'Oxanium', sans-serif", fontSize: 11, letterSpacing: '0.2em', textTransform: 'uppercase', color: '#8A91A8', marginBottom: 8 }}>{label}</div>
+      <div style={{ fontFamily: "'Oxanium', sans-serif", fontSize: 11, letterSpacing: '0.2em', textTransform: 'uppercase', color: '#8b7db5', marginBottom: 8 }}>{label}</div>
       <div style={{ fontFamily: "'Press Start 2P', monospace", fontSize: 20, color, lineHeight: 1 }}>{value}</div>
     </div>
   )
@@ -172,18 +181,26 @@ function DerivedStat({ label, value, color }) {
 function AttrCard({ attr, value, pontosDisponiveis, onAdd, onChange }) {
   const podeAdicionar = pontosDisponiveis >= attr.custo
   const corBtn = attr.custo > 1
-    ? { bg: 'rgba(255,218,0,.08)', border: 'rgba(255,218,0,.25)', color: '#FFDA00' }
-    : { bg: 'rgba(167,139,250,.12)', border: 'rgba(167,139,250,.25)', color: '#a78bfa' }
+    ? { bg: 'rgba(192,132,252,.1)', border: 'rgba(192,132,252,.3)', color: '#c084fc' }
+    : { bg: 'rgba(168,85,247,.12)', border: 'rgba(168,85,247,.28)', color: '#a855f7' }
 
   const pontosRestantes = pontosDisponiveis - attr.custo
 
   return (
-    <div className="ficha-attr-card" style={{ background: '#171d35', border: '1px solid rgba(255,255,255,.07)', borderRadius: 10, padding: 12, transition: 'border-color .2s' }}>
+    <div className="ficha-attr-card" style={{
+      background: 'rgba(8, 6, 18, 0.6)',
+      border: '1px solid rgba(168,85,247,.15)',
+      borderRadius: 10,
+      padding: 12,
+      transition: 'border-color .2s, box-shadow .2s',
+      backdropFilter: 'blur(10px)',
+      WebkitBackdropFilter: 'blur(10px)',
+    }}>
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 10 }}>
-        <div style={{ fontFamily: "'Oxanium', sans-serif", fontSize: 11, fontWeight: 600, letterSpacing: '0.12em', textTransform: 'uppercase', color: '#8A91A8' }}>
+        <div style={{ fontFamily: "'Oxanium', sans-serif", fontSize: 11, fontWeight: 600, letterSpacing: '0.12em', textTransform: 'uppercase', color: '#8b7db5' }}>
           {attr.nome}{attr.star && ' ⭐'}
         </div>
-        <div style={{ fontFamily: "'Press Start 2P', monospace", fontSize: 10, color: '#FFDA00' }}>{value}</div>
+        <div style={{ fontFamily: "'Press Start 2P', monospace", fontSize: 10, color: '#c084fc' }}>{value}</div>
       </div>
       <div style={{ display: 'flex', gap: 6, alignItems: 'center' }}>
         <input
@@ -195,13 +212,27 @@ function AttrCard({ attr, value, pontosDisponiveis, onAdd, onChange }) {
           className="ficha-add-btn"
           onClick={onAdd}
           disabled={!podeAdicionar}
-          style={{ background: corBtn.bg, border: `1px solid ${corBtn.border}`, borderRadius: 6, color: corBtn.color, cursor: podeAdicionar ? 'pointer' : 'not-allowed', fontFamily: "'Oxanium', sans-serif", fontSize: 10, fontWeight: 700, padding: '6px 8px', transition: 'opacity .15s, transform .1s', whiteSpace: 'nowrap', flexShrink: 0, opacity: podeAdicionar ? 1 : 0.35 }}
+          style={{
+            background: corBtn.bg,
+            border: `1px solid ${corBtn.border}`,
+            borderRadius: 6,
+            color: corBtn.color,
+            cursor: podeAdicionar ? 'pointer' : 'not-allowed',
+            fontFamily: "'Oxanium', sans-serif",
+            fontSize: 10,
+            fontWeight: 700,
+            padding: '6px 8px',
+            transition: 'opacity .15s, transform .1s',
+            whiteSpace: 'nowrap',
+            flexShrink: 0,
+            opacity: podeAdicionar ? 1 : 0.35,
+          }}
         >
           +1 <span style={{ opacity: .6, fontSize: 9 }}>({attr.custo}pt)</span>
         </button>
       </div>
-      <div style={{ marginTop: 8, fontSize: '0.75rem', color: pontosRestantes < 0 ? '#FF4655' : '#8A91A8' }}>
-        Custo: <strong>{attr.custo}pt</strong> — Restantes: <strong style={{ color: pontosRestantes < 0 ? '#FF4655' : 'inherit' }}>{pontosRestantes}</strong>
+      <div style={{ marginTop: 8, fontSize: '0.75rem', color: pontosRestantes < 0 ? '#f87171' : '#8b7db5' }}>
+        Custo: <strong>{attr.custo}pt</strong> — Restantes: <strong style={{ color: pontosRestantes < 0 ? '#f87171' : 'inherit' }}>{pontosRestantes}</strong>
       </div>
     </div>
   )
@@ -209,7 +240,7 @@ function AttrCard({ attr, value, pontosDisponiveis, onAdd, onChange }) {
 
 export default function Perfil() {
   const location = useLocation()
-  const { playerId, readyForPlayerApi } = usePlayerTarget()
+  const { playerId, readyForPlayerApi, isMestre } = usePlayerTarget()
   const queryClient = useQueryClient()
 
   const [nome, setNome] = useState('')
@@ -223,7 +254,6 @@ export default function Perfil() {
   const [erro, setErro] = useState('')
   const [saved, setSaved] = useState(false)
 
-  // Injeta estilos globais
   useEffect(() => {
     if (document.getElementById('ficha-global-styles')) return
     const tag = document.createElement('style')
@@ -233,7 +263,6 @@ export default function Perfil() {
     return () => tag.remove()
   }, [])
 
-  // Query para carregar perfil
   const perfilQuery = useQuery({
     queryKey: queryKeys.perfil(playerId),
     queryFn: () => getMeuPerfil(playerId),
@@ -277,7 +306,6 @@ export default function Perfil() {
     }
   }, [readyForPlayerApi, perfilQuery.data, perfilQuery.isError])
 
-  // Mutation para salvar
   const salvarMutation = useMutation({
     mutationFn: (payload) => salvarPerfil(payload, playerId),
     onSuccess: (saved) => {
@@ -343,49 +371,117 @@ export default function Perfil() {
     })
   }
 
+  const resetarFicha = async () => {
+    if (!isMestre) return
+    setErro('')
+    setNome((current) => current)
+    setNivel(1)
+    setXp(0)
+    setAttrs(INITIAL_ATTRS)
+    await salvarMutation.mutateAsync({
+      nomePersonagem: nome,
+      classe,
+      pokedolares: dinheiro,
+      nivel: 1,
+      xpAtual: 0,
+      hpMaximo: calcularHpMaximo(INITIAL_ATTRS),
+      staminaMaxima: calcularStaminaMaxima(INITIAL_ATTRS),
+      habilidade: calcularHabilidade(1),
+      atributos: INITIAL_ATTRS,
+    })
+  }
+
   const avisoSemPerfil2 =
     !perfil &&
     (location.state?.semPerfil ||
       (typeof sessionStorage !== 'undefined' && sessionStorage.getItem(SEM_PERFIL_SESSION_KEY) === '1'))
 
   if (!readyForPlayerApi || perfilQuery.isLoading) {
-    return <div style={{ padding: '2rem', color: '#F0EEE8' }}>Carregando perfil...</div>
+    return <div style={{ padding: '2rem', color: '#f0ebff' }}>Carregando perfil...</div>
   }
 
   if (erro && !perfil) {
-    return <div style={{ padding: '2rem', color: '#FF4655' }}>{erro}</div>
+    return <div style={{ padding: '2rem', color: '#f87171' }}>{erro}</div>
   }
 
   const btnMain = {
-    background: '#FFDA00',
+    background: '#a855f7',
     border: 'none',
     borderRadius: 6,
-    color: '#0b0e1a',
+    color: '#f0ebff',
     cursor: 'pointer',
     fontFamily: "'Oxanium', sans-serif",
     fontSize: 13,
     fontWeight: 700,
     letterSpacing: '0.1em',
     padding: '0 18px',
-    transition: 'filter .15s, transform .1s',
+    transition: 'filter .15s, transform .1s, box-shadow .15s',
     whiteSpace: 'nowrap',
     flexShrink: 0,
   }
 
   const s = {
-    root: { background: '#0b0e1a', color: '#F0EEE8', fontFamily: "'Rajdhani', sans-serif", minHeight: '100vh', padding: '2rem 1rem', position: 'relative' },
-    bg: { position: 'fixed', inset: 0, pointerEvents: 'none', zIndex: 0, background: 'radial-gradient(ellipse 60% 40% at 80% 10%, rgba(255,218,0,.04) 0%, transparent 60%), radial-gradient(ellipse 50% 50% at 10% 90%, rgba(79,195,247,.04) 0%, transparent 60%)' },
+    root: {
+      background: '#0e0920',
+      color: '#f0ebff',
+      fontFamily: "'Rajdhani', sans-serif",
+      minHeight: '100vh',
+      padding: '2rem 1rem',
+      position: 'relative',
+    },
+    bg: {
+      position: 'fixed',
+      inset: 0,
+      pointerEvents: 'none',
+      zIndex: 0,
+      background: 'radial-gradient(ellipse 70% 50% at 80% 10%, rgba(168,85,247,.07) 0%, transparent 60%), radial-gradient(ellipse 55% 55% at 10% 90%, rgba(139,85,247,.04) 0%, transparent 60%)',
+    },
     page: { maxWidth: 900, margin: '0 auto', position: 'relative', zIndex: 1 },
-    card: { background: '#111525', border: '1px solid rgba(255,255,255,.07)', borderRadius: 16, padding: '1.5rem', marginBottom: '1rem', position: 'relative', overflow: 'hidden' },
-    cardLine: { position: 'absolute', top: 0, left: 0, right: 0, height: 2, background: 'linear-gradient(90deg, transparent, rgba(255,218,0,.4), transparent)' },
-    cardTitle: { fontFamily: "'Oxanium', sans-serif", fontSize: 11, fontWeight: 600, letterSpacing: '0.2em', textTransform: 'uppercase', color: '#FFDA00', marginBottom: '1.25rem', display: 'flex', alignItems: 'center', gap: 8 },
-    label: { fontFamily: "'Oxanium', sans-serif", fontSize: 11, letterSpacing: '0.18em', textTransform: 'uppercase', color: '#4A5068', marginBottom: 6 },
+    card: {
+      background: 'rgba(17, 12, 30, 0.65)',
+      border: '1px solid rgba(168,85,247,.18)',
+      borderRadius: 16,
+      padding: '1.5rem',
+      marginBottom: '1rem',
+      position: 'relative',
+      overflow: 'hidden',
+      backdropFilter: 'blur(16px)',
+      WebkitBackdropFilter: 'blur(16px)',
+    },
+    cardLine: {
+      position: 'absolute',
+      top: 0,
+      left: 0,
+      right: 0,
+      height: 2,
+      background: 'linear-gradient(90deg, transparent, rgba(168,85,247,.55), transparent)',
+    },
+    cardTitle: {
+      fontFamily: "'Oxanium', sans-serif",
+      fontSize: 11,
+      fontWeight: 600,
+      letterSpacing: '0.2em',
+      textTransform: 'uppercase',
+      color: '#c084fc',
+      marginBottom: '1.25rem',
+      display: 'flex',
+      alignItems: 'center',
+      gap: 8,
+    },
+    label: {
+      fontFamily: "'Oxanium', sans-serif",
+      fontSize: 11,
+      letterSpacing: '0.18em',
+      textTransform: 'uppercase',
+      color: '#8b7db5',
+      marginBottom: 6,
+    },
   }
 
   return (
     <div className="ficha-root" style={s.root}>
       {avisoSemPerfil2 && (
-        <div style={{ background: 'rgba(255,70,85,.15)', border: '1px solid #FF4655', borderRadius: 10, padding: '0.75rem 1rem', marginBottom: '1rem', color: '#FF4655', fontSize: 14 }}>
+        <div style={{ background: 'rgba(248,113,113,.15)', border: '1px solid #f87171', borderRadius: 10, padding: '0.75rem 1rem', marginBottom: '1rem', color: '#f87171', fontSize: 14 }}>
           Crie sua ficha para acessar Pokémon e Mochila.
         </div>
       )}
@@ -397,8 +493,8 @@ export default function Perfil() {
         <div style={{ display: 'flex', alignItems: 'center', gap: '1rem', marginBottom: '2rem' }}>
           <Pokeball size={36} />
           <div>
-            <div style={{ fontFamily: "'Press Start 2P', monospace", fontSize: 10, color: '#FFDA00', letterSpacing: '0.08em', lineHeight: 1.7 }}>FICHA DO TREINADOR</div>
-            <div style={{ fontFamily: "'Oxanium', sans-serif", fontSize: 12, color: '#4A5068', letterSpacing: '0.15em', textTransform: 'uppercase' }}>Sistema de RPG Pokémon</div>
+            <div style={{ fontFamily: "'Press Start 2P', monospace", fontSize: 10, color: '#c084fc', letterSpacing: '0.08em', lineHeight: 1.7 }}>FICHA DO TREINADOR</div>
+            <div style={{ fontFamily: "'Oxanium', sans-serif", fontSize: 12, color: '#8b7db5', letterSpacing: '0.15em', textTransform: 'uppercase' }}>Sistema de RPG Pokémon</div>
           </div>
         </div>
 
@@ -425,16 +521,16 @@ export default function Perfil() {
           <div style={s.cardLine} />
           <div style={s.cardTitle}>Experiência e Nível</div>
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 10 }}>
-            <div style={{ fontFamily: "'Press Start 2P', monospace", fontSize: 9, color: '#FFDA00', background: 'rgba(255,218,0,.08)', border: '1px solid rgba(255,218,0,.2)', borderRadius: 6, padding: '6px 12px' }}>
+            <div style={{ fontFamily: "'Press Start 2P', monospace", fontSize: 9, color: '#c084fc', background: 'rgba(168,85,247,.1)', border: '1px solid rgba(168,85,247,.25)', borderRadius: 6, padding: '6px 12px' }}>
               NÍVEL {nivel}
             </div>
-            <div style={{ fontFamily: "'Oxanium', sans-serif", fontSize: 12, color: '#8A91A8', letterSpacing: '0.1em' }}>
+            <div style={{ fontFamily: "'Oxanium', sans-serif", fontSize: 12, color: '#8b7db5', letterSpacing: '0.1em' }}>
               {xp} / {xpNecessario} XP
             </div>
           </div>
-          <div style={{ background: '#0e1220', borderRadius: 99, height: 8, overflow: 'hidden', marginBottom: '1rem', border: '1px solid rgba(255,255,255,.07)' }}>
-            <div style={{ height: '100%', width: `${xpPct}%`, borderRadius: 99, background: 'linear-gradient(90deg, #b89d00, #FFDA00)', transition: 'width .6s cubic-bezier(.34,1.56,.64,1)', position: 'relative' }}>
-              <div style={{ position: 'absolute', right: 0, top: 0, bottom: 0, width: 16, background: 'rgba(255,255,255,.3)', filter: 'blur(3px)' }} />
+          <div style={{ background: '#0a0614', borderRadius: 99, height: 8, overflow: 'hidden', marginBottom: '1rem', border: '1px solid rgba(168,85,247,.12)' }}>
+            <div style={{ height: '100%', width: `${xpPct}%`, borderRadius: 99, background: 'linear-gradient(90deg, #6d28d9, #a855f7)', transition: 'width .6s cubic-bezier(.34,1.56,.64,1)', position: 'relative' }}>
+              <div style={{ position: 'absolute', right: 0, top: 0, bottom: 0, width: 16, background: 'rgba(255,255,255,.25)', filter: 'blur(3px)' }} />
             </div>
           </div>
           <div style={{ display: 'flex', gap: 8 }}>
@@ -449,7 +545,7 @@ export default function Perfil() {
           <div style={s.cardTitle}>Recursos</div>
           <div style={s.label}>Pokédólares</div>
           <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-            <div style={{ fontFamily: "'Oxanium', sans-serif", fontSize: 18, fontWeight: 700, color: '#FFDA00', background: 'rgba(255,218,0,.08)', border: '1px solid rgba(255,218,0,.2)', borderRadius: 6, padding: '8px 14px' }}>₽</div>
+            <div style={{ fontFamily: "'Oxanium', sans-serif", fontSize: 18, fontWeight: 700, color: '#c084fc', background: 'rgba(168,85,247,.1)', border: '1px solid rgba(168,85,247,.25)', borderRadius: 6, padding: '8px 14px' }}>₽</div>
             <input type="number" value={dinheiro} min={0} onChange={(e) => setDinheiro(Number(e.target.value))} style={{ width: 160 }} />
           </div>
         </div>
@@ -459,7 +555,7 @@ export default function Perfil() {
           <div style={s.cardLine} />
           <div style={s.cardTitle}>Atributos Derivados</div>
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3,1fr)', gap: '1rem' }}>
-            <DerivedStat label="HP Máximo" value={hp} color="#FF4655" />
+            <DerivedStat label="HP Máximo" value={hp} color="#FF6B6B" />
             <DerivedStat label="Stamina Máxima" value={stamina} color="#4FC3F7" />
             <DerivedStat label="Habilidade" value={hab} color="#4ADE80" />
           </div>
@@ -469,9 +565,9 @@ export default function Perfil() {
         <div className="ficha-card-anim" style={s.card}>
           <div style={s.cardLine} />
           <div style={s.cardTitle}>Atributos Base</div>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: '1.25rem', fontFamily: "'Oxanium', sans-serif", fontSize: 13, color: '#8A91A8' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: '1.25rem', fontFamily: "'Oxanium', sans-serif", fontSize: 13, color: '#8b7db5' }}>
             Pontos disponíveis:
-            <span style={{ background: 'rgba(167,139,250,.12)', border: '1px solid rgba(167,139,250,.25)', borderRadius: 99, color: '#a78bfa', fontWeight: 700, fontSize: 14, padding: '2px 12px' }}>
+            <span style={{ background: 'rgba(168,85,247,.15)', border: '1px solid rgba(168,85,247,.3)', borderRadius: 99, color: '#c084fc', fontWeight: 700, fontSize: 14, padding: '2px 12px' }}>
               {pontos}
             </span>
           </div>
@@ -480,14 +576,14 @@ export default function Perfil() {
               (() => {
                 const custoAtual = calcularCustoEvolucao(a.id, attrs[a.id])
                 return (
-              <AttrCard
-                key={a.id}
-                attr={{ ...a, custo: custoAtual }}
-                value={attrs[a.id]}
-                pontosDisponiveis={pontos}
-                onAdd={() => addAttr(a.id)}
-                onChange={(v) => setAttrManual(a.id, v)}
-              />
+                  <AttrCard
+                    key={a.id}
+                    attr={{ ...a, custo: custoAtual }}
+                    value={attrs[a.id]}
+                    pontosDisponiveis={pontos}
+                    onAdd={() => addAttr(a.id)}
+                    onChange={(v) => setAttrManual(a.id, v)}
+                  />
                 )
               })()
             ))}
@@ -496,7 +592,7 @@ export default function Perfil() {
 
         {/* Erro */}
         {erro && (
-          <div style={{ background: 'rgba(255,70,85,.15)', border: '1px solid #FF4655', borderRadius: 10, padding: '0.75rem 1rem', marginBottom: '1rem', color: '#FF4655' }}>
+          <div style={{ background: 'rgba(248,113,113,.15)', border: '1px solid #f87171', borderRadius: 10, padding: '0.75rem 1rem', marginBottom: '1rem', color: '#f87171' }}>
             {erro}
           </div>
         )}
@@ -507,10 +603,20 @@ export default function Perfil() {
             className="ficha-btn-main"
             onClick={salvar}
             disabled={salvarMutation.isPending}
-            style={{ ...btnMain, padding: '12px 28px', fontSize: 14, borderRadius: 10, background: saved ? '#4ADE80' : '#FFDA00', color: '#0b0e1a', transition: 'background .3s' }}
+            style={{ ...btnMain, padding: '12px 28px', fontSize: 14, borderRadius: 10, background: saved ? '#4ADE80' : '#a855f7', color: saved ? '#052e16' : '#f0ebff', transition: 'background .3s, box-shadow .15s' }}
           >
             {saved ? '✓ Salvo!' : salvarMutation.isPending ? 'Salvando...' : 'Salvar ficha'}
           </button>
+          {isMestre && (
+            <button
+              className="ficha-btn-outline"
+              onClick={resetarFicha}
+              disabled={salvarMutation.isPending}
+              style={{ background: 'transparent', border: '1px solid rgba(168,85,247,.3)', borderRadius: 10, color: '#c084fc', cursor: 'pointer', fontFamily: "'Oxanium', sans-serif", fontSize: 14, fontWeight: 700, letterSpacing: '0.1em', padding: '12px 22px', whiteSpace: 'nowrap', transition: 'border-color .2s, color .2s, box-shadow .2s' }}
+            >
+              Resetar ficha
+            </button>
+          )}
         </div>
 
         {/* Time */}
@@ -525,7 +631,17 @@ export default function Perfil() {
                   <div
                     key={i}
                     className="ficha-team-slot"
-                    style={{ background: '#171d35', border: '1px solid rgba(255,255,255,.07)', borderRadius: 10, padding: '12px 14px', display: 'flex', alignItems: 'center', gap: 10, transition: 'border-color .2s', opacity: poke ? 1 : 0.3 }}
+                    style={{
+                      background: 'rgba(8, 6, 18, 0.6)',
+                      border: '1px solid rgba(168,85,247,.15)',
+                      borderRadius: 10,
+                      padding: '12px 14px',
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: 10,
+                      transition: 'border-color .2s, box-shadow .2s',
+                      opacity: poke ? 1 : 0.35,
+                    }}
                   >
                     {poke ? (
                       <>
@@ -535,12 +651,12 @@ export default function Perfil() {
                           <MiniPokeball />
                         )}
                         <div>
-                          <div style={{ fontFamily: "'Oxanium', sans-serif", fontSize: 13, fontWeight: 600, color: '#F0EEE8', lineHeight: 1.2 }}>{poke.apelido || poke.especie}</div>
-                          <div style={{ fontFamily: "'Oxanium', sans-serif", fontSize: 11, color: '#4A5068', marginTop: 1 }}>Nv. {poke.nivel}</div>
+                          <div style={{ fontFamily: "'Oxanium', sans-serif", fontSize: 13, fontWeight: 600, color: '#f0ebff', lineHeight: 1.2 }}>{poke.apelido || poke.especie}</div>
+                          <div style={{ fontFamily: "'Oxanium', sans-serif", fontSize: 11, color: '#8b7db5', marginTop: 1 }}>Nv. {poke.nivel}</div>
                         </div>
                       </>
                     ) : (
-                      <div style={{ fontFamily: "'Oxanium', sans-serif", fontSize: 12, color: '#4A5068', textAlign: 'center', width: '100%' }}>— vazio —</div>
+                      <div style={{ fontFamily: "'Oxanium', sans-serif", fontSize: 12, color: '#8b7db5', textAlign: 'center', width: '100%' }}>— vazio —</div>
                     )}
                   </div>
                 )
