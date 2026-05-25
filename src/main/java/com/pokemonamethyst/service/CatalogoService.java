@@ -145,6 +145,12 @@ public class CatalogoService {
     }
 
     @Transactional
+    public void excluirPersonalidade(String id) {
+        Personalidade p = buscarPersonalidade(id);
+        personalidadeRepository.delete(p);
+    }
+
+    @Transactional
     public Personalidade atualizarPersonalidade(String id, String nome) {
         Personalidade p = buscarPersonalidade(id);
         if (nome != null && !nome.isBlank()) p.setNome(nome);

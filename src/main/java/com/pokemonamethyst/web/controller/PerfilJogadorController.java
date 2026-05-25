@@ -3,6 +3,7 @@ package com.pokemonamethyst.web.controller;
 import com.pokemonamethyst.domain.Atributos;
 import com.pokemonamethyst.domain.PerfilJogador;
 import com.pokemonamethyst.security.UsuarioPrincipal;
+import com.pokemonamethyst.service.AuditLogService;
 import com.pokemonamethyst.service.PerfilJogadorService;
 import com.pokemonamethyst.service.PokemonService;
 import com.pokemonamethyst.web.dto.PerfilJogadorRequestDto;
@@ -22,10 +23,13 @@ public class PerfilJogadorController {
 
     private final PerfilJogadorService perfilService;
     private final PokemonService pokemonService;
+    private final AuditLogService auditLogService;
 
-    public PerfilJogadorController(PerfilJogadorService perfilService, PokemonService pokemonService) {
+    public PerfilJogadorController(PerfilJogadorService perfilService, PokemonService pokemonService,
+                                   AuditLogService auditLogService) {
         this.perfilService = perfilService;
         this.pokemonService = pokemonService;
+        this.auditLogService = auditLogService;
     }
 
     @GetMapping("/meu")
@@ -64,6 +68,13 @@ public class PerfilJogadorController {
                 dto.getHabilidade(),
                 atr
         );
+        // Log usa o usuário dono da ficha (pode ser jogador editado pelo mestre)
+        String donoId = alvo.getUsuario().getId();
+        String donoNome = alvo.getUsuario().getNomeUsuario();
+        String nomePersonagem = perfil.getNomePersonagem() != null ? perfil.getNomePersonagem() : donoNome;
+        auditLogService.registrar(donoId, donoNome, "FICHA_SALVA",
+            "PERFIL", perfil.getId(),
+            "'" + nomePersonagem + "' Lv." + perfil.getNivel());
         List<com.pokemonamethyst.domain.Pokemon> time = pokemonService.listarTimePrincipal(perfil.getId());
         List<com.pokemonamethyst.domain.Pokemon> box = pokemonService.listarBox(perfil.getId());
         return ResponseEntity.ok(PerfilJogadorResponseDto.from(perfil, time, box));

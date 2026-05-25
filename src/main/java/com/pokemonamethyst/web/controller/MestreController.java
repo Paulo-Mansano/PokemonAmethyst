@@ -8,8 +8,10 @@ import com.pokemonamethyst.domain.Personalidade;
 import com.pokemonamethyst.domain.PokemonSpecies;
 import com.pokemonamethyst.domain.Usuario;
 import com.pokemonamethyst.repository.PerfilJogadorRepository;
+import com.pokemonamethyst.service.AuditLogService;
 import com.pokemonamethyst.service.AuthService;
 import com.pokemonamethyst.service.CatalogoService;
+import com.pokemonamethyst.service.UsuarioService;
 import com.pokemonamethyst.service.PokeApiService;
 import com.pokemonamethyst.service.PokemonService;
 import com.pokemonamethyst.service.PokemonSpeciesConfigService;
@@ -33,14 +35,17 @@ import com.pokemonamethyst.web.dto.UsuarioResponseDto;
 import com.pokemonamethyst.web.dto.auth.RegistroRequestDto;
 import jakarta.validation.Valid;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestBody;
+import org.springframework.http.HttpStatus;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
+import org.springframework.web.bind.annotation.ResponseStatus;
 import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.bind.annotation.DeleteMapping;
 
@@ -57,22 +62,50 @@ public class MestreController {
     private final CatalogoService catalogoService;
     private final PokemonSpeciesConfigService speciesConfigService;
     private final AuthService authService;
+    private final AuditLogService auditLogService;
+    private final UsuarioService usuarioService;
 
     public MestreController(PerfilJogadorRepository perfilRepository, PokemonService pokemonService,
                             PokeApiService pokeApiService, CatalogoService catalogoService,
                             PokemonSpeciesConfigService speciesConfigService,
-                            AuthService authService) {
+                            AuthService authService, AuditLogService auditLogService,
+                            UsuarioService usuarioService) {
         this.perfilRepository = perfilRepository;
         this.pokemonService = pokemonService;
         this.pokeApiService = pokeApiService;
         this.catalogoService = catalogoService;
         this.speciesConfigService = speciesConfigService;
         this.authService = authService;
+        this.auditLogService = auditLogService;
+        this.usuarioService = usuarioService;
+    }
+
+    @GetMapping("/usuarios")
+    public List<UsuarioResponseDto> listarUsuarios() {
+        return usuarioService.listarTodos().stream().map(UsuarioResponseDto::from).toList();
+    }
+
+    @DeleteMapping("/usuarios/{id}")
+    @ResponseStatus(HttpStatus.NO_CONTENT)
+    public void excluirUsuario(
+            @AuthenticationPrincipal com.pokemonamethyst.security.UsuarioPrincipal principal,
+            @PathVariable String id) {
+        if (principal.getId().equals(id))
+            throw new com.pokemonamethyst.exception.RegraNegocioException("Não é possível excluir sua própria conta.");
+        Usuario alvo = usuarioService.buscarPorId(id);
+        auditLogService.registrar(principal.getId(), principal.getUsername(), "CONTA_EXCLUIDA",
+            "USUARIO", id, "Conta '" + alvo.getNomeUsuario() + "' excluída pelo mestre");
+        usuarioService.excluir(id);
     }
 
     @PostMapping("/usuarios/mestre")
-    public ResponseEntity<UsuarioResponseDto> criarContaMestre(@Valid @RequestBody RegistroRequestDto dto) {
+    public ResponseEntity<UsuarioResponseDto> criarContaMestre(
+            @AuthenticationPrincipal com.pokemonamethyst.security.UsuarioPrincipal principal,
+            @Valid @RequestBody RegistroRequestDto dto) {
         Usuario usuario = authService.registrarMestre(dto.getNomeUsuario(), dto.getSenha());
+        auditLogService.registrar(principal.getId(), principal.getUsername(), "CONTA_MESTRE_CRIADA",
+            "USUARIO", usuario.getId(),
+            "Conta Mestre '" + usuario.getNomeUsuario() + "' criada");
         return ResponseEntity.ok(UsuarioResponseDto.from(usuario));
     }
 
@@ -190,39 +223,37 @@ public class MestreController {
 
     @PostMapping("/itens")
     @Transactional
-    public ResponseEntity<ItemResponseDto> criarItem(@RequestBody ItemAtualizarRequestDto dto) {
-        Item item = catalogoService.criarItem(
-                dto.getNome(),
-                dto.getNomeEn(),
-                dto.getDescricao(),
-                dto.getPeso(),
-                dto.getPreco(),
-                dto.getImagemUrl()
-        );
+    public ResponseEntity<ItemResponseDto> criarItem(
+            @AuthenticationPrincipal com.pokemonamethyst.security.UsuarioPrincipal principal,
+            @RequestBody ItemAtualizarRequestDto dto) {
+        Item item = catalogoService.criarItem(dto.getNome(), dto.getNomeEn(), dto.getDescricao(),
+                dto.getPeso(), dto.getPreco(), dto.getImagemUrl());
+        auditLogService.registrar(principal.getId(), principal.getUsername(), "ITEM_CRIADO",
+            "ITEM", item.getId(), "'" + item.getNome() + "'");
         return ResponseEntity.ok(ItemResponseDto.from(item));
     }
 
     @PutMapping("/itens/{id}")
     @Transactional
     public ResponseEntity<ItemResponseDto> atualizarItem(
+            @AuthenticationPrincipal com.pokemonamethyst.security.UsuarioPrincipal principal,
             @PathVariable String id,
             @RequestBody ItemAtualizarRequestDto dto) {
-        Item item = catalogoService.atualizarItem(
-                id,
-                dto.getNome(),
-                dto.getNomeEn(),
-                dto.getDescricao(),
-                dto.getPeso(),
-                dto.getPreco(),
-                dto.getImagemUrl()
-        );
+        Item item = catalogoService.atualizarItem(id, dto.getNome(), dto.getNomeEn(), dto.getDescricao(),
+                dto.getPeso(), dto.getPreco(), dto.getImagemUrl());
+        auditLogService.registrar(principal.getId(), principal.getUsername(), "ITEM_ATUALIZADO",
+            "ITEM", item.getId(), "'" + item.getNome() + "'");
         return ResponseEntity.ok(ItemResponseDto.from(item));
     }
 
     @DeleteMapping("/itens/{id}")
     @Transactional
-    public ResponseEntity<Void> excluirItem(@PathVariable String id) {
+    public ResponseEntity<Void> excluirItem(
+            @AuthenticationPrincipal com.pokemonamethyst.security.UsuarioPrincipal principal,
+            @PathVariable String id) {
         catalogoService.excluirItem(id);
+        auditLogService.registrar(principal.getId(), principal.getUsername(), "ITEM_EXCLUIDO",
+            "ITEM", id, "Item excluído");
         return ResponseEntity.noContent().build();
     }
 
@@ -235,83 +266,96 @@ public class MestreController {
 
     @PostMapping("/habilidades")
     @Transactional
-    public ResponseEntity<HabilidadeResponseDto> criarHabilidade(@RequestBody HabilidadeAtualizarRequestDto dto) {
-        Habilidade h = catalogoService.criarHabilidade(
-                dto.getNome(),
-                dto.getNomeEn(),
-                dto.getDescricao()
-        );
+    public ResponseEntity<HabilidadeResponseDto> criarHabilidade(
+            @AuthenticationPrincipal com.pokemonamethyst.security.UsuarioPrincipal principal,
+            @RequestBody HabilidadeAtualizarRequestDto dto) {
+        Habilidade h = catalogoService.criarHabilidade(dto.getNome(), dto.getNomeEn(), dto.getDescricao());
+        auditLogService.registrar(principal.getId(), principal.getUsername(), "HABILIDADE_CRIADA",
+            "HABILIDADE", h.getId(), "'" + h.getNome() + "'");
         return ResponseEntity.ok(HabilidadeResponseDto.from(h));
     }
 
     @PutMapping("/habilidades/{id}")
     @Transactional
     public ResponseEntity<HabilidadeResponseDto> atualizarHabilidade(
+            @AuthenticationPrincipal com.pokemonamethyst.security.UsuarioPrincipal principal,
             @PathVariable String id,
             @RequestBody HabilidadeAtualizarRequestDto dto) {
-        Habilidade h = catalogoService.atualizarHabilidade(
-                id,
-                dto.getNome(),
-                dto.getNomeEn(),
-                dto.getDescricao()
-        );
+        Habilidade h = catalogoService.atualizarHabilidade(id, dto.getNome(), dto.getNomeEn(), dto.getDescricao());
+        auditLogService.registrar(principal.getId(), principal.getUsername(), "HABILIDADE_ATUALIZADA",
+            "HABILIDADE", h.getId(), "'" + h.getNome() + "'");
         return ResponseEntity.ok(HabilidadeResponseDto.from(h));
     }
 
     @PostMapping("/movimentos")
     @Transactional
-    public ResponseEntity<MovimentoResponseDto> criarMovimento(@RequestBody MovimentoAtualizarRequestDto dto) {
-        Movimento m = catalogoService.criarMovimento(
-                dto.getNome(),
-                dto.getNomeEn(),
-                dto.getTipo(),
-                dto.getCategoria(),
-                dto.getCustoStamina(),
-                dto.getDadoDeDano(),
-                dto.getDescricaoEfeito()
-        );
+    public ResponseEntity<MovimentoResponseDto> criarMovimento(
+            @AuthenticationPrincipal com.pokemonamethyst.security.UsuarioPrincipal principal,
+            @RequestBody MovimentoAtualizarRequestDto dto) {
+        Movimento m = catalogoService.criarMovimento(dto.getNome(), dto.getNomeEn(), dto.getTipo(),
+                dto.getCategoria(), dto.getCustoStamina(), dto.getDadoDeDano(), dto.getDescricaoEfeito());
+        auditLogService.registrar(principal.getId(), principal.getUsername(), "MOVIMENTO_CRIADO",
+            "MOVIMENTO", m.getId(), "'" + m.getNome() + "' (" + m.getTipo() + ")");
         return ResponseEntity.ok(MovimentoResponseDto.from(m));
     }
 
     @PutMapping("/movimentos/{id}")
     @Transactional
     public ResponseEntity<MovimentoResponseDto> atualizarMovimento(
+            @AuthenticationPrincipal com.pokemonamethyst.security.UsuarioPrincipal principal,
             @PathVariable String id,
             @RequestBody MovimentoAtualizarRequestDto dto) {
-        Movimento m = catalogoService.atualizarMovimento(
-                id,
-                dto.getNome(),
-                dto.getNomeEn(),
-                dto.getTipo(),
-                dto.getCategoria(),
-                dto.getCustoStamina(),
-                dto.getDadoDeDano(),
-                dto.getDescricaoEfeito()
-        );
+        Movimento m = catalogoService.atualizarMovimento(id, dto.getNome(), dto.getNomeEn(), dto.getTipo(),
+                dto.getCategoria(), dto.getCustoStamina(), dto.getDadoDeDano(), dto.getDescricaoEfeito());
+        auditLogService.registrar(principal.getId(), principal.getUsername(), "MOVIMENTO_ATUALIZADO",
+            "MOVIMENTO", m.getId(), "'" + m.getNome() + "' (" + m.getTipo() + ")");
         return ResponseEntity.ok(MovimentoResponseDto.from(m));
     }
 
     @DeleteMapping("/movimentos/{id}")
     @Transactional
-    public ResponseEntity<Void> excluirMovimento(@PathVariable String id) {
+    public ResponseEntity<Void> excluirMovimento(
+            @AuthenticationPrincipal com.pokemonamethyst.security.UsuarioPrincipal principal,
+            @PathVariable String id) {
         catalogoService.excluirMovimento(id);
+        auditLogService.registrar(principal.getId(), principal.getUsername(), "MOVIMENTO_EXCLUIDO",
+            "MOVIMENTO", id, "Movimento excluído");
         return ResponseEntity.noContent().build();
     }
 
     @PostMapping("/personalidades")
     @Transactional
-    public ResponseEntity<PersonalidadeResponseDto> criarPersonalidade(@RequestBody PersonalidadeRequestDto dto) {
+    public ResponseEntity<PersonalidadeResponseDto> criarPersonalidade(
+            @AuthenticationPrincipal com.pokemonamethyst.security.UsuarioPrincipal principal,
+            @RequestBody PersonalidadeRequestDto dto) {
         Personalidade p = catalogoService.criarPersonalidade(dto.getNome());
+        auditLogService.registrar(principal.getId(), principal.getUsername(), "PERSONALIDADE_CRIADA",
+            "PERSONALIDADE", p.getId(), "'" + p.getNome() + "'");
         return ResponseEntity.ok(PersonalidadeResponseDto.from(p));
     }
 
     @PutMapping("/personalidades/{id}")
     @Transactional
     public ResponseEntity<PersonalidadeResponseDto> atualizarPersonalidade(
+            @AuthenticationPrincipal com.pokemonamethyst.security.UsuarioPrincipal principal,
             @PathVariable String id,
             @RequestBody PersonalidadeRequestDto dto) {
         Personalidade p = catalogoService.atualizarPersonalidade(id, dto.getNome());
+        auditLogService.registrar(principal.getId(), principal.getUsername(), "PERSONALIDADE_ATUALIZADA",
+            "PERSONALIDADE", p.getId(), "'" + p.getNome() + "'");
         return ResponseEntity.ok(PersonalidadeResponseDto.from(p));
+    }
+
+    @DeleteMapping("/personalidades/{id}")
+    @ResponseStatus(HttpStatus.NO_CONTENT)
+    @Transactional
+    public void excluirPersonalidade(
+            @AuthenticationPrincipal com.pokemonamethyst.security.UsuarioPrincipal principal,
+            @PathVariable String id) {
+        Personalidade p = catalogoService.buscarPersonalidade(id);
+        auditLogService.registrar(principal.getId(), principal.getUsername(), "PERSONALIDADE_EXCLUIDA",
+            "PERSONALIDADE", id, "'" + p.getNome() + "'");
+        catalogoService.excluirPersonalidade(id);
     }
 
     @PutMapping("/pokemons/{pokemonId}/tipos")

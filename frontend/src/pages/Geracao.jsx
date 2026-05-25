@@ -113,10 +113,10 @@ function getCardBackground(p) {
   if (!prim) return base
   const [r1, g1, b1] = prim
   if (!sec) {
-    return `linear-gradient(135deg, rgba(${r1},${g1},${b1},0.25), rgba(${r1},${g1},${b1},0.05)), ${base}`
+    return `linear-gradient(135deg, rgba(${r1},${g1},${b1},0.40) 0%, rgba(${r1},${g1},${b1},0.10) 100%), ${base}`
   }
   const [r2, g2, b2] = sec
-  return `linear-gradient(135deg, rgba(${r1},${g1},${b1},0.25), rgba(${r2},${g2},${b2},0.15), rgba(${r1},${g1},${b1},0.05)), ${base}`
+  return `linear-gradient(135deg, rgba(${r1},${g1},${b1},0.46) 0%, rgba(${r1},${g1},${b1},0.18) 42%, rgba(${r2},${g2},${b2},0.18) 58%, rgba(${r2},${g2},${b2},0.46) 100%), ${base}`
 }
 
 function formatMovimentoNomeExibicao(movimento) {

@@ -101,6 +101,16 @@ public class PerfilJogadorService {
                 .orElseThrow(() -> new RecursoNaoEncontradoException("Usuário não encontrado."));
 
         PerfilJogador perfil = perfilRepository.findByUsuarioId(usuarioId).orElse(null);
+
+        if (nomePersonagem != null && !nomePersonagem.equals(PERFIL_NOME_PADRAO)) {
+            String perfilIdAtual = perfil != null ? perfil.getId() : null;
+            boolean duplicado = perfilIdAtual != null
+                    ? perfilRepository.existsByNomePersonagemAndIdNot(nomePersonagem, perfilIdAtual)
+                    : perfilRepository.existsByNomePersonagem(nomePersonagem);
+            if (duplicado)
+                throw new RegraNegocioException("Nome de personagem '" + nomePersonagem + "' já está em uso.");
+        }
+
         if (perfil == null) {
             perfil = new PerfilJogador();
             perfil.setUsuario(usuario);

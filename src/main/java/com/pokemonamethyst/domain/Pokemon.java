@@ -85,6 +85,9 @@ public class Pokemon {
     @Column(name = "pokebola_captura", nullable = false)
     private Pokebola pokebolaCaptura;
 
+    @Column(name = "raridade", length = 2)
+    private String raridade;
+
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "item_segurado_id")
     private Item itemSegurado;
@@ -309,6 +312,8 @@ public class Pokemon {
     public void setTecnica(int tecnica) { this.atrTecnica = tecnica; }
     public int getRespeito() { return atrRespeito; }
     public void setRespeito(int respeito) { this.atrRespeito = respeito; }
+    public String getRaridade() { return raridade; }
+    public void setRaridade(String raridade) { this.raridade = raridade; }
     public List<CondicaoStatus> getStatusAtuais() { return statusAtuais; }
     public void setStatusAtuais(List<CondicaoStatus> statusAtuais) { this.statusAtuais = statusAtuais; }
     public Habilidade getHabilidadeAtiva() { return habilidadeAtiva; }

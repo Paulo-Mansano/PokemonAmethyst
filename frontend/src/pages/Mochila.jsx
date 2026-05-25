@@ -13,6 +13,7 @@ export default function Mochila() {
   const [addBusca, setAddBusca] = useState('')
   const [addQtd, setAddQtd] = useState(1)
   const [itemQtdEdicao, setItemQtdEdicao] = useState({})
+  const [descExpand, setDescExpand] = useState({})
 
   const perfilQuery = useQuery({
     queryKey: queryKeys.perfil(playerId),
@@ -204,71 +205,110 @@ export default function Mochila() {
         {!itensTabela.length ? (
           <p style={{ color: 'var(--text-muted)' }}>Nenhum item na mochila. Adicione itens pelo formulário acima.</p>
         ) : (
-          <div style={{ overflowX: 'auto' }}>
-            <table className="table">
-              <thead>
-                <tr>
-                  <th style={{ width: 56 }}></th>
-                  <th>Nome (PT)</th>
-                  <th>Nome (EN)</th>
-                  <th>Descrição</th>
-                  <th>Peso</th>
-                  <th>Preço</th>
-                  <th>Qtd</th>
-                  <th style={{ width: 240, textAlign: 'right' }}>Ações</th>
-                </tr>
-              </thead>
-              <tbody>
-                {itensTabela.map((mi) => (
-                  <tr key={mi.itemId}>
-                    <td>
-                      {mi.imagemUrl ? (
-                        <img src={mi.imagemUrl} alt="" style={{ width: 40, height: 40, objectFit: 'contain' }} />
-                      ) : (
-                        <span style={{ width: 40, height: 40, display: 'inline-block', background: 'var(--border)', borderRadius: 4 }} title="Sem imagem" />
-                      )}
-                    </td>
-                    <td>{mi.itemNome}</td>
-                    <td>{mi.itemNomeEn || '—'}</td>
-                    <td style={{ maxWidth: 400 }}>{mi.descricao || '—'}</td>
-                    <td>{mi.pesoUnitario}</td>
-                    <td>{mi.preco}</td>
-                    <td style={{ width: 80 }}>
-                      <input
-                        type="number"
-                        min={0}
-                        value={itemQtdEdicao[mi.itemId] ?? mi.quantidade}
-                        onChange={(e) => {
-                          const num = Number.parseInt(e.target.value, 10)
-                          setItemQtdEdicao((prev) => ({ ...prev, [mi.itemId]: Number.isFinite(num) ? Math.max(0, num) : 0 }))
-                        }}
-                        style={{ width: 72 }}
-                      />
-                    </td>
-                    <td style={{ textAlign: 'right' }}>
-                      <button
-                        type="button"
-                        className="btn btn-primary btn-sm"
-                        onClick={() => handleSalvarQuantidade(mi.itemId, mi.quantidade)}
-                        disabled={adicionarMutation.isPending || removerMutation.isPending}
-                        style={{ marginRight: '0.4rem' }}
-                      >
-                        Salvar qtd
-                      </button>
-                      <button
-                        type="button"
-                        className="btn btn-secondary btn-sm"
-                        style={{ fontSize: '0.85rem' }}
-                        onClick={() => handleRemover(mi.itemId, mi.quantidade)}
-                        disabled={(mi.quantidade ?? 0) <= 0 || removerMutation.isPending}
-                      >
-                        Remover
-                      </button>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
+            {itensTabela.map((mi) => (
+              <div
+                key={mi.itemId}
+                style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '0.9rem',
+                  padding: '0.75rem 0.9rem',
+                  borderRadius: 'var(--radius)',
+                  background: 'rgba(8,6,18,.45)',
+                  border: '1px solid rgba(168,85,247,.1)',
+                  transition: 'border-color .15s',
+                }}
+                onMouseEnter={(e) => e.currentTarget.style.borderColor = 'rgba(168,85,247,.28)'}
+                onMouseLeave={(e) => e.currentTarget.style.borderColor = 'rgba(168,85,247,.1)'}
+              >
+                {/* Imagem */}
+                {mi.imagemUrl ? (
+                  <img src={mi.imagemUrl} alt="" style={{ width: 48, height: 48, objectFit: 'contain', flexShrink: 0 }} />
+                ) : (
+                  <span style={{ width: 48, height: 48, display: 'inline-block', background: 'var(--border)', borderRadius: 6, flexShrink: 0 }} />
+                )}
+
+                {/* Nome + descrição */}
+                <div style={{ flex: 1, minWidth: 0 }}>
+                  <div style={{ display: 'flex', alignItems: 'baseline', gap: '0.5rem', flexWrap: 'wrap' }}>
+                    <span style={{ fontWeight: 600, fontSize: '0.95rem', color: 'var(--text)' }}>{mi.itemNome}</span>
+                    {mi.itemNomeEn && (
+                      <span style={{ color: 'var(--text-muted)', fontSize: '0.8rem' }}>{mi.itemNomeEn}</span>
+                    )}
+                  </div>
+                  {mi.descricao && (() => {
+                    const longa = mi.descricao.length > 110
+                    const aberta = !!descExpand[mi.itemId]
+                    return (
+                      <div style={{ marginTop: '0.15rem' }}>
+                        <div style={{
+                          color: 'var(--text-muted)',
+                          fontSize: '0.8rem',
+                          lineHeight: 1.5,
+                          overflow: aberta ? 'visible' : 'hidden',
+                          display: aberta ? 'block' : '-webkit-box',
+                          WebkitLineClamp: aberta ? 'none' : 2,
+                          WebkitBoxOrient: 'vertical',
+                        }}>
+                          {mi.descricao}
+                        </div>
+                        {longa && (
+                          <button
+                            type="button"
+                            onClick={() => setDescExpand((prev) => ({ ...prev, [mi.itemId]: !prev[mi.itemId] }))}
+                            style={{ background: 'none', border: 'none', padding: '2px 0 0', cursor: 'pointer', color: 'var(--accent)', fontSize: '0.74rem', fontWeight: 600 }}
+                          >
+                            {aberta ? '▲ Ver menos' : '▼ Ver mais'}
+                          </button>
+                        )}
+                      </div>
+                    )
+                  })()}
+                  <div style={{ display: 'flex', gap: '0.45rem', marginTop: '0.35rem', flexWrap: 'wrap' }}>
+                    <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)', background: 'rgba(168,85,247,.1)', border: '1px solid rgba(168,85,247,.2)', borderRadius: 999, padding: '1px 8px' }}>
+                      ⚖ {mi.pesoUnitario} kg
+                    </span>
+                    <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)', background: 'rgba(168,85,247,.1)', border: '1px solid rgba(168,85,247,.2)', borderRadius: 999, padding: '1px 8px' }}>
+                      ₽ {mi.preco}
+                    </span>
+                  </div>
+                </div>
+
+                {/* Quantidade + ações */}
+                <div style={{ display: 'flex', alignItems: 'center', gap: '0.45rem', flexShrink: 0 }}>
+                  <input
+                    type="number"
+                    min={0}
+                    value={itemQtdEdicao[mi.itemId] ?? mi.quantidade}
+                    onChange={(e) => {
+                      const num = Number.parseInt(e.target.value, 10)
+                      setItemQtdEdicao((prev) => ({ ...prev, [mi.itemId]: Number.isFinite(num) ? Math.max(0, num) : 0 }))
+                    }}
+                    style={{ width: 68, textAlign: 'center' }}
+                    title="Quantidade"
+                  />
+                  <button
+                    type="button"
+                    className="btn btn-primary btn-sm"
+                    onClick={() => handleSalvarQuantidade(mi.itemId, mi.quantidade)}
+                    disabled={adicionarMutation.isPending || removerMutation.isPending}
+                    title="Salvar quantidade"
+                  >
+                    Salvar
+                  </button>
+                  <button
+                    type="button"
+                    className="btn btn-secondary btn-sm"
+                    onClick={() => handleRemover(mi.itemId, mi.quantidade)}
+                    disabled={(mi.quantidade ?? 0) <= 0 || removerMutation.isPending}
+                    title="Remover item da mochila"
+                  >
+                    Remover
+                  </button>
+                </div>
+              </div>
+            ))}
           </div>
         )}
       </div>

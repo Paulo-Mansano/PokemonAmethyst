@@ -422,7 +422,7 @@ export default function Perfil() {
 
   const s = {
     root: {
-      background: '#0e0920',
+      background: 'transparent',
       color: '#f0ebff',
       fontFamily: "'Rajdhani', sans-serif",
       minHeight: '100vh',

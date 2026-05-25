@@ -39,7 +39,7 @@ function getMoveCardBackground(move) {
   const hex = tipo && TYPE_COLORS[tipo] ? TYPE_COLORS[tipo] : null
   if (!hex) return base
   const [r, g, b] = hexToRgb(hex)
-  return `linear-gradient(135deg, rgba(${r},${g},${b},0.25), rgba(${r},${g},${b},0.05)), ${base}`
+  return `linear-gradient(135deg, rgba(${r},${g},${b},0.40) 0%, rgba(${r},${g},${b},0.10) 100%), ${base}`
 }
 
 export default function MovimentosCatalogo() {

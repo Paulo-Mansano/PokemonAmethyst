@@ -22,14 +22,8 @@ const STATUS_BONUS_MAP = {
   ENVENENADO: 2,
 }
 
-const STATUS_CD_REDUCAO_MAP = {
-  NENHUM: 0,
-  DORMINDO: 2,
-  CONGELADO: 2,
-  PARALISADO: 2,
-  QUEIMANDO: 2,
-  ENVENENADO: 2,
-}
+const TIER_BASE = { F: 10, E: 13, D: 16, C: 19, B: 22, A: 25, S: 30 }
+const TIER_OPTIONS = ['F', 'E', 'D', 'C', 'B', 'A', 'S']
 
 const STATUS_ACTIONS = [
   { value: 'CLEAR', label: 'Ø', title: 'Limpar status' },
@@ -68,78 +62,110 @@ function toInt(value, fallback = 0) {
   return Math.trunc(n)
 }
 
+function calcularModificadorNivel(nivel) {
+  return Math.floor(Math.min(Math.max(1, nivel), 20) / 2)
+}
+
+function calcularModificadorHP(hpRestante, hpMaximo) {
+  if (hpMaximo <= 0) return 0
+  const pct = (hpRestante / hpMaximo) * 100
+  if (pct >= 76) return 10
+  if (pct >= 50) return 5
+  if (pct >= 11) return 0
+  if (pct >= 1) return -5
+  return 0
+}
+
+function labelModHP(pct) {
+  if (pct >= 76) return 'Ileso'
+  if (pct >= 50) return 'Machucado'
+  if (pct >= 11) return 'Neutro'
+  if (pct >= 1) return 'Crítico'
+  return 'Derrotado'
+}
+
+const POKEBOLA_CONFIG = [
+  { tipo: 'MASTER', palavras: ['master'],       bonus: null, masterball: true,  label: 'Master Ball',  desc: 'Captura garantida' },
+  { tipo: 'ULTRA',  palavras: ['ultra'],         bonus: 6,   masterball: false, label: 'Ultra Ball',   desc: '+6 na rolagem' },
+  { tipo: 'GREAT',  palavras: ['great', 'super'],bonus: 3,   masterball: false, label: 'Great Ball',   desc: '+3 na rolagem' },
+  { tipo: 'PADRAO', palavras: [],                bonus: 0,   masterball: false, label: 'Pokébola',     desc: '+0 (padrão)' },
+]
+
+function identificarPokebola(nome, nomeEn) {
+  const s = `${nome || ''} ${nomeEn || ''}`.toLowerCase()
+  for (const cfg of POKEBOLA_CONFIG) {
+    if (cfg.palavras.length > 0 && cfg.palavras.some((p) => s.includes(p))) {
+      return { tipo: cfg.tipo, bonus: cfg.bonus ?? 0, masterball: cfg.masterball }
+    }
+  }
+  return { tipo: 'DESCONHECIDA', bonus: 0, masterball: false }
+}
+
 function calcularTentativaCaptura(input, rolarD20 = () => Math.floor(Math.random() * 20) + 1) {
+  const tier = input.tier || 'F'
   const nivelPokemon = Math.max(1, toInt(input.nivelPokemon, 1))
   const respeitoPokemon = Math.max(0, toInt(input.respeitoPokemon, 0))
-  const hpRestantePokemon = Math.max(0, toInt(input.hpRestantePokemon, 0))
-  const cdBaseCalculada = respeitoPokemon + nivelPokemon + hpRestantePokemon
-  const statusAtuais = normalizarStatusList(input.statusAtuais || input.status)
-  const statusCdReducao = calcularStatusBonus(statusAtuais, STATUS_CD_REDUCAO_MAP)
-  const cdAuto = Math.max(0, cdBaseCalculada - statusCdReducao)
+  const hpRestante = Math.max(0, toInt(input.hpRestantePokemon, 0))
+  const hpMaximo = Math.max(1, toInt(input.hpMaximoPokemon, 1))
+
+  const baseRaridade = TIER_BASE[tier] ?? 10
+  const modNivel = calcularModificadorNivel(nivelPokemon)
+  const modHP = calcularModificadorHP(hpRestante, hpMaximo)
+  const cdAuto = baseRaridade + respeitoPokemon + modNivel + modHP
+
   const manualCdOverride = Boolean(input.manualCdOverride)
-  const cdManual = Math.max(0, toInt(input.cdBaseManual, cdAuto))
-  const nivelTreinador = Math.max(1, toInt(input.nivelTreinador, 1))
-  const dominioTreinador = Math.max(1, toInt(input.dominioTreinador, 1))
-  const respeitoTreinador = Math.max(1, toInt(input.respeitoTreinador, 1))
-  const bonusTreinador = toInt(input.bonusTreinador, 0)
-  const vinculoTreinador = toInt(input.vinculoTreinador, 0)
-  const bonusManualMestre = bonusTreinador + vinculoTreinador
+  const dificuldade = manualCdOverride ? Math.max(0, toInt(input.cdBaseManual, cdAuto)) : cdAuto
+
+  const statusAtuais = normalizarStatusList(input.statusAtuais || input.status)
   const bonusStatus = calcularStatusBonus(statusAtuais, STATUS_BONUS_MAP)
 
-  const penalidadeNivel = Math.max(0, nivelPokemon - nivelTreinador)
-  const dominioEfetivo = Math.max(1, dominioTreinador - penalidadeNivel)
-  const respeitoEfetivo = Math.max(1, respeitoTreinador - penalidadeNivel)
+  const dominioTreinador = Math.max(0, toInt(input.dominioTreinador, 0))
+  const respeitoTreinador = Math.max(0, toInt(input.respeitoTreinador, 0))
+  const bonusTreinador = toInt(input.bonusTreinador, 0)
+  const vinculoTreinador = toInt(input.vinculoTreinador, 0)
+  const bonusPokebola = toInt(input.bonusPokebola, 0)
+  const masterball = Boolean(input.masterball)
 
-  const dificuldade = manualCdOverride ? cdManual : cdAuto
+  if (masterball) {
+    return {
+      sucesso: true, masterball: true,
+      dificuldade, tier, baseRaridade, modNivel, modHP, respeitoPokemon,
+      rolagemTotal: null, d20: null,
+      dominioTreinador, respeitoTreinador, bonusTreinador, vinculoTreinador,
+      bonusStatus, bonusPokebola: 0, statusAtuais, nivelPokemon, hpRestante, hpMaximo, cdAuto, manualCdOverride,
+    }
+  }
+
   const d20 = rolarD20()
-  const rolagemTotal = d20 + dominioEfetivo + respeitoEfetivo + bonusManualMestre + bonusStatus
+  const rolagemTotal = d20 + dominioTreinador + respeitoTreinador + bonusTreinador + vinculoTreinador + bonusStatus + bonusPokebola
   const sucesso = rolagemTotal >= dificuldade
 
   return {
-    sucesso,
-    dificuldade,
-    rolagemTotal,
-    d20,
-    bonusStatus,
-    bonusManualMestre,
-    bonusTreinador,
-    vinculoTreinador,
-    dominioOriginal: dominioTreinador,
-    respeitoOriginal: respeitoTreinador,
-    dominioEfetivo,
-    respeitoEfetivo,
-    penalidadeNivel,
-    cdBaseCalculada,
-    cdAuto,
-    statusCdReducao,
-    manualCdOverride,
-    statusAtuais,
-    nivelPokemon,
-    nivelTreinador,
+    sucesso, masterball: false,
+    dificuldade, tier, baseRaridade, modNivel, modHP, respeitoPokemon,
+    rolagemTotal, d20,
+    dominioTreinador, respeitoTreinador, bonusTreinador, vinculoTreinador,
+    bonusStatus, bonusPokebola, statusAtuais, nivelPokemon, hpRestante, hpMaximo, cdAuto, manualCdOverride,
   }
 }
 
 function buildCaptureForm(pokemon, perfil) {
   if (!pokemon || !perfil) return null
-  const nivelPokemon = Math.max(1, Number(pokemon.nivel) || 1)
-  const respeitoPokemon = Math.max(0, Number(pokemon.respeito) || 0)
-  const hpRestantePokemon = Math.max(0, Number(pokemon.hpAtual) || 0)
-  const cdBase = respeitoPokemon + nivelPokemon + hpRestantePokemon
+  const tierValido = TIER_OPTIONS.includes(pokemon.raridade) ? pokemon.raridade : 'F'
   return {
-    nivelPokemon,
-    respeitoPokemon,
-    hpRestantePokemon,
+    tier: tierValido,
+    nivelPokemon: Math.max(1, Number(pokemon.nivel) || 1),
+    respeitoPokemon: Math.max(0, Number(pokemon.respeito) || 0),
+    hpRestantePokemon: Math.max(0, Number(pokemon.hpAtual) || 0),
     hpMaximoPokemon: Math.max(1, Number(pokemon.hpMaximo) || 1),
-    nivelTreinador: Math.max(1, Number(perfil.nivel) || 1),
-    dominioTreinador: Math.max(1, Number(perfil.atributos?.dominio) || 1),
-    respeitoTreinador: Math.max(1, Number(perfil.atributos?.respeito) || 1),
+    dominioTreinador: Math.max(0, Number(perfil.atributos?.dominio) || 0),
+    respeitoTreinador: Math.max(0, Number(perfil.atributos?.respeito) || 0),
     vinculoTreinador: 0,
     bonusTreinador: 0,
-    cdBaseManual: cdBase,
+    cdBaseManual: 0,
     manualCdOverride: false,
+
     statusAtuais: detectarStatusInicial(pokemon.statusAtuais),
-    tiposNetBall: '',
-    ambienteDuskBall: '',
   }
 }
 
@@ -318,15 +344,23 @@ export default function Captura() {
     })
   }
 
+  const resolverPokebolaAtiva = () => {
+    const item = pokebolasDisponiveis.find((b) => b.id === pokebolaAtiva) || null
+    const info = item ? identificarPokebola(item.nome, item.nomeEn) : { tipo: 'PADRAO', bonus: 0, masterball: false }
+    const bonus = info.bonus
+    return { item, info, bonus }
+  }
+
   const tentarCapturaAutomatica = async () => {
     if (!pokemon || !captureForm || calculando) return
     setErro('')
     setMensagem('')
     setCalculando(true)
     try {
-      const resultado = calcularTentativaCaptura(captureForm)
+      const { item, info, bonus } = resolverPokebolaAtiva()
+      const resultado = calcularTentativaCaptura({ ...captureForm, masterball: info.masterball, bonusPokebola: bonus })
       await resolverCaptura(resultado.sucesso)
-      setResultadoModal(resultado)
+      setResultadoModal({ ...resultado, pokebolaNome: item?.nome || item?.nomeEn || 'Pokébola' })
     } catch (e) {
       setErro(e.message || 'Erro ao resolver captura')
     } finally {
@@ -336,31 +370,46 @@ export default function Captura() {
 
   const processarSimulacaoRapida = () => {
     if (!captureForm) return
+    const { info, bonus } = resolverPokebolaAtiva()
     const total = Math.max(1, parseInt(quickRolls, 10) || 1)
     let sucessos = 0
     for (let i = 0; i < total; i += 1) {
-      const r = calcularTentativaCaptura(captureForm)
+      const r = calcularTentativaCaptura({ ...captureForm, masterball: info.masterball, bonusPokebola: bonus })
       if (r.sucesso) sucessos += 1
     }
     setChanceEstimada((sucessos / total) * 100)
   }
 
-  const cdBase = captureForm
-    ? (Math.max(0, Number(captureForm.respeitoPokemon) || 0)
-      + Math.max(1, Number(captureForm.nivelPokemon) || 1)
-      + Math.max(0, Number(captureForm.hpRestantePokemon) || 0))
-    : 0
-  const statusCdReducaoAtual = captureForm
-    ? calcularStatusBonus(captureForm.statusAtuais, STATUS_CD_REDUCAO_MAP)
-    : 0
-  const cdFinalAuto = Math.max(0, cdBase - statusCdReducaoAtual)
-  const cdFinal = captureForm
-    ? (captureForm.manualCdOverride ? Math.max(0, Number(captureForm.cdBaseManual) || cdFinalAuto) : cdFinalAuto)
-    : 0
+  // ── Computações reativas ────────────────────────────────────────────────────
+  const pokebolaSelecionada = pokebolasDisponiveis.find((b) => b.id === pokebolaAtiva) || null
+  const pokebolaInfo = pokebolaSelecionada
+    ? identificarPokebola(pokebolaSelecionada.nome, pokebolaSelecionada.nomeEn)
+    : { tipo: 'PADRAO', bonus: 0, masterball: false }
+  const masterBallAtiva = pokebolaInfo.masterball
+  const bonusPokebolaEfetivo = pokebolaInfo.bonus
+
   const hpRestante = Math.max(0, Number(captureForm?.hpRestantePokemon) || 0)
   const hpMaximo = Math.max(1, Number(captureForm?.hpMaximoPokemon) || 1)
   const hpPercent = Math.max(0, Math.min(100, (hpRestante / hpMaximo) * 100))
-  const chanceTexto = chanceEstimada == null ? 'NaN%' : `${chanceEstimada.toFixed(1)}%`
+
+  const baseRaridade = TIER_BASE[captureForm?.tier || 'F'] ?? 10
+  const modNivelAtual = captureForm ? calcularModificadorNivel(captureForm.nivelPokemon || 1) : 0
+  const modHPAtual = captureForm ? calcularModificadorHP(hpRestante, hpMaximo) : 0
+  const cdAuto = captureForm ? baseRaridade + (captureForm.respeitoPokemon || 0) + modNivelAtual + modHPAtual : 0
+  const cdFinal = captureForm
+    ? (captureForm.manualCdOverride ? Math.max(0, Number(captureForm.cdBaseManual) || cdAuto) : cdAuto)
+    : 0
+
+  const bonusStatusAtual = captureForm ? calcularStatusBonus(normalizarStatusList(captureForm.statusAtuais), STATUS_BONUS_MAP) : 0
+  const bonusJogador = captureForm
+    ? (captureForm.dominioTreinador || 0) + (captureForm.respeitoTreinador || 0) + (captureForm.bonusTreinador || 0) + (captureForm.vinculoTreinador || 0) + bonusStatusAtual + bonusPokebolaEfetivo
+    : 0
+  const d20Needed = cdFinal - bonusJogador
+  const capturaGarantida = masterBallAtiva || d20Needed <= 1
+  const capturaImpossivel = !masterBallAtiva && d20Needed > 20
+  const d20Minimo = masterBallAtiva ? null : Math.max(1, Math.min(20, d20Needed))
+
+  const chanceTexto = chanceEstimada == null ? '—' : `${chanceEstimada.toFixed(1)}%`
   const statusAtuaisTexto = captureForm ? normalizarStatusList(captureForm.statusAtuais).join(', ') : ''
 
   if (!readyForPlayerApi) {
@@ -392,21 +441,15 @@ export default function Captura() {
             </div>
             <div className="capture-v3-trainer-grid">
               <NumericStepper
-                label="NIVEL"
-                min={1}
-                value={captureForm?.nivelTreinador ?? 1}
-                onChange={(v) => onChangeCampo('nivelTreinador', v)}
-              />
-              <NumericStepper
-                label="DOMINIO (base)"
-                min={1}
-                value={captureForm?.dominioTreinador ?? 1}
+                label="DOMINIO"
+                min={0}
+                value={captureForm?.dominioTreinador ?? 0}
                 onChange={(v) => onChangeCampo('dominioTreinador', v)}
               />
               <NumericStepper
-                label="RESPEITO (base)"
-                min={1}
-                value={captureForm?.respeitoTreinador ?? 1}
+                label="RESPEITO"
+                min={0}
+                value={captureForm?.respeitoTreinador ?? 0}
                 onChange={(v) => onChangeCampo('respeitoTreinador', v)}
               />
               <NumericStepper
@@ -421,18 +464,6 @@ export default function Captura() {
                 value={captureForm?.bonusTreinador ?? 0}
                 onChange={(v) => onChangeCampo('bonusTreinador', v)}
               />
-              {captureForm && captureForm.nivelPokemon > captureForm.nivelTreinador && (
-                <>
-                  <div style={{ gridColumn: '1 / -1', fontSize: '0.85rem', color: 'var(--text-muted)', marginTop: '0.25rem' }}>
-                    <p style={{ margin: '0.25rem 0' }}>
-                      <strong>Domínio efetivo:</strong> {Math.max(1, (captureForm.dominioTreinador || 1) - (captureForm.nivelPokemon - captureForm.nivelTreinador))}
-                    </p>
-                    <p style={{ margin: '0.25rem 0' }}>
-                      <strong>Respeito efetivo:</strong> {Math.max(1, (captureForm.respeitoTreinador || 1) - (captureForm.nivelPokemon - captureForm.nivelTreinador))}
-                    </p>
-                  </div>
-                </>
-              )}
             </div>
           </div>
 
@@ -470,7 +501,7 @@ export default function Captura() {
                 value={pokemonId}
                 onChange={(e) => {
                   setPokemonId(e.target.value)
-                  setPrefillId('')
+                  setPrefillKey('')
                 }}
               >
                 <option value="">Selecione</option>
@@ -498,26 +529,31 @@ export default function Captura() {
                   )
                 })}
               </div>
-              <span className="capture-v3-rarity">COMUM</span>
+              <span className="capture-v3-rarity">TIER {captureForm?.tier || 'F'} — BASE {baseRaridade}</span>
             </div>
           </div>
 
           <div className="capture-v3-cd-row">
             <div>
-              <small>BASE CD</small>
-              <strong>{cdBase}</strong>
-            </div>
-            <div>
-              <small>FINAL CD</small>
+              <small>CD FINAL</small>
               <strong>{cdFinal}</strong>
             </div>
+            <div>
+              <small>BÔNUS JOGADOR</small>
+              <strong>+{bonusJogador}</strong>
+            </div>
+            <div>
+              <small>D20 MÍNIMO</small>
+              <strong style={{ color: masterBallAtiva ? 'var(--success)' : capturaGarantida ? 'var(--success)' : capturaImpossivel ? 'var(--danger)' : 'inherit' }}>
+                {masterBallAtiva ? 'Auto' : capturaGarantida ? 'Garantida' : capturaImpossivel ? 'Impossível' : d20Minimo}
+              </strong>
+            </div>
           </div>
-
-          {captureForm && captureForm.nivelPokemon > captureForm.nivelTreinador && (
-            <p className="capture-v3-muted-italic" style={{ marginTop: '-0.1rem' }}>
-              Penalidade de nível aplicada: -{captureForm.nivelPokemon - captureForm.nivelTreinador} em Domínio e Respeito.
-            </p>
-          )}
+          <p style={{ margin: '-0.25rem 0 0.5rem', fontSize: '0.78rem', color: 'var(--text-muted)' }}>
+            {captureForm
+              ? `Base ${baseRaridade} + Respeito ${captureForm.respeitoPokemon || 0} + Nível Lv.${captureForm.nivelPokemon} (+${modNivelAtual}) + HP ${hpPercent.toFixed(0)}% ${labelModHP(hpPercent)} (${modHPAtual >= 0 ? '+' : ''}${modHPAtual})`
+              : '—'}
+          </p>
 
           <div className="capture-v3-hp-block">
             <div className="capture-v3-hp-label-row">
@@ -562,24 +598,47 @@ export default function Captura() {
           <div className="capture-v3-contencao">
             <span className="capture-v3-kicker">POKÉBOLA</span>
             <div className="capture-v3-balls-scroll">
-              {pokebolasDisponiveis.map((ball) => (
-                <button
-                  key={ball.id}
-                  type="button"
-                  className={`capture-v3-ball-btn ${pokebolaAtiva === ball.id ? 'is-active' : ''}`}
-                  onClick={() => setPokebolaAtiva(ball.id)}
-                >
-                  {ball.imagemUrl ? (
-                    <img src={ball.imagemUrl} alt="" className="capture-v3-ball-icon" />
-                  ) : (
-                    <span className="capture-v3-ball-icon capture-v3-ball-icon--placeholder" />
-                  )}
-                  <span className="capture-v3-ball-label">{ball.nome || ball.nomeEn || 'Ball'}</span>
-                </button>
-              ))}
+              {pokebolasDisponiveis.map((ball) => {
+                const info = identificarPokebola(ball.nome, ball.nomeEn)
+                const desconhecida = info.tipo === 'DESCONHECIDA'
+                return (
+                  <button
+                    key={ball.id}
+                    type="button"
+                    className={`capture-v3-ball-btn ${pokebolaAtiva === ball.id ? 'is-active' : ''}`}
+                    onClick={() => setPokebolaAtiva(ball.id)}
+                    title={desconhecida ? 'Bônus não configurado — adicione manualmente no campo BONUS' : undefined}
+                  >
+                    {ball.imagemUrl ? (
+                      <img src={ball.imagemUrl} alt="" className="capture-v3-ball-icon" />
+                    ) : (
+                      <span className="capture-v3-ball-icon capture-v3-ball-icon--placeholder" />
+                    )}
+                    <span className="capture-v3-ball-label">{ball.nome || ball.nomeEn || 'Ball'}</span>
+                    <span style={{ fontSize: '0.68rem', color: desconhecida ? 'var(--text-muted)' : 'var(--accent)', fontWeight: 600 }}>
+                      {info.masterball ? 'AUTO' : desconhecida ? '?' : `+${info.bonus}`}
+                    </span>
+                  </button>
+                )
+              })}
             </div>
+
+            {/* Painel informativo de bônus */}
+            <div style={{ marginTop: '0.75rem', padding: '0.65rem 0.75rem', borderRadius: 'var(--radius)', background: 'rgba(168,85,247,.07)', border: '1px solid rgba(168,85,247,.18)', fontSize: '0.8rem' }}>
+              <p style={{ margin: '0 0 0.4rem', fontWeight: 600, color: 'var(--text)' }}>Pokébolas configuradas</p>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '0.2rem', color: 'var(--text-muted)' }}>
+                {POKEBOLA_CONFIG.filter((c) => c.tipo !== 'PADRAO').map((c) => (
+                  <span key={c.tipo}>• {c.label}: <strong style={{ color: 'var(--text)' }}>{c.desc}</strong></span>
+                ))}
+                <span>• Pokébola padrão: <strong style={{ color: 'var(--text)' }}>+0 (base)</strong></span>
+              </div>
+              <p style={{ margin: '0.5rem 0 0', color: 'var(--text-muted)', fontStyle: 'italic', lineHeight: 1.4 }}>
+                Usando uma pokébola não listada? Adicione o bônus no campo <strong style={{ color: 'var(--text)' }}>BONUS</strong> do treinador manualmente — mas respeite o balanceamento: Great Ball (+3) já é notável, Ultra Ball (+6) é o teto comum.
+              </p>
+            </div>
+
             {pokebolasDisponiveis.length === 0 && (
-              <p className="capture-v3-muted-italic">Nenhuma Pokébola encontrada no catalogo com "ball" no nome.</p>
+              <p className="capture-v3-muted-italic">Nenhuma Pokébola encontrada no catálogo com "ball" no nome.</p>
             )}
           </div>
         </main>
@@ -587,16 +646,43 @@ export default function Captura() {
         <aside className="capture-v3-column">
           <div className="card capture-v3-card">
             <h3>Modificadores</h3>
+
+            {/* Tier de raridade */}
+            <div style={{ marginBottom: '0.75rem' }}>
+              <span className="capture-v3-stepper-label" style={{ display: 'block', marginBottom: '0.4rem' }}>RARIDADE (TIER)</span>
+              <div style={{ display: 'flex', gap: '0.3rem', flexWrap: 'wrap' }}>
+                {TIER_OPTIONS.map((t) => (
+                  <button
+                    key={t}
+                    type="button"
+                    onClick={() => onChangeCampo('tier', t)}
+                    style={{
+                      padding: '0.2rem 0.55rem',
+                      borderRadius: 6,
+                      border: `1.5px solid ${captureForm?.tier === t ? 'var(--accent)' : 'var(--border)'}`,
+                      background: captureForm?.tier === t ? 'rgba(168,85,247,.22)' : 'transparent',
+                      color: captureForm?.tier === t ? 'var(--accent)' : 'var(--text)',
+                      cursor: 'pointer',
+                      fontWeight: 700,
+                      fontSize: '0.85rem',
+                    }}
+                  >
+                    {t}
+                  </button>
+                ))}
+              </div>
+            </div>
+
             <NumericStepper
-              label="NIVEL DE RESPEITO"
+              label="RESPEITO DO ALVO"
               min={0}
               value={captureForm?.respeitoPokemon ?? 0}
               onChange={(v) => onChangeCampo('respeitoPokemon', v)}
             />
             <NumericStepper
-              label="CD BASE (MANUAL)"
+              label="CD MANUAL (override)"
               min={0}
-              value={captureForm?.cdBaseManual ?? cdBase}
+              value={captureForm?.cdBaseManual ?? cdAuto}
               onChange={(v) => {
                 onChangeCampo('cdBaseManual', v)
                 onChangeCampo('manualCdOverride', true)
@@ -611,7 +697,8 @@ export default function Captura() {
                 Usar CD automático
               </button>
             )}
-            <label className="capture-v3-stepper">
+
+            <label className="capture-v3-stepper" style={{ marginTop: '0.5rem' }}>
               <span className="capture-v3-stepper-label">STATUS ATUAIS</span>
               <input
                 type="text"
@@ -625,42 +712,52 @@ export default function Captura() {
         </aside>
       </section>
 
-      {resultadoModal && (
-        <div className="capture-v3-modal-overlay">
-          <div className="card capture-v3-modal-card">
-            <h3>
-              {resultadoModal.sucesso ? 'Sucesso na captura' : 'Falha na captura'}
-            </h3>
-            <p>
-              CD: <strong>{resultadoModal.dificuldade}</strong>
-            </p>
-            <p>
-              Rolagem: <strong>{resultadoModal.rolagemTotal}</strong> = d20 ({resultadoModal.d20})
-              {' + '}Domínio ({resultadoModal.dominioEfetivo})
-              {' + '}Respeito ({resultadoModal.respeitoEfetivo})
-              {' + '}Bônus manual ({resultadoModal.bonusTreinador})
-              {' + '}Vínculo ({resultadoModal.vinculoTreinador})
-              {' + '}Bônus status ({resultadoModal.bonusStatus})
-            </p>
-            <p>
-              CD automática: <strong>{resultadoModal.cdAuto}</strong>
-              {' '}| redução por status: -{resultadoModal.statusCdReducao}
-              {' '}| modo manual: {resultadoModal.manualCdOverride ? 'sim' : 'não'}
-            </p>
-            {resultadoModal.penalidadeNivel > 0 && (
-              <p style={{ color: 'var(--text-muted)' }}>
-                Penalidade de nível aplicada: -{resultadoModal.penalidadeNivel} em Domínio e Respeito
-                (originais {resultadoModal.dominioOriginal}/{resultadoModal.respeitoOriginal}).
-              </p>
-            )}
-            <div className="battle-actions capture-v3-modal-actions">
-              <button className="btn btn-primary" onClick={() => setResultadoModal(null)}>
-                Fechar
-              </button>
+      {resultadoModal && (() => {
+        const r = resultadoModal
+        const hpPct = r.hpMaximo > 0 ? (r.hpRestante / r.hpMaximo) * 100 : 0
+        const modHPLabel = `${hpPct.toFixed(0)}% ${labelModHP(hpPct)} (${r.modHP >= 0 ? '+' : ''}${r.modHP})`
+        const sepStyle = { display: 'flex', flexDirection: 'column', gap: '0.2rem', fontSize: '0.88rem', color: 'var(--text-muted)', paddingLeft: '0.8rem', borderLeft: '2px solid var(--border)', margin: '0.3rem 0 0.9rem' }
+        return (
+          <div className="capture-v3-modal-overlay">
+            <div className="card capture-v3-modal-card">
+              <h3 style={{ color: r.sucesso ? 'var(--success)' : 'var(--danger)', marginTop: 0 }}>
+                {r.sucesso ? '✓ Captura bem-sucedida!' : '✗ Captura falhou'}
+              </h3>
+
+              {r.masterball ? (
+                <p>Master Ball usada — captura automática garantida.</p>
+              ) : (
+                <>
+                  <p style={{ margin: '0 0 0.25rem', fontWeight: 600 }}>CD de Captura: {r.dificuldade}{r.manualCdOverride ? ' (manual)' : ''}</p>
+                  <div style={sepStyle}>
+                    <span>Base de Raridade (Tier {r.tier}): {r.baseRaridade}</span>
+                    <span>+ Respeito do alvo: {r.respeitoPokemon}</span>
+                    <span>+ Mod. Nível (Lv.{r.nivelPokemon} → +{r.modNivel}): {r.modNivel}</span>
+                    <span>+ Mod. HP ({modHPLabel}): {r.modHP >= 0 ? '+' : ''}{r.modHP}</span>
+                  </div>
+
+                  <p style={{ margin: '0 0 0.25rem', fontWeight: 600 }}>
+                    Rolagem: {r.rolagemTotal} {r.sucesso ? '≥' : '<'} {r.dificuldade} → {r.sucesso ? 'Capturou!' : 'Falhou'}
+                  </p>
+                  <div style={sepStyle}>
+                    <span>d20: {r.d20}</span>
+                    <span>+ DOM: {r.dominioTreinador}</span>
+                    <span>+ RES: {r.respeitoTreinador}</span>
+                    <span>+ Bônus: {r.bonusTreinador}</span>
+                    <span>+ Vínculo: {r.vinculoTreinador}</span>
+                    <span>+ Status: {r.bonusStatus}</span>
+                    <span>+ {r.pokebolaNome || 'Pokébola'}: +{r.bonusPokebola}</span>
+                  </div>
+                </>
+              )}
+
+              <div className="battle-actions capture-v3-modal-actions">
+                <button className="btn btn-primary" onClick={() => setResultadoModal(null)}>Fechar</button>
+              </div>
             </div>
           </div>
-        </div>
-      )}
+        )
+      })()}
     </div>
   )
 }

@@ -22,5 +22,7 @@ export const queryKeys = {
     version: ['species', 'version'],
     lista: ['species', 'lista'],
   },
+  logs: (filters) => ['mestre', 'logs', filters ?? {}],
+  mestreUsuarios: ['mestre', 'usuarios'],
 }
 

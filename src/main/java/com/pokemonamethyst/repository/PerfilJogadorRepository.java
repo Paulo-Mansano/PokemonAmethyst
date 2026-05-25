@@ -18,4 +18,7 @@ public interface PerfilJogadorRepository extends JpaRepository<PerfilJogador, St
 
     @Query("SELECT p FROM PerfilJogador p LEFT JOIN FETCH p.pokemons WHERE p.id = :id")
     Optional<PerfilJogador> findByIdWithPokemons(String id);
+
+    boolean existsByNomePersonagem(String nomePersonagem);
+    boolean existsByNomePersonagemAndIdNot(String nomePersonagem, String id);
 }

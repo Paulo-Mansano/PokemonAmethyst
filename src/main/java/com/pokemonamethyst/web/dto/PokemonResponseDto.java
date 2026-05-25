@@ -78,6 +78,7 @@ public class PokemonResponseDto {
     private String habilidadeAtivaNome;
     private String origem;
     private String estado;
+    private String raridade;
     private List<String> statusAtuais;
     private List<MovimentoResponseDto> movimentosConhecidos;
 
@@ -187,6 +188,7 @@ public class PokemonResponseDto {
             dto.setStaminaMaxima(staminaMaxima);
         dto.setOrigem(p.getOrigem() != null ? p.getOrigem().name() : null);
         dto.setEstado(p.getEstado() != null ? p.getEstado().name() : null);
+        dto.setRaridade(p.getRaridade());
         GrowthRate curva = GrowthRate.fromSpecies(species);
         int xpTotal = p.getXpAtual();
         int xpIni = PokemonExperience.getTotalXpForLevel(nivel, curva);
@@ -330,6 +332,8 @@ public class PokemonResponseDto {
     public void setOrigem(String origem) { this.origem = origem; }
     public String getEstado() { return estado; }
     public void setEstado(String estado) { this.estado = estado; }
+    public String getRaridade() { return raridade; }
+    public void setRaridade(String raridade) { this.raridade = raridade; }
     public List<String> getStatusAtuais() { return statusAtuais; }
     public void setStatusAtuais(List<String> statusAtuais) { this.statusAtuais = statusAtuais; }
     public List<MovimentoResponseDto> getMovimentosConhecidos() { return movimentosConhecidos; }

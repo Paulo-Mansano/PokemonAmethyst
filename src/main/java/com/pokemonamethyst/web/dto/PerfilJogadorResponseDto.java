@@ -8,6 +8,8 @@ import java.util.stream.Collectors;
 public class PerfilJogadorResponseDto {
 
     private String id;
+    private String usuarioId;
+    private String nomeUsuario;
     private String nomePersonagem;
     private String classe;
     private int pokedolares;
@@ -45,7 +47,7 @@ public class PerfilJogadorResponseDto {
         String classe = p.getClasse() != null ? p.getClasse().name() : "TREINADOR";
         AtributosDto atr = AtributosDto.from(p.getAtributos());
         if (atr == null) atr = new AtributosDto();
-        return new PerfilJogadorResponseDto(
+        PerfilJogadorResponseDto dto = new PerfilJogadorResponseDto(
                 p.getId(),
                 nome,
                 classe,
@@ -60,10 +62,19 @@ public class PerfilJogadorResponseDto {
                 time != null ? time.stream().map(PokemonResponseDto::from).collect(Collectors.toList()) : List.of(),
                 box != null ? box.stream().map(PokemonResponseDto::from).collect(Collectors.toList()) : List.of()
         );
+        if (p.getUsuario() != null) {
+            dto.usuarioId = p.getUsuario().getId();
+            dto.nomeUsuario = p.getUsuario().getNomeUsuario();
+        }
+        return dto;
     }
 
     public String getId() { return id; }
     public void setId(String id) { this.id = id; }
+    public String getUsuarioId() { return usuarioId; }
+    public void setUsuarioId(String usuarioId) { this.usuarioId = usuarioId; }
+    public String getNomeUsuario() { return nomeUsuario; }
+    public void setNomeUsuario(String nomeUsuario) { this.nomeUsuario = nomeUsuario; }
     public String getNomePersonagem() { return nomePersonagem; }
     public void setNomePersonagem(String nomePersonagem) { this.nomePersonagem = nomePersonagem; }
     public String getClasse() { return classe; }

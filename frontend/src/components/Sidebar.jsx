@@ -22,7 +22,8 @@ const navItemsMestre = [
   { to: '/habilidades', end: false, label: 'Habilidades', title: 'Catálogo de habilidades', icon: IconSpark },
   { to: '/movimentos', end: false, label: 'Ataques/Movimentos', title: 'Catálogo de ataques e movimentos', icon: IconMove },
   { to: '/personalidades', end: false, label: 'Personalidade', title: 'Catálogo de personalidades', icon: IconSmile },
-  { to: '/mestres', end: false, label: 'Contas Mestre', title: 'Criar outras contas mestre', icon: IconUser },
+  { to: '/mestres', end: false, label: 'Administração de Contas', title: 'Administração de contas', icon: IconUser },
+  { to: '/logs', end: false, label: 'Logs', title: 'Logs de atividade', icon: IconLog },
 ]
 
 function IconUser() {
@@ -97,6 +98,16 @@ function IconBattle() {
       <path d="M12 2v20" />
       <path d="M2 12h20" />
       <circle cx="12" cy="12" r="3" />
+    </svg>
+  )
+}
+
+function IconLog() {
+  return (
+    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
+      <path d="M9 5H7a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V7a2 2 0 0 0-2-2h-2" />
+      <rect x="9" y="3" width="6" height="4" rx="1" />
+      <path d="M9 12h6M9 16h4" />
     </svg>
   )
 }

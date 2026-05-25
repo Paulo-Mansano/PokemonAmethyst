@@ -2,6 +2,7 @@ package com.pokemonamethyst.web.controller;
 
 import com.pokemonamethyst.domain.Pokemon;
 import com.pokemonamethyst.security.UsuarioPrincipal;
+import com.pokemonamethyst.service.AuditLogService;
 import com.pokemonamethyst.service.PerfilJogadorService;
 import com.pokemonamethyst.service.PokemonLearnsetService;
 import com.pokemonamethyst.service.PokemonService;
@@ -44,11 +45,14 @@ public class PokemonController {
     private final PerfilJogadorService perfilService;
     private final PokemonService pokemonService;
     private final PokemonLearnsetService pokemonLearnsetService;
+    private final AuditLogService auditLogService;
 
-    public PokemonController(PerfilJogadorService perfilService, PokemonService pokemonService, PokemonLearnsetService pokemonLearnsetService) {
+    public PokemonController(PerfilJogadorService perfilService, PokemonService pokemonService,
+                             PokemonLearnsetService pokemonLearnsetService, AuditLogService auditLogService) {
         this.perfilService = perfilService;
         this.pokemonService = pokemonService;
         this.pokemonLearnsetService = pokemonLearnsetService;
+        this.auditLogService = auditLogService;
     }
 
     @GetMapping
@@ -92,6 +96,11 @@ public class PokemonController {
             dto.getNivel(),
             dto.getPontosDistribuicaoInicial()
         );
+        String nomeDisplay = pokemon.getApelido() != null && !pokemon.getApelido().isBlank()
+            ? pokemon.getApelido() : pokemon.getSpecies().getNome();
+        auditLogService.registrar(principal.getId(), principal.getUsername(), "POKEMON_CRIADO",
+            "POKEMON", pokemon.getId(),
+            "'" + nomeDisplay + "' (" + pokemon.getSpecies().getNome() + ") Lv." + pokemon.getNivel());
         return ResponseEntity.status(HttpStatus.CREATED).body(PokemonResponseDto.from(pokemon));
     }
 
@@ -111,6 +120,10 @@ public class PokemonController {
             dto.getNivel(),
             Boolean.TRUE.equals(dto.getDistribuirStatusAutomaticamente())
         );
+        auditLogService.registrar(principal.getId(), principal.getUsername(), "POKEMON_GERADO",
+            "POKEMON", pokemon.getId(),
+            "#" + pokemon.getSpecies().getPokedexId() + " " + pokemon.getSpecies().getNome()
+                + " Lv." + pokemon.getNivel() + (pokemon.isShiny() ? " ★" : ""));
         return ResponseEntity.status(HttpStatus.CREATED).body(PokemonResponseDto.from(pokemon));
     }
 
@@ -156,6 +169,15 @@ public class PokemonController {
                 perfilDestinoCapturaId,
                 id,
                 Boolean.TRUE.equals(dto.getSucesso()));
+        if (response.getPokemon() != null) {
+            String nomePkm = response.getPokemon().getApelido() != null && !response.getPokemon().getApelido().isBlank()
+                ? response.getPokemon().getApelido() : response.getPokemon().getEspecie();
+            String det = response.isSucesso()
+                ? "'" + nomePkm + "' capturado com " + response.getPokemon().getPokebolaCaptura()
+                : "'" + nomePkm + "' — captura falhou";
+            auditLogService.registrar(principal.getId(), principal.getUsername(), "POKEMON_CAPTURADO",
+                "POKEMON", id, det);
+        }
         return ResponseEntity.ok(response);
     }
 
@@ -180,6 +202,14 @@ public class PokemonController {
             @Valid @RequestBody PokemonGanharXpRequestDto dto) {
         String perfilId = perfilService.resolvePerfilId(principal, playerId);
         PokemonGanharXpResponseDto response = pokemonService.ganharXp(id, perfilId, dto.getXpGanho());
+        if (response.getPokemon() != null) {
+            String nomePkm = response.getPokemon().getApelido() != null && !response.getPokemon().getApelido().isBlank()
+                ? response.getPokemon().getApelido() : response.getPokemon().getEspecie();
+            String det = "'" + nomePkm + "' +" + dto.getXpGanho() + " XP → Lv." + response.getNivelDepois()
+                + (response.isNivelSubiu() ? " (subiu de nível!)" : "");
+            auditLogService.registrar(principal.getId(), principal.getUsername(), "XP_GANHO",
+                "POKEMON", id, det);
+        }
         return ResponseEntity.ok(response);
     }
 
@@ -262,6 +292,11 @@ public class PokemonController {
         String perfilId = perfilService.resolvePerfilId(principal, playerId);
         Integer novaPokedexId = dto != null ? dto.getPokedexId() : null;
         Pokemon pokemon = pokemonService.evoluir(id, perfilId, novaPokedexId);
+        String nomeEvolucao = pokemon.getApelido() != null && !pokemon.getApelido().isBlank()
+            ? pokemon.getApelido() : pokemon.getSpecies().getNome();
+        auditLogService.registrar(principal.getId(), principal.getUsername(), "POKEMON_EVOLUIDO",
+            "POKEMON", pokemon.getId(),
+            "'" + nomeEvolucao + "' evoluiu para " + pokemon.getSpecies().getNome() + " Lv." + pokemon.getNivel());
         return ResponseEntity.ok(PokemonResponseDto.from(pokemon));
     }
 
@@ -345,12 +380,19 @@ public class PokemonController {
     }
 
     @DeleteMapping("/{id}")
+    @Transactional
     public ResponseEntity<Void> excluir(
             @AuthenticationPrincipal UsuarioPrincipal principal,
             @PathVariable String id,
             @RequestParam(value = "playerId", required = false) String playerId) {
         String perfilId = perfilService.resolvePerfilId(principal, playerId);
+        Pokemon pokemon = pokemonService.buscarPorIdEPerfil(id, perfilId);
+        String nomeDisplay = pokemon.getApelido() != null && !pokemon.getApelido().isBlank()
+            ? pokemon.getApelido() : pokemon.getSpecies().getNome();
         pokemonService.excluir(id, perfilId);
+        auditLogService.registrar(principal.getId(), principal.getUsername(), "POKEMON_EXCLUIDO",
+            "POKEMON", id,
+            "'" + nomeDisplay + "' (" + pokemon.getSpecies().getNome() + ") Lv." + pokemon.getNivel());
         return ResponseEntity.noContent().build();
     }
 }

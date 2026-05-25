@@ -7,6 +7,8 @@ import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.util.List;
+
 @Service
 public class UsuarioService {
 
@@ -36,6 +38,17 @@ public class UsuarioService {
         }
         usuario.setNomeUsuario(novoNomeUsuario);
         return usuarioRepository.save(usuario);
+    }
+
+    public List<Usuario> listarTodos() {
+        return usuarioRepository.findAll();
+    }
+
+    @Transactional
+    public void excluir(String id) {
+        Usuario usuario = usuarioRepository.findById(id)
+                .orElseThrow(() -> new RecursoNaoEncontradoException("Usuário não encontrado."));
+        usuarioRepository.delete(usuario);
     }
 
     @Transactional

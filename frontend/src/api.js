@@ -514,6 +514,20 @@ export async function excluirMovimento(id) {
   }
 }
 
+export async function getMestreUsuarios() {
+  const res = await request('/mestre/usuarios');
+  if (!res.ok) throw new Error('Erro ao carregar usuários');
+  return res.json();
+}
+
+export async function excluirUsuario(id) {
+  const res = await request(`/mestre/usuarios/${id}`, { method: 'DELETE' });
+  if (!res.ok) {
+    const data = await res.json().catch(() => ({}));
+    throw new Error(mensagemErroApi(data) || 'Falha ao excluir conta');
+  }
+}
+
 export async function criarContaMestre(nomeUsuario, senha) {
   const res = await request('/mestre/usuarios/mestre', {
     method: 'POST',
@@ -554,6 +568,14 @@ export async function atualizarPersonalidade(id, body) {
     throw new Error(data.mensagem || 'Erro ao atualizar personalidade');
   }
   return res.json();
+}
+
+export async function excluirPersonalidade(id) {
+  const res = await request(`/mestre/personalidades/${encodeURIComponent(id)}`, { method: 'DELETE' });
+  if (!res.ok) {
+    const data = await res.json().catch(() => ({}));
+    throw new Error(mensagemErroApi(data) || 'Erro ao excluir personalidade');
+  }
 }
 
 export async function listarItensPokeApi(q) {
@@ -731,4 +753,13 @@ export async function getSpeciesCatalogLocalVersion() {
   if (!res.ok) throw new Error('Erro ao consultar versão do catálogo local');
   const data = await res.json().catch(() => ({}));
   return data?.version || 'empty';
+}
+
+export async function getLogs({ page = 0, size = 50, usuarioId, acao } = {}) {
+  const params = new URLSearchParams({ page: String(page), size: String(size) })
+  if (usuarioId) params.set('usuarioId', usuarioId)
+  if (acao) params.set('acao', acao)
+  const res = await request(`/mestre/logs?${params.toString()}`)
+  if (!res.ok) throw new Error('Erro ao carregar logs')
+  return res.json()
 }

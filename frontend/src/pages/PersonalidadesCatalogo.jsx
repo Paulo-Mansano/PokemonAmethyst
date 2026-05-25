@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { getPersonalidades, criarPersonalidade, atualizarPersonalidade, getUsuario } from '../api'
+import { getPersonalidades, criarPersonalidade, atualizarPersonalidade, excluirPersonalidade, getUsuario } from '../api'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { queryKeys } from '../query/queryKeys'
 
@@ -12,6 +12,7 @@ export default function PersonalidadesCatalogo() {
   const [editForm, setEditForm] = useState({ nome: '' })
   const [savingEdit, setSavingEdit] = useState(false)
   const [editErro, setEditErro] = useState('')
+  const [excluindoId, setExcluindoId] = useState(null)
 
   const userQuery = useQuery({
     queryKey: queryKeys.auth.usuario,
@@ -58,6 +59,20 @@ export default function PersonalidadesCatalogo() {
       setEditErro(e.message || 'Erro ao salvar')
     } finally {
       setSavingEdit(false)
+    }
+  }
+
+  const handleExcluir = async (p) => {
+    if (!window.confirm(`Excluir a personalidade "${p.nome}"? Pokémon que a usam ficarão sem personalidade.`)) return
+    setExcluindoId(p.id)
+    try {
+      await excluirPersonalidade(p.id)
+      setInfo(`Personalidade "${p.nome}" excluída.`)
+      queryClient.invalidateQueries({ queryKey: queryKeys.catalogo.personalidades })
+    } catch (e) {
+      setErro(e.message || 'Erro ao excluir personalidade')
+    } finally {
+      setExcluindoId(null)
     }
   }
 
@@ -132,7 +147,7 @@ export default function PersonalidadesCatalogo() {
               <thead>
                 <tr>
                   <th style={{ textAlign: 'center' }}>Nome</th>
-                  <th style={{ width: 90, textAlign: 'right' }}></th>
+                  <th style={{ width: 80, textAlign: 'right' }}></th>
                 </tr>
               </thead>
               <tbody>
@@ -140,16 +155,33 @@ export default function PersonalidadesCatalogo() {
                   <tr key={p.id}>
                     <td style={{ textAlign: 'center' }}>{p.nome}</td>
                     <td style={{ textAlign: 'right' }}>
-                      <button
-                        type="button"
-                        className="btn btn-secondary"
-                        style={{ fontSize: '0.9rem', lineHeight: 1, padding: '0.45rem 0.55rem' }}
-                        onClick={() => handleEditar(p)}
-                        aria-label={`Editar personalidade ${p.nome}`}
-                        title="Editar"
-                      >
-                        <span aria-hidden>📝</span>
-                      </button>
+                      <div style={{ display: 'flex', gap: '0.35rem', justifyContent: 'flex-end' }}>
+                        <button
+                          type="button"
+                          className="btn btn-secondary"
+                          style={{ fontSize: '0.9rem', lineHeight: 1, padding: '0.45rem 0.55rem' }}
+                          onClick={() => handleEditar(p)}
+                          aria-label={`Editar personalidade ${p.nome}`}
+                          title="Editar"
+                        >
+                          <span aria-hidden>🖊️</span>
+                        </button>
+                        <button
+                          type="button"
+                          className="btn"
+                          style={{
+                            fontSize: '0.9rem', lineHeight: 1, padding: '0.45rem 0.55rem',
+                            background: 'rgba(248,113,113,0.12)', color: 'var(--danger)',
+                            border: '1px solid rgba(248,113,113,0.35)',
+                          }}
+                          onClick={() => handleExcluir(p)}
+                          disabled={excluindoId === p.id}
+                          aria-label={`Excluir personalidade ${p.nome}`}
+                          title="Excluir"
+                        >
+                          <span aria-hidden>🗑️</span>
+                        </button>
+                      </div>
                     </td>
                   </tr>
                 ))}
