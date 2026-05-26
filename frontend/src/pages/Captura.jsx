@@ -104,6 +104,7 @@ function identificarPokebola(nome, nomeEn) {
 function calcularTentativaCaptura(input, rolarD20 = () => Math.floor(Math.random() * 20) + 1) {
   const tier = input.tier || 'F'
   const nivelPokemon = Math.max(1, toInt(input.nivelPokemon, 1))
+  const nivelJogador = Math.max(1, toInt(input.nivelJogador, 1))
   const respeitoPokemon = Math.max(0, toInt(input.respeitoPokemon, 0))
   const hpRestante = Math.max(0, toInt(input.hpRestantePokemon, 0))
   const hpMaximo = Math.max(1, toInt(input.hpMaximoPokemon, 1))
@@ -119,8 +120,11 @@ function calcularTentativaCaptura(input, rolarD20 = () => Math.floor(Math.random
   const statusAtuais = normalizarStatusList(input.statusAtuais || input.status)
   const bonusStatus = calcularStatusBonus(statusAtuais, STATUS_BONUS_MAP)
 
-  const dominioTreinador = Math.max(0, toInt(input.dominioTreinador, 0))
-  const respeitoTreinador = Math.max(0, toInt(input.respeitoTreinador, 0))
+  const penaltyNivel = Math.max(0, nivelPokemon - nivelJogador)
+  const dominioBase = Math.max(0, toInt(input.dominioTreinador, 0))
+  const respeitoBase = Math.max(0, toInt(input.respeitoTreinador, 0))
+  const dominioTreinador = penaltyNivel > 0 ? Math.max(1, dominioBase - penaltyNivel) : dominioBase
+  const respeitoTreinador = penaltyNivel > 0 ? Math.max(1, respeitoBase - penaltyNivel) : respeitoBase
   const bonusTreinador = toInt(input.bonusTreinador, 0)
   const vinculoTreinador = toInt(input.vinculoTreinador, 0)
   const bonusPokebola = toInt(input.bonusPokebola, 0)
@@ -131,8 +135,9 @@ function calcularTentativaCaptura(input, rolarD20 = () => Math.floor(Math.random
       sucesso: true, masterball: true,
       dificuldade, tier, baseRaridade, modNivel, modHP, respeitoPokemon,
       rolagemTotal: null, d20: null,
-      dominioTreinador, respeitoTreinador, bonusTreinador, vinculoTreinador,
-      bonusStatus, bonusPokebola: 0, statusAtuais, nivelPokemon, hpRestante, hpMaximo, cdAuto, manualCdOverride,
+      dominioTreinador, respeitoTreinador, dominioBase, respeitoBase, penaltyNivel,
+      bonusTreinador, vinculoTreinador,
+      bonusStatus, bonusPokebola: 0, statusAtuais, nivelPokemon, nivelJogador, hpRestante, hpMaximo, cdAuto, manualCdOverride,
     }
   }
 
@@ -144,17 +149,21 @@ function calcularTentativaCaptura(input, rolarD20 = () => Math.floor(Math.random
     sucesso, masterball: false,
     dificuldade, tier, baseRaridade, modNivel, modHP, respeitoPokemon,
     rolagemTotal, d20,
-    dominioTreinador, respeitoTreinador, bonusTreinador, vinculoTreinador,
-    bonusStatus, bonusPokebola, statusAtuais, nivelPokemon, hpRestante, hpMaximo, cdAuto, manualCdOverride,
+    dominioTreinador, respeitoTreinador, dominioBase, respeitoBase, penaltyNivel,
+    bonusTreinador, vinculoTreinador,
+    bonusStatus, bonusPokebola, statusAtuais, nivelPokemon, nivelJogador, hpRestante, hpMaximo, cdAuto, manualCdOverride,
   }
 }
 
 function buildCaptureForm(pokemon, perfil) {
   if (!pokemon || !perfil) return null
-  const tierValido = TIER_OPTIONS.includes(pokemon.raridade) ? pokemon.raridade : 'F'
+  const tierValido = TIER_OPTIONS.includes(pokemon.ivClass) ? pokemon.ivClass
+    : TIER_OPTIONS.includes(pokemon.raridade) ? pokemon.raridade
+    : 'F'
   return {
     tier: tierValido,
     nivelPokemon: Math.max(1, Number(pokemon.nivel) || 1),
+    nivelJogador: Math.max(1, Number(perfil.nivel) || 1),
     respeitoPokemon: Math.max(0, Number(pokemon.respeito) || 0),
     hpRestantePokemon: Math.max(0, Number(pokemon.hpAtual) || 0),
     hpMaximoPokemon: Math.max(1, Number(pokemon.hpMaximo) || 1),
@@ -164,7 +173,6 @@ function buildCaptureForm(pokemon, perfil) {
     bonusTreinador: 0,
     cdBaseManual: 0,
     manualCdOverride: false,
-
     statusAtuais: detectarStatusInicial(pokemon.statusAtuais),
   }
 }
@@ -401,8 +409,16 @@ export default function Captura() {
     : 0
 
   const bonusStatusAtual = captureForm ? calcularStatusBonus(normalizarStatusList(captureForm.statusAtuais), STATUS_BONUS_MAP) : 0
+  const nivelJogadorAtual = Math.max(1, Number(captureForm?.nivelJogador) || 1)
+  const penaltyNivelAtual = Math.max(0, (captureForm?.nivelPokemon || 1) - nivelJogadorAtual)
+  const dominioComPenalty = captureForm
+    ? (penaltyNivelAtual > 0 ? Math.max(1, (captureForm.dominioTreinador || 0) - penaltyNivelAtual) : (captureForm.dominioTreinador || 0))
+    : 0
+  const respeitoComPenalty = captureForm
+    ? (penaltyNivelAtual > 0 ? Math.max(1, (captureForm.respeitoTreinador || 0) - penaltyNivelAtual) : (captureForm.respeitoTreinador || 0))
+    : 0
   const bonusJogador = captureForm
-    ? (captureForm.dominioTreinador || 0) + (captureForm.respeitoTreinador || 0) + (captureForm.bonusTreinador || 0) + (captureForm.vinculoTreinador || 0) + bonusStatusAtual + bonusPokebolaEfetivo
+    ? dominioComPenalty + respeitoComPenalty + (captureForm.bonusTreinador || 0) + (captureForm.vinculoTreinador || 0) + bonusStatusAtual + bonusPokebolaEfetivo
     : 0
   const d20Needed = cdFinal - bonusJogador
   const capturaGarantida = masterBallAtiva || d20Needed <= 1
@@ -465,6 +481,12 @@ export default function Captura() {
                 onChange={(v) => onChangeCampo('bonusTreinador', v)}
               />
             </div>
+            {penaltyNivelAtual > 0 && (
+              <div style={{ marginTop: '0.5rem', padding: '0.5rem 0.65rem', borderRadius: 6, background: 'rgba(248,113,113,.1)', border: '1px solid rgba(248,113,113,.3)', fontSize: '0.8rem', color: 'var(--danger)', lineHeight: 1.5 }}>
+                <strong>Penalidade de nível</strong> — Pokémon Lv.{captureForm.nivelPokemon} &gt; Jogador Lv.{nivelJogadorAtual} (−{penaltyNivelAtual} cada)<br />
+                DOM: {captureForm.dominioTreinador} → <strong>{dominioComPenalty}</strong> &nbsp;·&nbsp; RES: {captureForm.respeitoTreinador} → <strong>{respeitoComPenalty}</strong>
+              </div>
+            )}
           </div>
 
           <div className="card capture-v3-card">
@@ -647,29 +669,18 @@ export default function Captura() {
           <div className="card capture-v3-card">
             <h3>Modificadores</h3>
 
-            {/* Tier de raridade */}
+            {/* Tier de raridade — derivado automaticamente do BST (ivClass) */}
             <div style={{ marginBottom: '0.75rem' }}>
               <span className="capture-v3-stepper-label" style={{ display: 'block', marginBottom: '0.4rem' }}>RARIDADE (TIER)</span>
-              <div style={{ display: 'flex', gap: '0.3rem', flexWrap: 'wrap' }}>
-                {TIER_OPTIONS.map((t) => (
-                  <button
-                    key={t}
-                    type="button"
-                    onClick={() => onChangeCampo('tier', t)}
-                    style={{
-                      padding: '0.2rem 0.55rem',
-                      borderRadius: 6,
-                      border: `1.5px solid ${captureForm?.tier === t ? 'var(--accent)' : 'var(--border)'}`,
-                      background: captureForm?.tier === t ? 'rgba(168,85,247,.22)' : 'transparent',
-                      color: captureForm?.tier === t ? 'var(--accent)' : 'var(--text)',
-                      cursor: 'pointer',
-                      fontWeight: 700,
-                      fontSize: '0.85rem',
-                    }}
-                  >
-                    {t}
-                  </button>
-                ))}
+              <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', flexWrap: 'wrap' }}>
+                <span style={{
+                  display: 'inline-block', padding: '0.2rem 0.7rem', borderRadius: 6,
+                  border: '1.5px solid var(--accent)', background: 'rgba(168,85,247,.18)',
+                  color: 'var(--accent)', fontWeight: 700, fontSize: '0.9rem', letterSpacing: '0.04em',
+                }}>
+                  {captureForm?.tier || '—'} — base {baseRaridade}
+                </span>
+                <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>derivado do BST</span>
               </div>
             </div>
 
@@ -741,8 +752,8 @@ export default function Captura() {
                   </p>
                   <div style={sepStyle}>
                     <span>d20: {r.d20}</span>
-                    <span>+ DOM: {r.dominioTreinador}</span>
-                    <span>+ RES: {r.respeitoTreinador}</span>
+                    <span>+ DOM: {r.penaltyNivel > 0 ? `${r.dominioBase} −${r.penaltyNivel} = ${r.dominioTreinador}` : r.dominioTreinador}</span>
+                    <span>+ RES: {r.penaltyNivel > 0 ? `${r.respeitoBase} −${r.penaltyNivel} = ${r.respeitoTreinador}` : r.respeitoTreinador}</span>
                     <span>+ Bônus: {r.bonusTreinador}</span>
                     <span>+ Vínculo: {r.vinculoTreinador}</span>
                     <span>+ Status: {r.bonusStatus}</span>
