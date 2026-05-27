@@ -143,6 +143,11 @@ public class MestreController {
         return ResponseEntity.ok(pokeApiService.importarTodasSpeciesDaPokeApi());
     }
 
+    @PostMapping("/pokeapi/importar-evolucoes")
+    public ResponseEntity<Map<String, Object>> importarEvolucoes() {
+        return ResponseEntity.ok(pokeApiService.importarTodasEvolucoes());
+    }
+
     @PostMapping("/pokeapi/vincular-species-existentes")
     public ResponseEntity<Map<String, Object>> vincularSpeciesExistentes() {
         return ResponseEntity.ok(pokeApiService.vincularSpeciesExistentesComDadosDaPokeApi());

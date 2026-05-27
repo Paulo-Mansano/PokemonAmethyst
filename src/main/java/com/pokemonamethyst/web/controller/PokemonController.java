@@ -233,7 +233,7 @@ public class PokemonController {
             @RequestParam(value = "playerId", required = false) String playerId,
             @Valid @RequestBody PokemonMovimentoAprendidoRequestDto dto) {
         String perfilId = perfilService.resolvePerfilId(principal, playerId);
-        Pokemon pokemon = pokemonService.aceitarMovimentoAprendido(id, perfilId, dto.getMovimentoId(), dto.getSubstituirMovimentoId());
+        Pokemon pokemon = pokemonService.aceitarMovimentoAprendido(id, perfilId, dto.getMovimentoId(), dto.getSubstituirMovimentoId(), dto.getNivelRascunho());
         return ResponseEntity.ok(PokemonResponseDto.from(pokemon));
     }
 

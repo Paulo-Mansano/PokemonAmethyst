@@ -1,14 +1,17 @@
 package com.pokemonamethyst.service;
 
+import com.pokemonamethyst.domain.Habilidade;
 import com.pokemonamethyst.domain.Pokemon;
 import com.pokemonamethyst.domain.PokemonSpecies;
 import com.pokemonamethyst.domain.PokemonSpeciesEvolutionRule;
+import com.pokemonamethyst.domain.PokemonSpeciesHabilidade;
 import com.pokemonamethyst.exception.RegraNegocioException;
 import com.pokemonamethyst.repository.PokemonRepository;
 import com.pokemonamethyst.repository.PokemonSpeciesRepository;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.util.Comparator;
 import java.util.List;
 
 @Service
@@ -62,13 +65,71 @@ public class PokemonEvolutionService {
             throw new RegraNegocioException("Espécie de evolução inválida.");
         }
 
+        Habilidade novaHabilidade = migrarHabilidade(pokemon, novaSpecies);
         int pontosDevolvidos = pokemonStatService.totalAtributosDistribuiveisReset(pokemon);
-        int bonusEvolucao = rolarBonusEvolucao(novaSpecies);
+        int bonusEvolucao = rolarBonusEvolucao();
         pokemon.setPontosDistribuicaoDisponiveis(
                 Math.max(0, pokemon.getPontosDistribuicaoDisponiveis() + pontosDevolvidos + bonusEvolucao)
         );
         pokemonGenerationService.reinicializarParaEvolucao(pokemon, novaSpecies);
         pokemonStatService.sincronizarMaximos(pokemon);
+        pokemon.setHabilidadeAtiva(novaHabilidade);
+    }
+
+    private Habilidade migrarHabilidade(Pokemon pokemon, PokemonSpecies novaSpecies) {
+        List<PokemonSpeciesHabilidade> habilidadesNovas = novaSpecies.getHabilidades();
+        Habilidade atual = pokemon.getHabilidadeAtiva();
+
+        if (habilidadesNovas == null || habilidadesNovas.isEmpty()) {
+            return null;
+        }
+
+        if (atual == null) {
+            return primeiraHabilidadeNormal(habilidadesNovas);
+        }
+
+        // mesma habilidade existe na nova espécie → mantém
+        boolean novaTemMesma = habilidadesNovas.stream()
+                .anyMatch(h -> atual.getId().equals(h.getHabilidade().getId()));
+        if (novaTemMesma) {
+            return atual;
+        }
+
+        // determinar se era hidden ou qual slot na espécie atual
+        List<PokemonSpeciesHabilidade> habilidadesAntigas = pokemon.getSpecies() != null
+                ? pokemon.getSpecies().getHabilidades()
+                : List.of();
+
+        PokemonSpeciesHabilidade entradaAntiga = habilidadesAntigas.stream()
+                .filter(h -> atual.getId().equals(h.getHabilidade().getId()))
+                .findFirst()
+                .orElse(null);
+
+        boolean eraHidden = entradaAntiga != null && entradaAntiga.isHidden();
+
+        if (eraHidden) {
+            return habilidadesNovas.stream()
+                    .filter(PokemonSpeciesHabilidade::isHidden)
+                    .findFirst()
+                    .map(PokemonSpeciesHabilidade::getHabilidade)
+                    .orElseGet(() -> primeiraHabilidadeNormal(habilidadesNovas));
+        }
+
+        // habilidade normal: tenta o mesmo slot, cai para slot 1
+        int slot = entradaAntiga != null ? entradaAntiga.getSlot() : 1;
+        return habilidadesNovas.stream()
+                .filter(h -> !h.isHidden() && h.getSlot() == slot)
+                .findFirst()
+                .map(PokemonSpeciesHabilidade::getHabilidade)
+                .orElseGet(() -> primeiraHabilidadeNormal(habilidadesNovas));
+    }
+
+    private Habilidade primeiraHabilidadeNormal(List<PokemonSpeciesHabilidade> habilidades) {
+        return habilidades.stream()
+                .filter(h -> !h.isHidden())
+                .min(Comparator.comparingInt(PokemonSpeciesHabilidade::getSlot))
+                .map(PokemonSpeciesHabilidade::getHabilidade)
+                .orElseGet(() -> habilidades.get(0).getHabilidade());
     }
 
     private PokemonSpecies resolverNovaSpecies(int novaPokedexId) {
@@ -97,13 +158,7 @@ public class PokemonEvolutionService {
         }
     }
 
-    private int rolarBonusEvolucao(PokemonSpecies novaSpecies) {
-        int stage = pokeApiService.obterEstagioEvolutivo(novaSpecies.getPokedexId());
-        int dados = stage >= 3 ? 2 : 1;
-        int total = 0;
-        for (int i = 0; i < dados; i++) {
-            total += 1 + java.util.concurrent.ThreadLocalRandom.current().nextInt(6);
-        }
-        return total;
+    private int rolarBonusEvolucao() {
+        return 1 + java.util.concurrent.ThreadLocalRandom.current().nextInt(6);
     }
 }

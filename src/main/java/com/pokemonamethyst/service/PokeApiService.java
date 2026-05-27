@@ -92,6 +92,7 @@ public class PokeApiService {
     private final TransactionTemplate transactionTemplate;
     private final Map<String, Integer> versionGroupOrderCache = new ConcurrentHashMap<>();
     private final Map<Integer, Object> speciesImportLocks = new ConcurrentHashMap<>();
+    private final Set<Integer> speciesEvolucaoSyncAttempted = ConcurrentHashMap.newKeySet();
 
     public PokeApiService(RestTemplate restTemplate, MovimentoRepository movimentoRepository, ItemRepository itemRepository,
                           HabilidadeRepository habilidadeRepository,
@@ -509,6 +510,71 @@ public class PokeApiService {
 
     public List<com.pokemonamethyst.domain.PokemonSpeciesEvolutionRule> listarRegrasEvolucaoLocais(int fromPokedexId) {
         return speciesEvolutionRuleRepository.findByFromPokedexIdOrderByToPokedexIdAsc(fromPokedexId);
+    }
+
+    @Transactional
+    public void sincronizarEvolucoesPorPokedexId(int pokedexId) {
+        if (pokedexId <= 0 || !speciesEvolucaoSyncAttempted.add(pokedexId)) return;
+        try {
+            Map<String, Object> speciesData = restTemplate.getForObject(BASE_URL + "/pokemon-species/" + pokedexId, Map.class);
+            sincronizarEvolucoesDaSpecies(speciesData, pokedexId);
+        } catch (Exception e) {
+            speciesEvolucaoSyncAttempted.remove(pokedexId);
+        }
+    }
+
+    @SuppressWarnings("unchecked")
+    public Map<String, Object> importarTodasEvolucoes() {
+        long regrasExistentes = speciesEvolutionRuleRepository.count();
+        if (regrasExistentes > 0) {
+            return Map.of("status", "skip", "regrasExistentes", regrasExistentes);
+        }
+
+        List<com.pokemonamethyst.domain.PokemonSpecies> todasSpecies = pokemonSpeciesRepository.findAll();
+        if (todasSpecies.isEmpty()) {
+            return Map.of("status", "skip", "mensagem", "Nenhuma espécie local encontrada.");
+        }
+
+        Set<String> chainsProcessadas = new HashSet<>();
+        List<com.pokemonamethyst.domain.PokemonSpeciesEvolutionRule> todasRegras = new ArrayList<>();
+        int falhas = 0;
+
+        for (com.pokemonamethyst.domain.PokemonSpecies species : todasSpecies) {
+            try {
+                Map<String, Object> speciesData = restTemplate.getForObject(
+                        BASE_URL + "/pokemon-species/" + species.getPokedexId(), Map.class);
+                if (speciesData == null) { falhas++; continue; }
+
+                Map<String, Object> chainRef = (Map<String, Object>) speciesData.get("evolution_chain");
+                String chainUrl = chainRef != null ? (String) chainRef.get("url") : null;
+                if (chainUrl == null || chainUrl.isBlank() || !chainsProcessadas.add(chainUrl)) continue;
+
+                Map<String, Object> chainData = restTemplate.getForObject(chainUrl, Map.class);
+                if (chainData == null) { falhas++; continue; }
+
+                Map<String, Object> root = (Map<String, Object>) chainData.get("chain");
+                if (root != null) coletarRegrasEvolucao(root, todasRegras);
+
+            } catch (Exception e) {
+                falhas++;
+            }
+        }
+
+        if (!todasRegras.isEmpty()) {
+            final List<com.pokemonamethyst.domain.PokemonSpeciesEvolutionRule> regrasParaSalvar = List.copyOf(todasRegras);
+            transactionTemplate.execute(status -> {
+                speciesEvolutionRuleRepository.saveAll(regrasParaSalvar);
+                return null;
+            });
+        }
+
+        return Map.of(
+                "status", "ok",
+                "species", todasSpecies.size(),
+                "chains", chainsProcessadas.size(),
+                "regras", todasRegras.size(),
+                "falhas", falhas
+        );
     }
 
     @SuppressWarnings("unchecked")

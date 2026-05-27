@@ -312,10 +312,10 @@ export async function previewGanhoXpPokemon(id, xpGanho, xpBaseAtual, playerId) 
   return res.json();
 }
 
-export async function aceitarMovimentoAprendido(id, movimentoId, substituirMovimentoId, playerId) {
+export async function aceitarMovimentoAprendido(id, movimentoId, substituirMovimentoId, playerId, nivelRascunho) {
   const res = await request(withPlayerQuery(`/perfis/meu/pokemons/${id}/movimentos-aprendendo/aceitar`, playerId), {
     method: 'POST',
-    body: JSON.stringify({ movimentoId, substituirMovimentoId: substituirMovimentoId || null }),
+    body: JSON.stringify({ movimentoId, substituirMovimentoId: substituirMovimentoId || null, nivelRascunho: nivelRascunho || null }),
   });
   if (!res.ok) {
     const data = await res.json().catch(() => ({}));
@@ -697,6 +697,15 @@ export async function importarTodasSpeciesPokeApiMestre() {
   if (!res.ok) {
     const data = await res.json().catch(() => ({}))
     throw new Error(data.mensagem || 'Erro ao importar espécies da PokéAPI')
+  }
+  return res.json()
+}
+
+export async function importarEvolucoesPokeApiMestre() {
+  const res = await request('/mestre/pokeapi/importar-evolucoes', { method: 'POST' })
+  if (!res.ok) {
+    const data = await res.json().catch(() => ({}))
+    throw new Error(data.mensagem || 'Erro ao importar regras de evolução')
   }
   return res.json()
 }

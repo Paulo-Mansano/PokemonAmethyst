@@ -140,7 +140,24 @@ public class PokemonStatService {
     }
 
     public int totalAtributosDistribuiveisReset(Pokemon pokemon) {
-        return totalAtributosInvestidos(pokemon);
+        if (pokemon == null) return 0;
+        return custoRealDeAtributo("atr_ataque", pokemon.getAtrAtaque())
+                + custoRealDeAtributo("atr_defesa", pokemon.getAtrDefesa())
+                + custoRealDeAtributo("atr_ataque_especial", pokemon.getAtrAtaqueEspecial())
+                + custoRealDeAtributo("atr_defesa_especial", pokemon.getAtrDefesaEspecial())
+                + custoRealDeAtributo("atr_speed", pokemon.getAtrSpeed())
+                + custoRealDeAtributo("atr_hp", pokemon.getAtrHp())
+                + custoRealDeAtributo("atr_stamina", pokemon.getAtrStamina())
+                + custoRealDeAtributo("atr_tecnica", pokemon.getAtrTecnica())
+                + custoRealDeAtributo("atr_respeito", pokemon.getAtrRespeito());
+    }
+
+    private int custoRealDeAtributo(String atributo, int valor) {
+        int total = 0;
+        for (int v = 0; v < valor; v++) {
+            total += custoPorRegra(atributo, v);
+        }
+        return total;
     }
 
     public void resetarAtributosInvestidos(Pokemon pokemon) {

@@ -7,8 +7,9 @@ public class PokemonMovimentoAprendidoRequestDto {
     @NotBlank
     private String movimentoId;
 
-    // Opcional: quando o Pokémon já tiver no limite de ataques (6), define qual movimento será substituído.
     private String substituirMovimentoId;
+
+    private Integer nivelRascunho;
 
     public String getMovimentoId() {
         return movimentoId;
@@ -24,6 +25,14 @@ public class PokemonMovimentoAprendidoRequestDto {
 
     public void setSubstituirMovimentoId(String substituirMovimentoId) {
         this.substituirMovimentoId = substituirMovimentoId;
+    }
+
+    public Integer getNivelRascunho() {
+        return nivelRascunho;
+    }
+
+    public void setNivelRascunho(Integer nivelRascunho) {
+        this.nivelRascunho = nivelRascunho;
     }
 }
 

@@ -377,17 +377,30 @@ public class PokemonService {
         if (movimentoIds != null) {
             List<String> movimentoIdsUnicos = deduplicarIdsPreservandoOrdem(movimentoIds);
             if (movimentoIdsUnicos.size() > MAX_MOVIMENTOS_POR_POKEMON) {
-            throw new RegraNegocioException("Máximo de " + MAX_MOVIMENTOS_POR_POKEMON + " ataques por Pokémon.");
+                throw new RegraNegocioException("Máximo de " + MAX_MOVIMENTOS_POR_POKEMON + " ataques por Pokémon.");
             }
-            Set<MoveLearnMethod> metodosPermitidos = permitirMetodosExtrasNoLearnset
-                ? Set.of(MoveLearnMethod.LEVEL_UP, MoveLearnMethod.EGG, MoveLearnMethod.MACHINE, MoveLearnMethod.TUTOR)
-                : Set.of(MoveLearnMethod.LEVEL_UP);
-            pokemonLearnsetService.validarMovimentosPermitidos(
-                pokemon.getSpecies(),
-                pokemon.getNivel(),
-                movimentoIdsUnicos,
-                metodosPermitidos
-            );
+            Set<String> jaConhecidos = pokemon.getMovimentosConhecidos() == null
+                ? Set.of()
+                : pokemon.getMovimentosConhecidos().stream().map(Movimento::getId).collect(Collectors.toSet());
+            List<String> novosMovimentos = movimentoIdsUnicos.stream()
+                .filter(id -> !jaConhecidos.contains(id))
+                .toList();
+            if (!novosMovimentos.isEmpty()) {
+                // Usa o maior entre o nível recalculado pelo XP e o nível explicitamente solicitado,
+                // para não rejeitar movimentos aprendidos por level-up quando há pequena dessincronização de XP.
+                int nivelParaValidacao = nivel != null
+                    ? Math.max(pokemon.getNivel(), Math.max(1, Math.min(100, nivel)))
+                    : pokemon.getNivel();
+                Set<MoveLearnMethod> metodosPermitidos = permitirMetodosExtrasNoLearnset
+                    ? Set.of(MoveLearnMethod.LEVEL_UP, MoveLearnMethod.EGG, MoveLearnMethod.MACHINE, MoveLearnMethod.TUTOR)
+                    : Set.of(MoveLearnMethod.LEVEL_UP);
+                pokemonLearnsetService.validarMovimentosPermitidos(
+                    pokemon.getSpecies(),
+                    nivelParaValidacao,
+                    novosMovimentos,
+                    metodosPermitidos
+                );
+            }
             List<Movimento> movimentos = semMovimentosDuplicados(buscarMovimentosPorIds(movimentoIdsUnicos));
             pokemon.getMovimentosConhecidos().clear();
             pokemon.getMovimentosConhecidos().addAll(movimentos);
@@ -614,7 +627,7 @@ public class PokemonService {
     }
 
     @Transactional
-    public Pokemon aceitarMovimentoAprendido(String pokemonId, String perfilId, String movimentoId, String substituirMovimentoId) {
+    public Pokemon aceitarMovimentoAprendido(String pokemonId, String perfilId, String movimentoId, String substituirMovimentoId, Integer nivelRascunho) {
         Pokemon pokemon = buscarPorIdEPerfil(pokemonId, perfilId);
         if (movimentoId == null || movimentoId.isBlank()) {
             throw new RegraNegocioException("movimentoId é obrigatório.");
@@ -625,12 +638,15 @@ public class PokemonService {
             throw new RegraNegocioException("Espécie do Pokémon não encontrada.");
         }
 
-        // Valida que o movimento é aprendível por LEVEL_UP <= nível atual.
+        int nivelParaValidacao = nivelRascunho != null
+                ? Math.max(pokemon.getNivel(), Math.max(1, Math.min(100, nivelRascunho)))
+                : pokemon.getNivel();
+
         List<PokemonSpeciesMovimento> entries = pokemonLearnsetService.listarLearnset(species.getId());
         boolean existeNivelUp = entries.stream()
                 .anyMatch(e -> e.getLearnMethod() == MoveLearnMethod.LEVEL_UP
                         && e.getLevel() != null
-                        && e.getLevel() <= pokemon.getNivel()
+                        && e.getLevel() <= nivelParaValidacao
                         && e.getMovimento() != null
                         && movimentoId.equals(e.getMovimento().getId()));
 
@@ -763,9 +779,17 @@ public class PokemonService {
         return pokemonRepository.save(pokemon);
     }
 
-    @Transactional(readOnly = true)
+    @Transactional
     public List<PokemonEvolucaoOpcaoDto> listarEvolucoesPossiveis(String pokemonId, String perfilId) {
         Pokemon pokemon = buscarPorIdEPerfil(pokemonId, perfilId);
+        if (pokemon.getSpecies() != null) {
+            int pokedexId = pokemon.getSpecies().getPokedexId();
+            if (pokeApiService.listarRegrasEvolucaoLocais(pokedexId).isEmpty()) {
+                try {
+                    pokeApiService.sincronizarEvolucoesPorPokedexId(pokedexId);
+                } catch (Exception ignored) { }
+            }
+        }
         return pokemonEvolutionService.listarOpcoes(pokemon).stream().map(rule -> {
             PokemonEvolucaoOpcaoDto dto = new PokemonEvolucaoOpcaoDto();
             dto.setPokedexId(rule.getToPokedexId());

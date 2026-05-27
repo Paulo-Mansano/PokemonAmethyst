@@ -5,6 +5,7 @@ import {
   getUsuario,
   getSpeciesConfigMestre,
   importarTodasSpeciesPokeApiMestre,
+  importarEvolucoesPokeApiMestre,
   listarSpeciesMestre,
   normalizarOrdemLearnsetMestre,
   resincronizarSpeciesPokeApiMestre,
@@ -63,6 +64,7 @@ export default function MestreSpecies() {
   const [saving, setSaving] = useState(false)
   const [importandoTodas, setImportandoTodas] = useState(false)
   const [vinculandoExistentes, setVinculandoExistentes] = useState(false)
+  const [importandoEvolucoes, setImportandoEvolucoes] = useState(false)
   const [statusImportacao, setStatusImportacao] = useState('')
   const [loadingConfig, setLoadingConfig] = useState(false)
   const [speciesLista, setSpeciesLista] = useState([])
@@ -214,6 +216,29 @@ export default function MestreSpecies() {
       setErro(e.message || 'Erro ao vincular espécies existentes')
     } finally {
       setVinculandoExistentes(false)
+    }
+  }
+
+  const importarEvolucoes = async () => {
+    if (importandoEvolucoes) return
+    if (!window.confirm('Isso vai buscar as regras de evolução na PokéAPI para todas as espécies locais (somente se não houver regras no banco). Deseja continuar?')) return
+    setErro('')
+    setStatusImportacao('')
+    setImportandoEvolucoes(true)
+    try {
+      const resultado = await importarEvolucoesPokeApiMestre()
+      if (resultado?.status === 'skip') {
+        const count = resultado.regrasExistentes ?? 0
+        setStatusImportacao(`Importação ignorada: já existem ${count} regra(s) de evolução no banco.`)
+      } else {
+        setStatusImportacao(
+          `Evoluções importadas. Species: ${resultado.species}. Chains: ${resultado.chains}. Regras: ${resultado.regras}. Falhas: ${resultado.falhas}.`
+        )
+      }
+    } catch (e) {
+      setErro(e.message || 'Erro ao importar regras de evolução')
+    } finally {
+      setImportandoEvolucoes(false)
     }
   }
 
@@ -382,7 +407,7 @@ export default function MestreSpecies() {
             type="button"
             className="btn btn-secondary"
             onClick={importarTodasSpecies}
-            disabled={saving || importandoTodas || vinculandoExistentes}
+            disabled={saving || importandoTodas || vinculandoExistentes || importandoEvolucoes}
             title="Importa em lote todas as espécies que ainda não foram salvas localmente"
           >
             {importandoTodas ? 'Importando espécies...' : 'Importar todas da PokéAPI'}
@@ -391,10 +416,19 @@ export default function MestreSpecies() {
             type="button"
             className="btn btn-secondary"
             onClick={vincularSpeciesExistentes}
-            disabled={saving || importandoTodas || vinculandoExistentes}
+            disabled={saving || importandoTodas || vinculandoExistentes || importandoEvolucoes}
             title="Completa habilidades/learnset de espécies locais incompletas"
           >
             {vinculandoExistentes ? 'Vinculando species...' : 'Vincular species existentes'}
+          </button>
+          <button
+            type="button"
+            className="btn btn-secondary"
+            onClick={importarEvolucoes}
+            disabled={saving || importandoTodas || vinculandoExistentes || importandoEvolucoes}
+            title="Importa regras de evolução da PokéAPI para todas as espécies locais (só executa se o banco estiver vazio)"
+          >
+            {importandoEvolucoes ? 'Importando evoluções...' : 'Importar evoluções'}
           </button>
         </div>
         {statusImportacao && <p style={{ margin: '0.65rem 0 0', color: 'var(--text-muted)' }}>{statusImportacao}</p>}
