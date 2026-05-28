@@ -354,7 +354,8 @@ public class PokemonService {
         }
 
         GrowthRate curva = GrowthRate.fromSpecies(pokemon.getSpecies());
-        int x = pokemon.getXpAtual();
+        int xpAntes = pokemon.getXpAtual();
+        int x = xpAntes;
         if (xpAtual != null) {
             x = PokemonExperience.clampXpTotal(xpAtual, curva);
         } else if (nivel != null && nivel != nivelAtual) {
@@ -367,6 +368,12 @@ public class PokemonService {
         int nivelRecalculado = pokemon.getNivel();
         if (nivelRecalculado > nivelAtual) {
             pokemonStatService.concederPontosPorNivel(pokemon, nivelAtual, nivelRecalculado);
+        } else if (nivelRecalculado < nivelAtual) {
+            PokemonIVClass ivClass = pokemon.getIvClass() != null ? pokemon.getIvClass() : PokemonIVClass.fromBst(0);
+            int pontosARemover = (nivelAtual - nivelRecalculado) * ivClass.getPontosPorNivel();
+            pokemon.setPontosDistribuicaoDisponiveis(
+                    Math.max(0, pokemon.getPontosDistribuicaoDisponiveis() - pontosARemover)
+            );
         }
         if (bonusDistribuicao > 0) {
             pokemon.setPontosDistribuicaoDisponiveis(
@@ -418,7 +425,7 @@ public class PokemonService {
 
         Pokemon salvo = pokemonRepository.save(pokemon);
         return com.pokemonamethyst.web.dto.PokemonAtualizarComAprendizagemResponseDto
-                .from(salvo, nivelAtual, nivelDepois, movimentosAprendendo);
+                .from(salvo, nivelAtual, nivelDepois, xpAntes, salvo.getXpAtual(), movimentosAprendendo);
     }
 
     @Transactional
@@ -506,6 +513,22 @@ public class PokemonService {
                 pontosDistribuicaoDepois,
                 movimentosAprendendo
         );
+    }
+
+    @Transactional(readOnly = true)
+    public com.pokemonamethyst.web.dto.PokemonLevelDownPreviewDto previewLevelDown(String pokemonId, String perfilId, int xpNovo) {
+        Pokemon pokemon = buscarPorIdEPerfil(pokemonId, perfilId);
+        GrowthRate curva = GrowthRate.fromSpecies(pokemon.getSpecies());
+        int xpClamped = PokemonExperience.clampXpTotal(Math.max(0, xpNovo), curva);
+        int nivelDepois = PokemonExperience.calculateLevelFromXp(xpClamped, curva);
+        int nivelAntes = pokemon.getNivel();
+        if (nivelDepois >= nivelAntes) {
+            return new com.pokemonamethyst.web.dto.PokemonLevelDownPreviewDto(nivelAntes, nivelDepois, 0);
+        }
+        PokemonIVClass ivClass = pokemon.getIvClass() != null ? pokemon.getIvClass() : PokemonIVClass.fromBst(0);
+        int pontosARemover = (nivelAntes - nivelDepois) * ivClass.getPontosPorNivel();
+        int excedente = Math.max(0, pontosARemover - pokemon.getPontosDistribuicaoDisponiveis());
+        return new com.pokemonamethyst.web.dto.PokemonLevelDownPreviewDto(nivelAntes, nivelDepois, excedente);
     }
 
     @Transactional(readOnly = true)
@@ -801,7 +824,17 @@ public class PokemonService {
                     ("LEVEL-UP".equalsIgnoreCase(rule.getTriggerType()) || "LEVEL_UP".equalsIgnoreCase(rule.getTriggerType()) || "LEVEL".equalsIgnoreCase(rule.getTriggerType()));
             dto.setDisponivelAgora(!porNivel || rule.getMinLevel() == null || pokemon.getNivel() >= rule.getMinLevel());
             return dto;
-        }).toList();
+        })
+        .collect(Collectors.toMap(
+                PokemonEvolucaoOpcaoDto::getPokedexId,
+                dto -> dto,
+                (existing, replacement) -> existing.isDisponivelAgora() ? existing : replacement,
+                LinkedHashMap::new
+        ))
+        .values()
+        .stream()
+        .sorted(java.util.Comparator.comparingInt(PokemonEvolucaoOpcaoDto::getPokedexId))
+        .toList();
     }
 
     private void preencherIvsAleatorios(Pokemon pokemon) {

@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback, useMemo } from 'react'
 import { useLocation } from 'react-router-dom'
-import { getMeuPerfil, salvarPerfil } from '../api'
+import { getMeuPerfil, salvarPerfil, getLogXp } from '../api'
 import { usePlayerTarget } from '../context/PlayerTargetContext'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { queryKeys } from '../query/queryKeys'
@@ -238,6 +238,81 @@ function AttrCard({ attr, value, pontosDisponiveis, onAdd, onChange }) {
   )
 }
 
+function TrainerLevelDownModal({ pendente, attrs, onConfirmar, onCancelar }) {
+  const { novoNivel, pontosExcedentes } = pendente
+  const [novasAttrs, setNovasAttrs] = useState({ ...attrs })
+
+  const novosDisponiveis = calcularPontosDisponiveis(novasAttrs, novoNivel)
+  const podeConfirmar = novosDisponiveis >= 0
+
+  const decrementar = (id) => {
+    const atual = Math.max(1, novasAttrs[id] ?? 1)
+    if (atual <= 1) return
+    setNovasAttrs((prev) => ({ ...prev, [id]: atual - 1 }))
+  }
+
+  const overlay = {
+    position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.82)',
+    display: 'flex', alignItems: 'center', justifyContent: 'center',
+    zIndex: 9999, padding: '1rem',
+  }
+  const card = {
+    background: 'rgba(17,12,30,0.97)', border: '1px solid rgba(168,85,247,.35)',
+    borderRadius: 16, padding: '1.5rem', maxWidth: 480, width: '100%',
+    fontFamily: "'Oxanium', sans-serif", color: '#f0ebff',
+    backdropFilter: 'blur(16px)', WebkitBackdropFilter: 'blur(16px)',
+  }
+
+  return (
+    <div style={overlay}>
+      <div style={card}>
+        <div style={{ fontFamily: "'Press Start 2P', monospace", fontSize: 9, color: '#c084fc', marginBottom: '0.75rem', letterSpacing: '0.06em' }}>
+          REDUÇÃO DE NÍVEL
+        </div>
+        <p style={{ margin: '0 0 0.5rem', fontSize: 14, lineHeight: 1.6 }}>
+          O nível vai cair para <strong>Nv. {novoNivel}</strong>.
+          Retire pelo menos <strong>{pontosExcedentes}</strong> ponto(s) de atributos para manter a ficha correta.
+        </p>
+        <div style={{ marginBottom: '1rem', fontSize: 13, color: novosDisponiveis >= 0 ? '#4ade80' : '#f87171', fontWeight: 600 }}>
+          {novosDisponiveis >= 0
+            ? `Pontos disponíveis após ajuste: ${novosDisponiveis}`
+            : `Faltam retirar ${Math.abs(novosDisponiveis)} ponto(s)`}
+        </div>
+        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.5rem', marginBottom: '1.25rem' }}>
+          {ATTRS.map((a) => {
+            const atual = Math.max(1, novasAttrs[a.id] ?? 1)
+            const original = Math.max(1, attrs[a.id] ?? 1)
+            const reduzido = original - atual
+            return (
+              <div key={a.id} style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', padding: '0.5rem', background: 'rgba(168,85,247,.06)', borderRadius: 8, border: '1px solid rgba(168,85,247,.14)' }}>
+                <span style={{ flex: 1, fontSize: 12 }}>{a.nome}{a.star && ' ⭐'}</span>
+                <span style={{ fontSize: 12, color: reduzido > 0 ? '#f87171' : '#8b7db5' }}>
+                  {original}{reduzido > 0 && ` → ${atual}`}
+                </span>
+                <button
+                  onClick={() => decrementar(a.id)}
+                  disabled={atual <= 1}
+                  style={{ background: 'rgba(248,113,113,.15)', border: '1px solid rgba(248,113,113,.3)', borderRadius: 4, color: '#f87171', cursor: atual > 1 ? 'pointer' : 'not-allowed', fontSize: 14, fontWeight: 700, padding: '2px 8px', opacity: atual > 1 ? 1 : 0.35 }}
+                >
+                  −
+                </button>
+              </div>
+            )
+          })}
+        </div>
+        <div style={{ display: 'flex', gap: 10, justifyContent: 'flex-end' }}>
+          <button onClick={onCancelar} style={{ background: 'transparent', border: '1px solid rgba(168,85,247,.3)', borderRadius: 8, color: '#c084fc', cursor: 'pointer', fontFamily: "'Oxanium', sans-serif", fontSize: 13, fontWeight: 700, padding: '8px 20px' }}>
+            Cancelar
+          </button>
+          <button onClick={() => podeConfirmar && onConfirmar(novasAttrs)} disabled={!podeConfirmar} style={{ background: podeConfirmar ? '#a855f7' : '#4a3070', border: 'none', borderRadius: 8, color: '#f0ebff', cursor: podeConfirmar ? 'pointer' : 'not-allowed', fontFamily: "'Oxanium', sans-serif", fontSize: 13, fontWeight: 700, padding: '8px 20px', opacity: podeConfirmar ? 1 : 0.5 }}>
+            Confirmar
+          </button>
+        </div>
+      </div>
+    </div>
+  )
+}
+
 export default function Perfil() {
   const location = useLocation()
   const { playerId, readyForPlayerApi, isMestre } = usePlayerTarget()
@@ -253,6 +328,7 @@ export default function Perfil() {
   const [perfil, setPerfil] = useState(null)
   const [erro, setErro] = useState('')
   const [saved, setSaved] = useState(false)
+  const [nivelDownPendente, setNivelDownPendente] = useState(null)
 
   useEffect(() => {
     if (document.getElementById('ficha-global-styles')) return
@@ -268,6 +344,13 @@ export default function Perfil() {
     queryFn: () => getMeuPerfil(playerId),
     enabled: readyForPlayerApi,
     staleTime: 60 * 1000,
+  })
+
+  const logXpQuery = useQuery({
+    queryKey: queryKeys.logXp(playerId),
+    queryFn: () => getLogXp(playerId),
+    enabled: readyForPlayerApi,
+    staleTime: 30 * 1000,
   })
 
   useEffect(() => {
@@ -311,6 +394,7 @@ export default function Perfil() {
     onSuccess: (saved) => {
       setPerfil(saved)
       queryClient.setQueryData(queryKeys.perfil(playerId), saved)
+      queryClient.invalidateQueries({ queryKey: queryKeys.logXp(playerId) })
       setSaved(true)
       setTimeout(() => setSaved(false), 1800)
     },
@@ -327,19 +411,35 @@ export default function Perfil() {
 
   const ganharXP = useCallback(() => {
     const val = parseInt(xpInput)
-    if (!val || val <= 0) return
+    if (!val || val === 0) return
 
     let novoXp = xp + val
     let novoNivel = nivel
 
-    while (novoXp >= calcularXpProximoNivel(novoNivel)) {
-      novoXp -= calcularXpProximoNivel(novoNivel)
-      novoNivel++
+    if (val > 0) {
+      while (novoXp >= calcularXpProximoNivel(novoNivel)) {
+        novoXp -= calcularXpProximoNivel(novoNivel)
+        novoNivel++
+      }
+    } else {
+      while (novoXp < 0 && novoNivel > 1) {
+        novoNivel--
+        novoXp += calcularXpProximoNivel(novoNivel)
+      }
+      novoXp = Math.max(0, novoXp)
     }
+
+    const novosDisponiveis = calcularPontosDisponiveis(attrs, novoNivel)
+    if (novosDisponiveis < 0) {
+      setNivelDownPendente({ novoNivel, novoXp, pontosExcedentes: Math.abs(novosDisponiveis) })
+      setXpInput('')
+      return
+    }
+
     setXp(novoXp)
     setNivel(novoNivel)
     setXpInput('')
-  }, [xp, nivel, xpInput])
+  }, [xp, nivel, xpInput, attrs])
 
   const addAttr = useCallback((id) => {
     const atual = Math.max(1, attrs[id] ?? 1)
@@ -479,6 +579,7 @@ export default function Perfil() {
   }
 
   return (
+    <>
     <div className="ficha-root" style={s.root}>
       {avisoSemPerfil2 && (
         <div style={{ background: 'rgba(248,113,113,.15)', border: '1px solid #f87171', borderRadius: 10, padding: '0.75rem 1rem', marginBottom: '1rem', color: '#f87171', fontSize: 14 }}>
@@ -534,8 +635,8 @@ export default function Perfil() {
             </div>
           </div>
           <div style={{ display: 'flex', gap: 8 }}>
-            <input type="number" value={xpInput} min={0} onChange={(e) => setXpInput(e.target.value)} onKeyDown={(e) => e.key === 'Enter' && ganharXP()} placeholder="Quantidade de XP" />
-            <button className="ficha-btn-main" onClick={ganharXP} style={btnMain}>+ XP</button>
+            <input type="number" value={xpInput} onChange={(e) => setXpInput(e.target.value)} onKeyDown={(e) => e.key === 'Enter' && ganharXP()} placeholder="Ex.: +15 ou -10" />
+            <button className="ficha-btn-main" onClick={ganharXP} style={btnMain}>Aplicar XP</button>
           </div>
         </div>
 
@@ -665,7 +766,43 @@ export default function Perfil() {
           </div>
         )}
 
+        {/* Histórico de XP */}
+        {logXpQuery.data?.content?.length > 0 && (
+          <div className="ficha-card-anim" style={s.card}>
+            <div style={s.cardLine} />
+            <div style={s.cardTitle}>Histórico de XP</div>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+              {logXpQuery.data.content.map((entry) => {
+                const data = entry.criadoEm
+                  ? new Date(entry.criadoEm).toLocaleString('pt-BR', { day: '2-digit', month: '2-digit', year: '2-digit', hour: '2-digit', minute: '2-digit' })
+                  : ''
+                return (
+                  <div key={entry.id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '8px 12px', background: 'rgba(8,6,18,0.55)', border: '1px solid rgba(168,85,247,.1)', borderRadius: 8 }}>
+                    <span style={{ fontFamily: "'Oxanium', sans-serif", fontSize: 13, color: '#f0ebff' }}>{entry.detalhes}</span>
+                    <span style={{ fontFamily: "'Oxanium', sans-serif", fontSize: 11, color: '#8b7db5', whiteSpace: 'nowrap', marginLeft: 12 }}>{data}</span>
+                  </div>
+                )
+              })}
+            </div>
+          </div>
+        )}
+
       </div>
     </div>
+
+    {nivelDownPendente && (
+      <TrainerLevelDownModal
+        pendente={nivelDownPendente}
+        attrs={attrs}
+        onConfirmar={(novasAttrs) => {
+          setAttrs(novasAttrs)
+          setNivel(nivelDownPendente.novoNivel)
+          setXp(nivelDownPendente.novoXp)
+          setNivelDownPendente(null)
+        }}
+        onCancelar={() => setNivelDownPendente(null)}
+      />
+    )}
+    </>
   )
 }

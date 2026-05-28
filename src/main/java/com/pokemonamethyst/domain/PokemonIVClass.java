@@ -59,6 +59,10 @@ public enum PokemonIVClass {
 
     public int getPontosMin() { return pontosMin; }
     public int getPontosMax() { return pontosMax; }
+    public int getHpMin() { return hpMin; }
+    public int getHpMax() { return hpMax; }
+    public int getStaminaMin() { return staminaMin; }
+    public int getStaminaMax() { return staminaMax; }
     public static PokemonIVClass fromBst(int bst) {
         int bstSeguro = Math.max(0, bst);
         for (PokemonIVClass value : values()) {

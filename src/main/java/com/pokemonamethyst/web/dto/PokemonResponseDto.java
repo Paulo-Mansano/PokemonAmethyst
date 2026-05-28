@@ -81,6 +81,7 @@ public class PokemonResponseDto {
     private String raridade;
     private List<String> statusAtuais;
     private List<MovimentoResponseDto> movimentosConhecidos;
+    private int contagemEvolucoes;
 
     public PokemonResponseDto() {}
     public PokemonResponseDto(String id, Integer ordemTime, int pokedexId, String especie, String apelido, String imagemUrl, String spriteCustomizadoUrl, String notas, String genero, boolean shiny, String tipoPrimario, String tipoSecundario, String personalidade, String especializacao, String berryFavorita, int nivelDeVinculo, int nivel, int xpAtual, String pokebolaCaptura, String itemSeguradoId, int hpMaximo, int staminaMaxima, int ataque, int ataqueEspecial, int defesa, int defesaEspecial, int speed, int tecnica, int respeito, List<String> statusAtuais) {
@@ -207,6 +208,7 @@ public class PokemonResponseDto {
         dto.setTipoPrimarioEspecie(p.getTipoPrimarioDaEspecie() != null ? p.getTipoPrimarioDaEspecie().name() : null);
         dto.setTipoSecundarioEspecie(p.getTipoSecundarioDaEspecie() != null ? p.getTipoSecundarioDaEspecie().name() : null);
         dto.setTiposComOverride(p.isTiposPersonalizados());
+        dto.setContagemEvolucoes(p.getContagemEvolucoes());
         return dto;
     }
 
@@ -338,4 +340,6 @@ public class PokemonResponseDto {
     public void setStatusAtuais(List<String> statusAtuais) { this.statusAtuais = statusAtuais; }
     public List<MovimentoResponseDto> getMovimentosConhecidos() { return movimentosConhecidos; }
     public void setMovimentosConhecidos(List<MovimentoResponseDto> movimentosConhecidos) { this.movimentosConhecidos = movimentosConhecidos; }
+    public int getContagemEvolucoes() { return contagemEvolucoes; }
+    public void setContagemEvolucoes(int contagemEvolucoes) { this.contagemEvolucoes = contagemEvolucoes; }
 }

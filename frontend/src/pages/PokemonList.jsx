@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback } from 'react'
 import { Link } from 'react-router-dom'
-import { getMeuPerfil, getUsuario, criarPokemon, getPokemon, atualizarPokemon, colocarNoTime, removerDoTime, excluirPokemon, getSpeciesCatalogLocal, getSpeciesCatalogLocalVersion, getMovimentos, getMovimentosDisponiveisPokemon, getPersonalidades, getItens, getHabilidades, previewGanhoXpPokemon, mestreDefinirTiposPokemon, alocarAtributosPokemon, listarEvolucoesPossiveisPokemon, evoluirPokemon, aceitarMovimentoAprendido } from '../api'
+import { getMeuPerfil, getUsuario, criarPokemon, getPokemon, atualizarPokemon, colocarNoTime, removerDoTime, excluirPokemon, getSpeciesCatalogLocal, getSpeciesCatalogLocalVersion, getMovimentos, getMovimentosDisponiveisPokemon, getPersonalidades, getItens, getHabilidades, previewGanhoXpPokemon, mestreDefinirTiposPokemon, alocarAtributosPokemon, desalocarAtributosPokemon, previewXpNivelPokemon, listarEvolucoesPossiveisPokemon, evoluirPokemon, aceitarMovimentoAprendido } from '../api'
 import { usePlayerTarget } from '../context/PlayerTargetContext'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { queryKeys } from '../query/queryKeys'
@@ -80,6 +80,82 @@ const ATRIBUTO_EDIT_FIELD_MAP = {
   atr_stamina: 'atrStamina',
   atr_tecnica: 'atrTecnica',
   atr_respeito: 'atrRespeito',
+}
+
+const ATRIBUTO_LABELS = {
+  atr_ataque: 'Ataque',
+  atr_defesa: 'Defesa',
+  atr_ataque_especial: 'Atq. Especial',
+  atr_defesa_especial: 'Def. Especial',
+  atr_speed: 'Speed',
+  atr_hp: 'HP',
+  atr_stamina: 'Stamina',
+  atr_tecnica: 'Técnica',
+  atr_respeito: 'Respeito',
+}
+
+function LevelDownPokemonModal({ modal, expandedEdit, custoParaProximo, onConfirm, onCancel, saving }) {
+  const { nivelAntes, nivelDepois, pontosExcedentes } = modal
+  const [remocoes, setRemocoes] = useState({})
+
+  const atributos = Object.entries(ATRIBUTO_EDIT_FIELD_MAP).map(([key, campo]) => ({
+    key, campo,
+    label: ATRIBUTO_LABELS[key] || key,
+    valorAtual: Math.max(0, Number(expandedEdit?.[campo]) || 0),
+  })).filter((a) => a.valorAtual > 0)
+
+  const totalFreeado = atributos.reduce((total, a) => {
+    const qtd = Number(remocoes[a.key]) || 0
+    let freed = 0
+    for (let i = 0; i < qtd; i++) {
+      freed += custoParaProximo(a.key, a.valorAtual - 1 - i)
+    }
+    return total + freed
+  }, 0)
+
+  const setQtd = (key, campo, novaQtd) => {
+    const v = Math.max(0, Number(expandedEdit?.[campo]) || 0)
+    setRemocoes((r) => ({ ...r, [key]: Math.max(0, Math.min(v, novaQtd)) }))
+  }
+
+  const podeConfirmar = totalFreeado >= pontosExcedentes && !saving
+
+  return (
+    <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.78)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 30, padding: '1rem' }}>
+      <div className="card" style={{ maxWidth: 520, width: '100%', maxHeight: '80vh', overflowY: 'auto' }}>
+        <h3 style={{ marginTop: 0 }}>Redução de Nível: Lv. {nivelAntes} → Lv. {nivelDepois}</h3>
+        <p style={{ color: 'var(--text-muted)', marginBottom: '0.5rem' }}>
+          A redução de XP resulta na perda de {nivelAntes - nivelDepois} nível(eis).
+          Para manter a ficha correta, retire pelo menos <strong>{pontosExcedentes}</strong> ponto(s) de atributos investidos.
+        </p>
+        <div style={{ marginBottom: '1rem', fontWeight: 600, color: totalFreeado >= pontosExcedentes ? 'var(--accent)' : 'var(--text-muted)' }}>
+          Pontos liberados: {totalFreeado} / {pontosExcedentes}
+        </div>
+        <div style={{ display: 'grid', gap: '0.4rem', marginBottom: '1rem' }}>
+          {atributos.map((a) => {
+            const qtd = Number(remocoes[a.key]) || 0
+            return (
+              <div key={a.key} style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', padding: '0.5rem 0.75rem', background: 'var(--surface)', borderRadius: 6 }}>
+                <span style={{ flex: 1, fontSize: 14 }}>{a.label}</span>
+                <span style={{ fontSize: 13, color: 'var(--text-muted)', minWidth: 80, textAlign: 'right' }}>
+                  {a.valorAtual} → <strong style={{ color: 'var(--text)' }}>{a.valorAtual - qtd}</strong>
+                </span>
+                <button type="button" className="btn btn-secondary btn-sm" onClick={() => setQtd(a.key, a.campo, qtd - 1)} disabled={qtd <= 0}>−</button>
+                <span style={{ minWidth: 20, textAlign: 'center', fontSize: 13 }}>{qtd}</span>
+                <button type="button" className="btn btn-secondary btn-sm" onClick={() => setQtd(a.key, a.campo, qtd + 1)} disabled={qtd >= a.valorAtual}>+</button>
+              </div>
+            )
+          })}
+        </div>
+        <div style={{ display: 'flex', gap: '0.5rem', justifyContent: 'flex-end', flexWrap: 'wrap' }}>
+          <button type="button" className="btn btn-secondary" onClick={onCancel} disabled={saving}>Cancelar</button>
+          <button type="button" className="btn btn-primary" onClick={() => onConfirm(remocoes)} disabled={!podeConfirmar}>
+            Confirmar e salvar
+          </button>
+        </div>
+      </div>
+    </div>
+  )
 }
 
 function editStateFromPokemon(p) {
@@ -177,6 +253,11 @@ function ExpandedForm({
 }) {
   const [movimentoBusca, setMovimentoBusca] = useState('')
   const [xpGanho, setXpGanho] = useState('')
+  const [evolucaoSelecionada, setEvolucaoSelecionada] = useState('')
+  useEffect(() => {
+    const visiveis = (evolucoesPossiveis || []).filter((evo) => evo.disponivelAgora)
+    setEvolucaoSelecionada(visiveis.length > 0 ? String(visiveis[0].pokedexId) : '')
+  }, [evolucoesPossiveis])
   const set = (key, value) => setExpandedEdit((e) => (e ? { ...e, [key]: value } : e))
   const movimentosAtuais = (expandedEdit.movimentoIds || [])
     .map((id) => {
@@ -236,8 +317,8 @@ function ExpandedForm({
     { key: 'atr_speed', label: 'Velocidade', valor: Number(expandedEdit.atrSpeed) || 0, total: Number(expandedEdit.atrSpeed) || 0 },
     { key: 'atr_hp', label: 'HP investido', valor: Number(expandedEdit.atrHp) || 0, total: hpMaximoRascunho },
     { key: 'atr_stamina', label: 'Stamina investida', valor: Number(expandedEdit.atrStamina) || 0, total: staminaMaximaRascunho },
-    { key: 'atr_tecnica', label: 'Técnica investida', valor: Number(expandedEdit.atrTecnica) || 0, total: Number(expandedEdit.atrTecnica) || 0 },
-    { key: 'atr_respeito', label: 'Respeito investido', valor: Number(expandedEdit.atrRespeito) || 0, total: Number(expandedEdit.atrRespeito) || 0 },
+    { key: 'atr_tecnica', label: 'Técnica', valor: Number(expandedEdit.atrTecnica) || 0, total: Number(expandedEdit.atrTecnica) || 0 },
+    { key: 'atr_respeito', label: 'Respeito', valor: Number(expandedEdit.atrRespeito) || 0, total: Number(expandedEdit.atrRespeito) || 0 },
   ]
 
   return (
@@ -303,25 +384,49 @@ function ExpandedForm({
           </div>
         </div>
         <div className="pokemon-expanded-header-actions">
-          <button type="button" className="btn btn-secondary" onClick={onAbrirCatalogo}>
-            Buscar na PokéAPI
-          </button>
+          {isMestre && (
+            <button type="button" className="btn btn-secondary" onClick={onAbrirCatalogo}>
+              Buscar na PokéAPI
+            </button>
+          )}
           {Array.isArray(evolucoesPossiveis) && evolucoesPossiveis.length > 0 && (() => {
             const botoesVisiveis = evolucoesPossiveis.filter((evo) => evo.disponivelAgora)
             if (botoesVisiveis.length === 0) return null
+            if (botoesVisiveis.length === 1) {
+              return (
+                <button
+                  type="button"
+                  className="btn btn-primary"
+                  disabled={savingPokemon}
+                  onClick={() => onEvoluir && onEvoluir(botoesVisiveis[0].pokedexId)}
+                >
+                  Evoluir para {botoesVisiveis[0].especie || `#${botoesVisiveis[0].pokedexId}`}
+                </button>
+              )
+            }
+            const selecionado = botoesVisiveis.find((evo) => String(evo.pokedexId) === evolucaoSelecionada) || botoesVisiveis[0]
             return (
-              <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap', justifyContent: 'flex-end' }}>
-                {botoesVisiveis.map((evo) => (
-                  <button
-                    key={`${evo.pokedexId}-${evo.triggerType}-${evo.minLevel || 0}`}
-                    type="button"
-                    className="btn btn-primary"
-                    disabled={savingPokemon}
-                    onClick={() => onEvoluir && onEvoluir(evo.pokedexId)}
-                  >
-                    Evoluir para {evo.especie || `#${evo.pokedexId}`}
-                  </button>
-                ))}
+              <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center' }}>
+                <select
+                  value={evolucaoSelecionada}
+                  onChange={(e) => setEvolucaoSelecionada(e.target.value)}
+                  disabled={savingPokemon}
+                  style={{ padding: '0.4rem 0.6rem', borderRadius: '6px', minWidth: '9rem', background: 'rgba(255,255,255,0.08)', color: 'inherit', border: '1px solid rgba(255,255,255,0.2)', cursor: 'pointer' }}
+                >
+                  {botoesVisiveis.map((evo) => (
+                    <option key={evo.pokedexId} value={String(evo.pokedexId)} style={{ background: '#1a1a2e', color: '#fff' }}>
+                      {evo.especie || `#${evo.pokedexId}`}
+                    </option>
+                  ))}
+                </select>
+                <button
+                  type="button"
+                  className="btn btn-primary"
+                  disabled={savingPokemon || !selecionado}
+                  onClick={() => selecionado && onEvoluir && onEvoluir(selecionado.pokedexId)}
+                >
+                  Evoluir
+                </button>
               </div>
             )
           })()}
@@ -667,7 +772,7 @@ function ExpandedForm({
             <div
               key={m.id}
               className="pokemon-movimento-card pokemon-movimento-card--typed"
-              style={{ background: getMoveCardBackground(m.tipo) }}
+              style={{ '--card-border-1': TYPE_COLORS[m.tipo] || '#a855f7', '--card-border-2': TYPE_COLORS[m.tipo] || '#a855f7' }}
             >
               <div className="pokemon-movimento-card-inner">
                 <div className="pokemon-movimento-card-header">
@@ -718,7 +823,7 @@ function ExpandedForm({
                   <div
                     key={m.id}
                     className="pokemon-movimento-disponivel"
-                    style={{ background: getMoveCardBackground(m.tipo) }}
+                    style={{ borderLeftColor: TYPE_COLORS[m.tipo] || '#a855f7' }}
                   >
                     <span className="pokemon-movimento-disp-nome">{formatMovimentoNomeExibicao(m)}</span>
                     {m.tipo && (
@@ -781,6 +886,8 @@ export default function PokemonList() {
   const [pendingAlocacoes, setPendingAlocacoes] = useState({})
   const [pendingResetTiposEspecie, setPendingResetTiposEspecie] = useState(false)
   const [confirmarTopUp, setConfirmarTopUp] = useState(null)
+  const [levelDownModal, setLevelDownModal] = useState(null)
+  const [pendingDesalocacoes, setPendingDesalocacoes] = useState({})
 
   // Pop-up sequencial quando o Pokémon aprende novos ataques ao subir de nível.
   const [ofertasAprendizagem, setOfertasAprendizagem] = useState([])
@@ -899,8 +1006,10 @@ export default function PokemonList() {
       setExpandedEdit(editStateFromPokemon(expandedPokemon))
       setPendingXpGanhoTotal(0)
       setPendingAlocacoes({})
+      setPendingDesalocacoes({})
       setPendingResetTiposEspecie(false)
       setConfirmarTopUp(null)
+      setLevelDownModal(null)
     } else {
       setExpandedEdit(null)
     }
@@ -1366,6 +1475,14 @@ export default function PokemonList() {
         }
       }
 
+      // Desalocar atributos investidos antes do save para liberar pontos (usado no level-down)
+      let pokemonAtualizado = expandedPokemon
+      for (const [atributo, qtd] of Object.entries(pendingDesalocacoes).filter(([, q]) => Number(q) > 0)) {
+        for (let i = 0; i < Number(qtd); i += 1) {
+          pokemonAtualizado = await desalocarAtributosPokemon(pokemonAtualizado.id, atributo, 1, playerId)
+        }
+      }
+
       const resultado = await atualizarPokemon(expandedPokemon.id, {
         pokedexId: evolucaoPendente ? null : (expandedEdit.pokedexId && expandedEdit.pokedexId > 0 ? expandedEdit.pokedexId : null),
         apelido: expandedEdit.apelido || null,
@@ -1387,7 +1504,7 @@ export default function PokemonList() {
         movimentoIds: expandedEdit.movimentoIds?.length ? expandedEdit.movimentoIds : [],
       }, playerId)
 
-      let pokemonAtualizado = resultado?.pokemon || expandedPokemon
+      pokemonAtualizado = resultado?.pokemon || expandedPokemon
       const alocacoesPendentes = Object.entries(pendingAlocacoes).filter(([, quantidade]) => Number(quantidade) > 0)
       for (const [atributo, quantidade] of alocacoesPendentes) {
         for (let i = 0; i < Number(quantidade); i += 1) {
@@ -1415,6 +1532,7 @@ export default function PokemonList() {
       }
       setPendingXpGanhoTotal(0)
       setPendingAlocacoes({})
+      setPendingDesalocacoes({})
       setPendingResetTiposEspecie(false)
     } catch (err) {
       setErro(err.message)
@@ -1426,6 +1544,20 @@ export default function PokemonList() {
   const handleSalvarExpanded = async (e) => {
     e.preventDefault()
     if (!expandedPokemon || !expandedEdit) return
+
+    // Mestre reduzindo XP: verificar overflow de atributos antes de salvar
+    if (usuarioMestre?.mestre && expandedEdit.xpAtual < expandedPokemon.xpAtual) {
+      try {
+        const preview = await previewXpNivelPokemon(expandedPokemon.id, expandedEdit.xpAtual, playerId)
+        if (preview.pontosExcedentes > 0) {
+          setLevelDownModal(preview)
+          return
+        }
+      } catch {
+        // Falha no preview: prosseguir com o save normalmente
+      }
+    }
+
     const saldoAtual = Number(expandedEdit.pontosDistribuicaoDisponiveis) || 0
     const bonusNecessario = usuarioMestre?.mestre ? Math.max(0, -saldoAtual) : 0
     if (bonusNecessario > 0) {
@@ -1498,7 +1630,10 @@ export default function PokemonList() {
               <div
                 key={p.id}
                 className={`pokemon-banner-card ${expandedId === p.id ? 'is-expanded' : ''}`}
-                style={{ background: getCardBackground(p) }}
+                style={{
+                  '--card-border-1': TYPE_COLORS[p.tipoPrimario] || '#a855f7',
+                  '--card-border-2': TYPE_COLORS[p.tipoSecundario] || TYPE_COLORS[p.tipoPrimario] || '#a855f7',
+                }}
                 onClick={() => toggleExpand(p)}
                 role="button"
                 tabIndex={0}
@@ -1601,7 +1736,10 @@ export default function PokemonList() {
               <div
                 key={p.id}
                 className={`pokemon-banner-card ${expandedId === p.id ? 'is-expanded' : ''}`}
-                style={{ background: getCardBackground(p) }}
+                style={{
+                  '--card-border-1': TYPE_COLORS[p.tipoPrimario] || '#a855f7',
+                  '--card-border-2': TYPE_COLORS[p.tipoSecundario] || TYPE_COLORS[p.tipoPrimario] || '#a855f7',
+                }}
                 onClick={() => toggleExpand(p)}
                 role="button"
                 tabIndex={0}
@@ -1870,6 +2008,21 @@ export default function PokemonList() {
             )}
           </div>
         </div>
+      )}
+
+      {levelDownModal && expandedPokemon && expandedEdit && (
+        <LevelDownPokemonModal
+          modal={levelDownModal}
+          expandedEdit={expandedEdit}
+          custoParaProximo={custoParaProximo}
+          saving={savingPokemon}
+          onCancel={() => setLevelDownModal(null)}
+          onConfirm={(remocoes) => {
+            setPendingDesalocacoes(remocoes)
+            setLevelDownModal(null)
+            salvarPokemonExpanded(0)
+          }}
+        />
       )}
 
       {confirmarTopUp && expandedPokemon && expandedEdit && (

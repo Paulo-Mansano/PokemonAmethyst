@@ -16,6 +16,7 @@ import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
+import java.util.Map;
 
 @RestController
 @RequestMapping("/api/perfis")
@@ -56,6 +57,8 @@ public class PerfilJogadorController {
             @Valid @RequestBody PerfilJogadorRequestDto dto) {
         Atributos atr = dto.getAtributos() != null ? dto.getAtributos().toEntity() : null;
         PerfilJogador alvo = perfilService.obterPerfilAlvo(principal, playerId);
+        int xpAntesPerfil = alvo.getXpAtual();
+        int nivelAntesPerfil = alvo.getNivel();
         PerfilJogador perfil = perfilService.criarOuAtualizar(
                 alvo.getUsuario().getId(),
                 dto.getNomePersonagem(),
@@ -75,9 +78,35 @@ public class PerfilJogadorController {
         auditLogService.registrar(donoId, donoNome, "FICHA_SALVA",
             "PERFIL", perfil.getId(),
             "'" + nomePersonagem + "' Lv." + perfil.getNivel());
+        if (dto.getXpAtual() != null && dto.getXpAtual() > xpAntesPerfil) {
+            boolean nivelSubiuPerfil = perfil.getNivel() > nivelAntesPerfil;
+            String detXp = "'" + nomePersonagem + "' +" + (dto.getXpAtual() - xpAntesPerfil)
+                    + " XP → Lv." + perfil.getNivel() + (nivelSubiuPerfil ? " (subiu de nível!)" : "");
+            auditLogService.registrar(principal.getId(), principal.getUsername(), "XP_GANHO",
+                    "PERFIL", perfil.getId(), detXp);
+        }
         List<com.pokemonamethyst.domain.Pokemon> time = pokemonService.listarTimePrincipal(perfil.getId());
         List<com.pokemonamethyst.domain.Pokemon> box = pokemonService.listarBox(perfil.getId());
         return ResponseEntity.ok(PerfilJogadorResponseDto.from(perfil, time, box));
+    }
+
+    @GetMapping("/meu/log-xp")
+    @Transactional(readOnly = true)
+    public ResponseEntity<?> logXp(
+            @AuthenticationPrincipal UsuarioPrincipal principal,
+            @RequestParam(value = "playerId", required = false) String playerId,
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "20") int size) {
+        PerfilJogador alvo = perfilService.obterPerfilAlvo(principal, playerId);
+        String donoId = alvo.getUsuario().getId();
+        org.springframework.data.domain.Page<com.pokemonamethyst.domain.AuditLog> resultado =
+                auditLogService.listar(donoId, "XP_GANHO", page, Math.min(size, 50));
+        return ResponseEntity.ok(Map.of(
+                "content", resultado.getContent().stream()
+                        .map(com.pokemonamethyst.web.dto.AuditLogResponseDto::from)
+                        .toList(),
+                "totalElements", resultado.getTotalElements()
+        ));
     }
 
     @GetMapping("/{id}")

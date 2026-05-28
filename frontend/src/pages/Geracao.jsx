@@ -741,7 +741,11 @@ export default function Geracao() {
             {movimentosAtuais.length === 0 ? (
               <p className="pokemon-movimento-empty">Nenhum golpe selecionado.</p>
             ) : movimentosAtuais.map((mov) => (
-              <div key={mov.id} className="pokemon-movimento-card pokemon-movimento-card--typed">
+              <div
+                key={mov.id}
+                className="pokemon-movimento-card pokemon-movimento-card--typed"
+                style={{ '--card-border-1': TYPE_COLORS[mov.tipo] || '#a855f7', '--card-border-2': TYPE_COLORS[mov.tipo] || '#a855f7' }}
+              >
                 <div className="pokemon-movimento-card-inner">
                   <div className="pokemon-movimento-card-header">
                     <div className="pokemon-movimento-card-title-block">
@@ -805,7 +809,10 @@ export default function Geracao() {
     <div
       key={pokemon.id}
       className={`pokemon-banner-card ${expandedId === pokemon.id ? 'is-expanded' : ''}`}
-      style={{ background: getCardBackground(pokemon) }}
+      style={{
+        '--card-border-1': TYPE_COLORS[pokemon.tipoPrimario] || '#a855f7',
+        '--card-border-2': TYPE_COLORS[pokemon.tipoSecundario] || TYPE_COLORS[pokemon.tipoPrimario] || '#a855f7',
+      }}
       onClick={() => toggleExpand(pokemon)}
       role="button"
       tabIndex={0}

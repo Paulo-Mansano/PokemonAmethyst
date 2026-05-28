@@ -102,6 +102,12 @@ public class Pokemon {
     @Column(name = "pontos_distribuicao_disponiveis", nullable = false)
     private int pontosDistribuicaoDisponiveis;
 
+    @Column(name = "pontos_roll_inicial", nullable = false)
+    private int pontosRollInicial;
+
+    @Column(name = "contagem_evolucoes", nullable = false)
+    private int contagemEvolucoes;
+
     @Column(name = "hp_base_rng", nullable = false)
     private int hpBaseRng;
 
@@ -260,6 +266,10 @@ public class Pokemon {
     public void setIvClass(PokemonIVClass ivClass) { this.ivClass = ivClass; }
     public int getPontosDistribuicaoDisponiveis() { return pontosDistribuicaoDisponiveis; }
     public void setPontosDistribuicaoDisponiveis(int pontosDistribuicaoDisponiveis) { this.pontosDistribuicaoDisponiveis = pontosDistribuicaoDisponiveis; }
+    public int getPontosRollInicial() { return pontosRollInicial; }
+    public void setPontosRollInicial(int pontosRollInicial) { this.pontosRollInicial = pontosRollInicial; }
+    public int getContagemEvolucoes() { return contagemEvolucoes; }
+    public void setContagemEvolucoes(int contagemEvolucoes) { this.contagemEvolucoes = contagemEvolucoes; }
     public int getHpBaseRng() { return hpBaseRng; }
     public void setHpBaseRng(int hpBaseRng) { this.hpBaseRng = hpBaseRng; }
     public int getStaminaBaseRng() { return staminaBaseRng; }

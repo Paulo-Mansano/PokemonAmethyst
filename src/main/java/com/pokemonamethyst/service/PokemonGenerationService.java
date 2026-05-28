@@ -31,7 +31,9 @@ public class PokemonGenerationService {
         }
         PokemonIVClass ivClass = classificar(pokemon.getSpecies());
         pokemon.setIvClass(ivClass);
-        pokemon.setPontosDistribuicaoDisponiveis(ivClass.rolarPontosDistribuicaoIniciais());
+        int pontosIniciais = ivClass.rolarPontosDistribuicaoIniciais();
+        pokemon.setPontosDistribuicaoDisponiveis(pontosIniciais);
+        pokemon.setPontosRollInicial(pontosIniciais);
         pokemon.setHpBaseRng(ivClass.rolarHpBaseRngInicial());
         pokemon.setStaminaBaseRng(ivClass.rolarStaminaBaseRngInicial());
         zerarAtributosInvestidos(pokemon);
@@ -41,12 +43,27 @@ public class PokemonGenerationService {
         if (pokemon == null) {
             return;
         }
+        PokemonIVClass ivClassAntiga = pokemon.getIvClass() != null ? pokemon.getIvClass() : PokemonIVClass.fromBst(0);
+        int hpRngAntigo = pokemon.getHpBaseRng();
+        int staminaRngAntigo = pokemon.getStaminaBaseRng();
+
         pokemon.setSpecies(novaSpecies);
-        PokemonIVClass ivClass = classificar(novaSpecies);
-        pokemon.setIvClass(ivClass);
-        pokemon.setHpBaseRng(ivClass.rolarHpBaseRngInicial());
-        pokemon.setStaminaBaseRng(ivClass.rolarStaminaBaseRngInicial());
+        PokemonIVClass ivClassNova = classificar(novaSpecies);
+        pokemon.setIvClass(ivClassNova);
+
+        pokemon.setHpBaseRng(traduzirPorcentil(hpRngAntigo,
+                ivClassAntiga.getHpMin(), ivClassAntiga.getHpMax(),
+                ivClassNova.getHpMin(), ivClassNova.getHpMax()));
+        pokemon.setStaminaBaseRng(traduzirPorcentil(staminaRngAntigo,
+                ivClassAntiga.getStaminaMin(), ivClassAntiga.getStaminaMax(),
+                ivClassNova.getStaminaMin(), ivClassNova.getStaminaMax()));
         zerarAtributosInvestidos(pokemon);
+    }
+
+    public int traduzirPorcentil(int valorAntigo, int minAntigo, int maxAntigo, int minNovo, int maxNovo) {
+        if (maxAntigo <= minAntigo) return minNovo;
+        double percentil = Math.max(0.0, Math.min(1.0, (double)(valorAntigo - minAntigo) / (maxAntigo - minAntigo)));
+        return (int) Math.round(minNovo + percentil * (maxNovo - minNovo));
     }
 
     public void zerarAtributosInvestidos(Pokemon pokemon) {

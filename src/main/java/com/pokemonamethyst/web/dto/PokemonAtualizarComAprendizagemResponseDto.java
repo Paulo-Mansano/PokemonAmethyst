@@ -11,17 +11,23 @@ public class PokemonAtualizarComAprendizagemResponseDto {
     private int nivelAntes;
     private int nivelDepois;
     private boolean nivelSubiu;
+    private int xpAntes;
+    private int xpDepois;
     private List<MovimentoResponseDto> movimentosAprendendo;
 
     public static PokemonAtualizarComAprendizagemResponseDto from(Pokemon pokemon,
                                                                      int nivelAntes,
                                                                      int nivelDepois,
+                                                                     int xpAntes,
+                                                                     int xpDepois,
                                                                      List<Movimento> movimentosAprendendo) {
         PokemonAtualizarComAprendizagemResponseDto dto = new PokemonAtualizarComAprendizagemResponseDto();
         dto.setPokemon(PokemonResponseDto.from(pokemon));
         dto.setNivelAntes(nivelAntes);
         dto.setNivelDepois(nivelDepois);
         dto.setNivelSubiu(nivelDepois > nivelAntes);
+        dto.setXpAntes(xpAntes);
+        dto.setXpDepois(xpDepois);
         dto.setMovimentosAprendendo(
                 movimentosAprendendo == null
                         ? List.of()
@@ -60,6 +66,22 @@ public class PokemonAtualizarComAprendizagemResponseDto {
 
     public void setNivelSubiu(boolean nivelSubiu) {
         this.nivelSubiu = nivelSubiu;
+    }
+
+    public int getXpAntes() {
+        return xpAntes;
+    }
+
+    public void setXpAntes(int xpAntes) {
+        this.xpAntes = xpAntes;
+    }
+
+    public int getXpDepois() {
+        return xpDepois;
+    }
+
+    public void setXpDepois(int xpDepois) {
+        this.xpDepois = xpDepois;
     }
 
     public List<MovimentoResponseDto> getMovimentosAprendendo() {

@@ -27,20 +27,6 @@ const TYPE_COLORS = {
   FADA: '#D685AD',
 }
 
-function hexToRgb(hex) {
-  if (!hex || !hex.startsWith('#')) return null
-  const n = parseInt(hex.slice(1), 16)
-  return [n >> 16, (n >> 8) & 0xff, n & 0xff]
-}
-
-function getMoveCardBackground(move) {
-  const base = '#151521'
-  const tipo = move?.tipo
-  const hex = tipo && TYPE_COLORS[tipo] ? TYPE_COLORS[tipo] : null
-  if (!hex) return base
-  const [r, g, b] = hexToRgb(hex)
-  return `linear-gradient(135deg, rgba(${r},${g},${b},0.40) 0%, rgba(${r},${g},${b},0.10) 100%), ${base}`
-}
 
 export default function MovimentosCatalogo() {
   const queryClient = useQueryClient()
@@ -283,7 +269,14 @@ export default function MovimentosCatalogo() {
         ) : (
           <div className="movimentos-grid">
             {movimentosFiltrados.map((m) => (
-              <div key={m.id} className="movimento-card card" style={{ background: getMoveCardBackground(m) }}>
+              <div
+                key={m.id}
+                className="movimento-card card"
+                style={{
+                  '--card-border-1': TYPE_COLORS[m.tipo] || '#a855f7',
+                  '--card-border-2': TYPE_COLORS[m.tipo] || '#a855f7',
+                }}
+              >
                 <div className="movimento-card-header">
                   <h4 className="movimento-card-nome">{m.nome}</h4>
                   {m.tipo && (

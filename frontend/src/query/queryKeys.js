@@ -23,6 +23,7 @@ export const queryKeys = {
     lista: ['species', 'lista'],
   },
   logs: (filters) => ['mestre', 'logs', filters ?? {}],
+  logXp: (playerId) => ['perfil', playerId ?? 'self', 'log-xp'],
   mestreUsuarios: ['mestre', 'usuarios'],
 }
 

@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useState, useCallback } from 'react'
 import { getItens, importarItemPokeApi, listarItensPokeApi, atualizarItem, criarItem, atualizarImagensItens, getUsuario, excluirItem } from '../api'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { queryKeys } from '../query/queryKeys'
@@ -19,6 +19,12 @@ export default function ItensCatalogo() {
   const [editErro, setEditErro] = useState('')
   const [atualizandoImagens, setAtualizandoImagens] = useState(false)
   const [excluindoItemId, setExcluindoItemId] = useState(null)
+  const [descExpand, setDescExpand] = useState({})
+  const [buscaLocal, setBuscaLocal] = useState('')
+
+  const toggleDesc = useCallback((id) => {
+    setDescExpand((prev) => ({ ...prev, [id]: !prev[id] }))
+  }, [])
 
   const userQuery = useQuery({
     queryKey: queryKeys.auth.usuario,
@@ -284,59 +290,112 @@ export default function ItensCatalogo() {
         <p style={{ color: 'var(--text-muted)', fontSize: '0.9rem', marginTop: 0, marginBottom: '0.75rem' }}>
           Use &quot;Atualizar imagens&quot; para preencher imagens dos itens já importados que ainda não têm.
         </p>
+        <div style={{ marginBottom: '0.75rem' }}>
+          <input
+            type="text"
+            className="input"
+            placeholder="Filtrar itens por nome..."
+            value={buscaLocal}
+            onChange={(e) => setBuscaLocal(e.target.value)}
+          />
+        </div>
         {itens.length === 0 ? (
           <p style={{ color: 'var(--text-muted)' }}>Nenhum item encontrado. Use &quot;Criar item (exclusivo)&quot; ou a busca acima para importar itens da PokéAPI.</p>
-        ) : (
-          <div style={{ overflowX: 'auto' }}>
-            <table className="table">
-              <thead>
-                <tr>
-                  <th style={{ width: 56 }}></th>
-                  <th>Nome (PT)</th>
-                  <th>Nome (EN)</th>
-                  <th>Descrição</th>
-                  <th>Peso</th>
-                  <th>Preço</th>
-                  <th style={{ width: 180 }}></th>
-                </tr>
-              </thead>
-              <tbody>
-                {itens.map((i) => (
-                  <tr key={i.id}>
-                    <td>
-                      {i.imagemUrl ? (
-                        <img src={i.imagemUrl} alt="" style={{ width: 40, height: 40, objectFit: 'contain' }} />
-                      ) : (
-                        <span style={{ width: 40, height: 40, display: 'inline-block', background: 'var(--border)', borderRadius: 4 }} title="Sem imagem" />
-                      )}
-                    </td>
-                    <td>{i.nome}</td>
-                    <td>{i.nomeEn || '—'}</td>
-                    <td style={{ maxWidth: 400 }}>{i.descricao || '—'}</td>
-                    <td>{i.peso}</td>
-                    <td>{i.preco}</td>
-                    <td>
-                      <div style={{ display: 'flex', gap: '0.5rem' }}>
-                        <button type="button" className="btn btn-secondary" style={{ fontSize: '0.85rem' }} onClick={() => handleEditar(i)}>
-                          Editar
-                        </button>
-                        <button
-                          type="button"
-                          className="btn btn-danger"
-                          style={{ fontSize: '0.85rem' }}
-                          onClick={() => handleExcluirItem(i)}
-                          disabled={excluindoItemId === i.id}
-                        >
-                          {excluindoItemId === i.id ? 'Excluindo...' : 'Excluir'}
-                        </button>
+        ) : (() => {
+          const termo = buscaLocal.trim().toLowerCase()
+          const itensFiltrados = termo
+            ? itens.filter((i) => (`${i.nome ?? ''} ${i.nomeEn ?? ''}`).toLowerCase().includes(termo))
+            : itens
+          if (itensFiltrados.length === 0) {
+            return <p style={{ color: 'var(--text-muted)' }}>Nenhum item encontrado para &quot;{buscaLocal}&quot;.</p>
+          }
+          return (
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
+              {itensFiltrados.map((i) => {
+                const longa = (i.descricao || '').length > 110
+                const aberta = !!descExpand[i.id]
+                return (
+                  <div
+                    key={i.id}
+                    style={{
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: '0.9rem',
+                      padding: '0.75rem 0.9rem',
+                      borderRadius: 'var(--radius)',
+                      background: 'rgba(8,6,18,.45)',
+                      border: '1px solid rgba(168,85,247,.1)',
+                      transition: 'border-color .15s',
+                    }}
+                    onMouseEnter={(e) => { e.currentTarget.style.borderColor = 'rgba(168,85,247,.28)' }}
+                    onMouseLeave={(e) => { e.currentTarget.style.borderColor = 'rgba(168,85,247,.1)' }}
+                  >
+                    {i.imagemUrl ? (
+                      <img src={i.imagemUrl} alt="" style={{ width: 48, height: 48, objectFit: 'contain', flexShrink: 0 }} />
+                    ) : (
+                      <span style={{ width: 48, height: 48, display: 'inline-block', background: 'var(--border)', borderRadius: 6, flexShrink: 0 }} title="Sem imagem" />
+                    )}
+
+                    <div style={{ flex: 1, minWidth: 0 }}>
+                      <div style={{ display: 'flex', alignItems: 'baseline', gap: '0.5rem', flexWrap: 'wrap' }}>
+                        <span style={{ fontWeight: 600, fontSize: '0.95rem', color: 'var(--text)' }}>{i.nome}</span>
+                        {i.nomeEn && (
+                          <span style={{ color: 'var(--text-muted)', fontSize: '0.8rem' }}>{i.nomeEn}</span>
+                        )}
                       </div>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-        )}
+                      {i.descricao && (
+                        <div style={{ marginTop: '0.15rem' }}>
+                          <div style={{
+                            color: 'var(--text-muted)',
+                            fontSize: '0.8rem',
+                            lineHeight: 1.5,
+                            overflow: aberta ? 'visible' : 'hidden',
+                            display: aberta ? 'block' : '-webkit-box',
+                            WebkitLineClamp: aberta ? 'none' : 2,
+                            WebkitBoxOrient: 'vertical',
+                          }}>
+                            {i.descricao}
+                          </div>
+                          {longa && (
+                            <button
+                              type="button"
+                              onClick={() => toggleDesc(i.id)}
+                              style={{ background: 'none', border: 'none', padding: '2px 0 0', cursor: 'pointer', color: 'var(--accent)', fontSize: '0.74rem', fontWeight: 600 }}
+                            >
+                              {aberta ? '▲ Ver menos' : '▼ Ver mais'}
+                            </button>
+                          )}
+                        </div>
+                      )}
+                      <div style={{ display: 'flex', gap: '0.45rem', marginTop: '0.35rem', flexWrap: 'wrap' }}>
+                        <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)', background: 'rgba(168,85,247,.1)', border: '1px solid rgba(168,85,247,.2)', borderRadius: 999, padding: '1px 8px' }}>
+                          ⚖ {i.peso} kg
+                        </span>
+                        <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)', background: 'rgba(168,85,247,.1)', border: '1px solid rgba(168,85,247,.2)', borderRadius: 999, padding: '1px 8px' }}>
+                          ₽ {i.preco}
+                        </span>
+                      </div>
+                    </div>
+
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '0.4rem', flexShrink: 0 }}>
+                      <button type="button" className="btn btn-secondary btn-sm" onClick={() => handleEditar(i)}>
+                        Editar
+                      </button>
+                      <button
+                        type="button"
+                        className="btn btn-danger btn-sm"
+                        onClick={() => handleExcluirItem(i)}
+                        disabled={excluindoItemId === i.id}
+                      >
+                        {excluindoItemId === i.id ? 'Excluindo...' : 'Excluir'}
+                      </button>
+                    </div>
+                  </div>
+                )
+              })}
+            </div>
+          )
+        })()}
       </div>
 
       {(editingItem || creatingItem) && (

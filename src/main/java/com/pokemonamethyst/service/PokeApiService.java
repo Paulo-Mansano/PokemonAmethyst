@@ -674,26 +674,24 @@ public class PokeApiService {
             List<Map<String, Object>> details = (List<Map<String, Object>>) child.get("evolution_details");
 
             if (fromId > 0 && toId > 0) {
-                if (details == null || details.isEmpty()) {
+                boolean jaExiste = destino.stream()
+                        .anyMatch(r -> r.getFromPokedexId() == fromId && r.getToPokedexId() == toId);
+                if (!jaExiste) {
                     com.pokemonamethyst.domain.PokemonSpeciesEvolutionRule r = new com.pokemonamethyst.domain.PokemonSpeciesEvolutionRule();
                     r.setFromPokedexId(fromId);
                     r.setToPokedexId(toId);
-                    r.setTriggerType("UNKNOWN");
-                    destino.add(r);
-                } else {
-                    for (Map<String, Object> detail : details) {
+                    if (details != null && !details.isEmpty()) {
+                        Map<String, Object> detail = details.get(0);
                         String triggerType = extrairNomeReferencia(detail.get("trigger"));
                         Number minLevelRaw = (Number) detail.get("min_level");
                         String itemName = extrairNomeReferencia(detail.get("item"));
-
-                        com.pokemonamethyst.domain.PokemonSpeciesEvolutionRule r = new com.pokemonamethyst.domain.PokemonSpeciesEvolutionRule();
-                        r.setFromPokedexId(fromId);
-                        r.setToPokedexId(toId);
                         r.setTriggerType(triggerType != null && !triggerType.isBlank() ? triggerType.toUpperCase() : "UNKNOWN");
                         r.setMinLevel(minLevelRaw != null ? minLevelRaw.intValue() : null);
                         r.setItemName(itemName);
-                        destino.add(r);
+                    } else {
+                        r.setTriggerType("UNKNOWN");
                     }
+                    destino.add(r);
                 }
             }
 

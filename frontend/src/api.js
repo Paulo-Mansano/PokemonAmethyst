@@ -121,6 +121,13 @@ export async function salvarPerfil(body, playerId) {
   return res.json();
 }
 
+export async function getLogXp(playerId, page = 0, size = 20) {
+  const path = withPlayerQuery(`/perfis/meu/log-xp?page=${page}&size=${size}`, playerId)
+  const res = await request(path)
+  if (!res.ok) throw new Error('Erro ao carregar histórico de XP')
+  return res.json()
+}
+
 const MSG_SEM_PERFIL = 'Crie seu perfil na Ficha primeiro.';
 
 export async function getMestreJogadores() {
@@ -262,6 +269,15 @@ export async function desalocarAtributosPokemon(id, atributo, quantidade = 1, pl
   if (!res.ok) {
     const data = await res.json().catch(() => ({}))
     throw new Error(data.mensagem || 'Erro ao desalocar atributos')
+  }
+  return res.json()
+}
+
+export async function previewXpNivelPokemon(id, xpNovo, playerId) {
+  const res = await request(withPlayerQuery(`/perfis/meu/pokemons/${id}/preview-xp-nivel?xpNovo=${xpNovo}`, playerId))
+  if (!res.ok) {
+    const data = await res.json().catch(() => ({}))
+    throw new Error(data.mensagem || 'Erro ao calcular preview de nível')
   }
   return res.json()
 }

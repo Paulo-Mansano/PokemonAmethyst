@@ -25,6 +25,7 @@ import com.pokemonamethyst.web.dto.PokemonResponseDto;
 import com.pokemonamethyst.web.dto.PokemonEvoluirRequestDto;
 import com.pokemonamethyst.web.dto.PokemonAlocarAtributoRequestDto;
 import com.pokemonamethyst.web.dto.PokemonEvolucaoOpcaoDto;
+import com.pokemonamethyst.web.dto.PokemonLevelDownPreviewDto;
 import jakarta.validation.Valid;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -225,6 +226,17 @@ public class PokemonController {
         return ResponseEntity.ok(response);
     }
 
+    @GetMapping("/{id}/preview-xp-nivel")
+    @Transactional(readOnly = true)
+    public ResponseEntity<PokemonLevelDownPreviewDto> previewXpNivel(
+            @AuthenticationPrincipal UsuarioPrincipal principal,
+            @PathVariable String id,
+            @RequestParam(value = "playerId", required = false) String playerId,
+            @RequestParam int xpNovo) {
+        String perfilId = perfilService.resolvePerfilId(principal, playerId);
+        return ResponseEntity.ok(pokemonService.previewLevelDown(id, perfilId, xpNovo));
+    }
+
     @PostMapping("/{id}/movimentos-aprendendo/aceitar")
     @Transactional
     public ResponseEntity<PokemonResponseDto> aceitarMovimentoAprendido(
@@ -279,6 +291,15 @@ public class PokemonController {
                 dto.getTecnica(), dto.getRespeito(), dto.getPontosDistribuicaoBonus(), dto.getStatusAtuais(),
                 dto.getMovimentoIds(), dto.getHabilidadeId(), principal.isMestre()
         );
+        if (resultado.getXpDepois() > resultado.getXpAntes()) {
+            String nomePkm = resultado.getPokemon().getApelido() != null && !resultado.getPokemon().getApelido().isBlank()
+                    ? resultado.getPokemon().getApelido() : resultado.getPokemon().getEspecie();
+            int xpGanho = resultado.getXpDepois() - resultado.getXpAntes();
+            String det = "'" + nomePkm + "' +" + xpGanho + " XP → Lv." + resultado.getNivelDepois()
+                    + (resultado.isNivelSubiu() ? " (subiu de nível!)" : "");
+            auditLogService.registrar(principal.getId(), principal.getUsername(), "XP_GANHO",
+                    "POKEMON", id, det);
+        }
         return ResponseEntity.ok(resultado);
     }
 

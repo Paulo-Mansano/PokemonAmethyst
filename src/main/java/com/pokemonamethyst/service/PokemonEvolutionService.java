@@ -2,6 +2,7 @@ package com.pokemonamethyst.service;
 
 import com.pokemonamethyst.domain.Habilidade;
 import com.pokemonamethyst.domain.Pokemon;
+import com.pokemonamethyst.domain.PokemonIVClass;
 import com.pokemonamethyst.domain.PokemonSpecies;
 import com.pokemonamethyst.domain.PokemonSpeciesEvolutionRule;
 import com.pokemonamethyst.domain.PokemonSpeciesHabilidade;
@@ -64,16 +65,41 @@ public class PokemonEvolutionService {
         if (novaSpecies == null) {
             throw new RegraNegocioException("Espécie de evolução inválida.");
         }
+        if (pokemon.getContagemEvolucoes() >= 2) {
+            throw new RegraNegocioException("Este Pokémon já atingiu o limite de 2 evoluções.");
+        }
 
         Habilidade novaHabilidade = migrarHabilidade(pokemon, novaSpecies);
+
+        PokemonIVClass ivClassAntiga = pokemon.getIvClass() != null ? pokemon.getIvClass() : PokemonIVClass.fromBst(0);
+        PokemonIVClass ivClassNova = pokemonGenerationService.classificar(novaSpecies);
+
         int pontosDevolvidos = pokemonStatService.totalAtributosDistribuiveisReset(pokemon);
+        int totalBudget = pokemon.getPontosDistribuicaoDisponiveis() + pontosDevolvidos;
+
+        // Recover stored initial roll; infer for legacy Pokémon (pontosRollInicial == 0)
+        int rollAtual = pokemon.getPontosRollInicial();
+        if (rollAtual <= 0) {
+            rollAtual = Math.max(ivClassAntiga.getPontosMin(),
+                    Math.min(ivClassAntiga.getPontosMax(),
+                            totalBudget - (pokemon.getNivel() - 1) * ivClassAntiga.getPontosPorNivel()));
+        }
+
+        // Translate initial roll to new class range preserving percentile
+        int rollNovo = pokemonGenerationService.traduzirPorcentil(rollAtual,
+                ivClassAntiga.getPontosMin(), ivClassAntiga.getPontosMax(),
+                ivClassNova.getPontosMin(), ivClassNova.getPontosMax());
+
         int bonusEvolucao = rolarBonusEvolucao();
-        pokemon.setPontosDistribuicaoDisponiveis(
-                Math.max(0, pokemon.getPontosDistribuicaoDisponiveis() + pontosDevolvidos + bonusEvolucao)
-        );
+        // Pool = current total + delta from percentile translation + 1d6 bonus
+        int novoPool = totalBudget + (rollNovo - rollAtual) + bonusEvolucao;
+        pokemon.setPontosDistribuicaoDisponiveis(Math.max(0, novoPool));
+        pokemon.setPontosRollInicial(rollNovo);
+
         pokemonGenerationService.reinicializarParaEvolucao(pokemon, novaSpecies);
         pokemonStatService.sincronizarMaximos(pokemon);
         pokemon.setHabilidadeAtiva(novaHabilidade);
+        pokemon.setContagemEvolucoes(pokemon.getContagemEvolucoes() + 1);
     }
 
     private Habilidade migrarHabilidade(Pokemon pokemon, PokemonSpecies novaSpecies) {
