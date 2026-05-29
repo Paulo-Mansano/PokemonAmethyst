@@ -189,7 +189,7 @@ export default function Mochila() {
             )}
           </div>
           <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap', alignItems: 'flex-end' }}>
-            <div className="form-group" style={{ marginBottom: 0, width: 90 }}>
+            <div className="form-group" style={{ marginBottom: 0, minWidth: 72, flex: '0 0 auto' }}>
               <label>Qtd</label>
               <input type="number" min={1} value={addQtd} onChange={(e) => setAddQtd(parseInt(e.target.value, 10) || 1)} />
             </div>
@@ -212,7 +212,8 @@ export default function Mochila() {
                 style={{
                   display: 'flex',
                   alignItems: 'center',
-                  gap: '0.9rem',
+                  flexWrap: 'wrap',
+                  gap: '0.75rem',
                   padding: '0.75rem 0.9rem',
                   borderRadius: 'var(--radius)',
                   background: 'rgba(8,6,18,.45)',
@@ -276,7 +277,7 @@ export default function Mochila() {
                 </div>
 
                 {/* Quantidade + ações */}
-                <div style={{ display: 'flex', alignItems: 'center', gap: '0.45rem', flexShrink: 0 }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '0.45rem', flexShrink: 0, flexWrap: 'wrap', justifyContent: 'flex-end' }}>
                   <input
                     type="number"
                     min={0}
@@ -285,7 +286,7 @@ export default function Mochila() {
                       const num = Number.parseInt(e.target.value, 10)
                       setItemQtdEdicao((prev) => ({ ...prev, [mi.itemId]: Number.isFinite(num) ? Math.max(0, num) : 0 }))
                     }}
-                    style={{ width: 68, textAlign: 'center' }}
+                    style={{ width: 64, textAlign: 'center' }}
                     title="Quantidade"
                   />
                   <button

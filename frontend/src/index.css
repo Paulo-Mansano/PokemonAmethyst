@@ -2354,3 +2354,141 @@ input, select, textarea {
   }
 }
 
+/* ── Mobile responsivo global ─────────────────────────────────────────────── */
+
+@media (max-width: 600px) {
+  .container {
+    padding: 0.75rem;
+  }
+
+  .card {
+    padding: 1rem;
+  }
+}
+
+/* ── Grids da Ficha do treinador (Perfil) ─────────────────────────────────── */
+
+.perfil-atributos-grid {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 10px;
+}
+
+.perfil-derived-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 1rem;
+}
+
+.perfil-time-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(130px, 1fr));
+  gap: 10px;
+}
+
+.perfil-leveldown-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 0.5rem;
+  margin-bottom: 1.25rem;
+}
+
+.perfil-identity-grid {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  gap: 1rem;
+  align-items: end;
+}
+
+@media (max-width: 600px) {
+  .perfil-atributos-grid {
+    grid-template-columns: repeat(2, 1fr);
+  }
+
+  .perfil-derived-grid {
+    grid-template-columns: repeat(2, 1fr);
+  }
+
+  .perfil-time-grid {
+    grid-template-columns: repeat(auto-fill, minmax(90px, 1fr));
+  }
+}
+
+@media (max-width: 380px) {
+  .perfil-atributos-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .perfil-derived-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .perfil-leveldown-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+@media (max-width: 480px) {
+  .perfil-identity-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+/* ── Cards de Pokémon — stack vertical em mobile ─────────────────────────── */
+
+@media (max-width: 600px) {
+  .pokemon-banner-card-inner {
+    flex-direction: column;
+    align-items: center;
+    gap: 1rem;
+    padding: 1.25rem 1rem;
+    min-height: unset;
+  }
+
+  .pokemon-banner-image {
+    width: 80px;
+    height: 80px;
+  }
+
+  .pokemon-expanded-header-main {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+
+  .pokemon-expanded-avatar {
+    width: 100px;
+    height: 100px;
+  }
+
+  .pokemon-expanded-main-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .pokemon-atributo-row {
+    grid-template-columns: 1fr;
+  }
+
+  .pokemon-atributo-controls {
+    justify-content: flex-start;
+  }
+
+  .pokemon-expanded-atributos-grid {
+    grid-template-columns: repeat(2, 1fr);
+  }
+}
+
+@media (max-width: 480px) {
+  .pokemon-expanded-inline-fields {
+    grid-template-columns: 1fr;
+  }
+
+  .pokemon-expanded-atributos-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+/* Movimentos: header com wrap para nomes longos não quebrarem em mobile */
+.pokemon-movimento-card-header {
+  flex-wrap: wrap;
+}
+

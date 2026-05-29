@@ -278,7 +278,7 @@ function TrainerLevelDownModal({ pendente, attrs, onConfirmar, onCancelar }) {
             ? `Pontos disponíveis após ajuste: ${novosDisponiveis}`
             : `Faltam retirar ${Math.abs(novosDisponiveis)} ponto(s)`}
         </div>
-        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.5rem', marginBottom: '1.25rem' }}>
+        <div className="perfil-leveldown-grid">
           {ATTRS.map((a) => {
             const atual = Math.max(1, novasAttrs[a.id] ?? 1)
             const original = Math.max(1, attrs[a.id] ?? 1)
@@ -603,14 +603,14 @@ export default function Perfil() {
         <div className="ficha-card-anim" style={s.card}>
           <div style={s.cardLine} />
           <div style={s.cardTitle}>Identidade</div>
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr auto', gap: '1rem', alignItems: 'end' }}>
+          <div className="perfil-identity-grid">
             <div>
               <div style={s.label}>Nome do Personagem</div>
               <input value={nome} onChange={(e) => setNome(e.target.value)} />
             </div>
             <div>
               <div style={s.label}>Classe</div>
-              <select value={classe} onChange={(e) => setClasse(e.target.value)} style={{ width: 'auto', minWidth: 180 }}>
+              <select value={classe} onChange={(e) => setClasse(e.target.value)} style={{ width: 'auto', minWidth: 'min(180px, 100%)' }}>
                 {CLASSES.map((c) => <option key={c} value={c}>{c}</option>)}
               </select>
             </div>
@@ -634,8 +634,8 @@ export default function Perfil() {
               <div style={{ position: 'absolute', right: 0, top: 0, bottom: 0, width: 16, background: 'rgba(255,255,255,.25)', filter: 'blur(3px)' }} />
             </div>
           </div>
-          <div style={{ display: 'flex', gap: 8 }}>
-            <input type="number" value={xpInput} onChange={(e) => setXpInput(e.target.value)} onKeyDown={(e) => e.key === 'Enter' && ganharXP()} placeholder="Ex.: +15 ou -10" />
+          <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+            <input type="number" value={xpInput} onChange={(e) => setXpInput(e.target.value)} onKeyDown={(e) => e.key === 'Enter' && ganharXP()} placeholder="Ex.: +15 ou -10" style={{ flex: '1 1 120px' }} />
             <button className="ficha-btn-main" onClick={ganharXP} style={btnMain}>Aplicar XP</button>
           </div>
         </div>
@@ -645,9 +645,9 @@ export default function Perfil() {
           <div style={s.cardLine} />
           <div style={s.cardTitle}>Recursos</div>
           <div style={s.label}>Pokédólares</div>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap' }}>
             <div style={{ fontFamily: "'Oxanium', sans-serif", fontSize: 18, fontWeight: 700, color: '#c084fc', background: 'rgba(168,85,247,.1)', border: '1px solid rgba(168,85,247,.25)', borderRadius: 6, padding: '8px 14px' }}>₽</div>
-            <input type="number" value={dinheiro} min={0} onChange={(e) => setDinheiro(Number(e.target.value))} style={{ width: 160 }} />
+            <input type="number" value={dinheiro} min={0} onChange={(e) => setDinheiro(Number(e.target.value))} style={{ flex: '1 1 120px' }} />
           </div>
         </div>
 
@@ -655,7 +655,7 @@ export default function Perfil() {
         <div className="ficha-card-anim" style={s.card}>
           <div style={s.cardLine} />
           <div style={s.cardTitle}>Atributos Derivados</div>
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3,1fr)', gap: '1rem' }}>
+          <div className="perfil-derived-grid">
             <DerivedStat label="HP Máximo" value={hp} color="#FF6B6B" />
             <DerivedStat label="Stamina Máxima" value={stamina} color="#4FC3F7" />
             <DerivedStat label="Habilidade" value={hab} color="#4ADE80" />
@@ -672,7 +672,7 @@ export default function Perfil() {
               {pontos}
             </span>
           </div>
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4,1fr)', gap: 10 }}>
+          <div className="perfil-atributos-grid">
             {ATTRS.map((a) => (
               (() => {
                 const custoAtual = calcularCustoEvolucao(a.id, attrs[a.id])
@@ -699,7 +699,7 @@ export default function Perfil() {
         )}
 
         {/* Ações */}
-        <div className="ficha-card-anim" style={{ display: 'flex', gap: 10, marginBottom: '1rem' }}>
+        <div className="ficha-card-anim" style={{ display: 'flex', gap: 10, marginBottom: '1rem', flexWrap: 'wrap' }}>
           <button
             className="ficha-btn-main"
             onClick={salvar}
@@ -725,7 +725,7 @@ export default function Perfil() {
           <div className="ficha-card-anim" style={s.card}>
             <div style={s.cardLine} />
             <div style={s.cardTitle}>Time Principal</div>
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(130px,1fr))', gap: 10 }}>
+            <div className="perfil-time-grid">
               {Array.from({ length: 6 }).map((_, i) => {
                 const poke = perfil.timePrincipal[i]
                 return (
@@ -779,7 +779,7 @@ export default function Perfil() {
                 return (
                   <div key={entry.id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '8px 12px', background: 'rgba(8,6,18,0.55)', border: '1px solid rgba(168,85,247,.1)', borderRadius: 8 }}>
                     <span style={{ fontFamily: "'Oxanium', sans-serif", fontSize: 13, color: '#f0ebff' }}>{entry.detalhes}</span>
-                    <span style={{ fontFamily: "'Oxanium', sans-serif", fontSize: 11, color: '#8b7db5', whiteSpace: 'nowrap', marginLeft: 12 }}>{data}</span>
+                    <span style={{ fontFamily: "'Oxanium', sans-serif", fontSize: 11, color: '#8b7db5', marginLeft: 8, textAlign: 'right' }}>{data}</span>
                   </div>
                 )
               })}

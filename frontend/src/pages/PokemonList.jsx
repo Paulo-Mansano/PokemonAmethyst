@@ -406,12 +406,12 @@ function ExpandedForm({
             }
             const selecionado = botoesVisiveis.find((evo) => String(evo.pokedexId) === evolucaoSelecionada) || botoesVisiveis[0]
             return (
-              <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center' }}>
+              <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center', flexWrap: 'wrap' }}>
                 <select
                   value={evolucaoSelecionada}
                   onChange={(e) => setEvolucaoSelecionada(e.target.value)}
                   disabled={savingPokemon}
-                  style={{ padding: '0.4rem 0.6rem', borderRadius: '6px', minWidth: '9rem', background: 'rgba(255,255,255,0.08)', color: 'inherit', border: '1px solid rgba(255,255,255,0.2)', cursor: 'pointer' }}
+                  style={{ padding: '0.4rem 0.6rem', borderRadius: '6px', flex: '1 1 120px', background: 'rgba(255,255,255,0.08)', color: 'inherit', border: '1px solid rgba(255,255,255,0.2)', cursor: 'pointer' }}
                 >
                   {botoesVisiveis.map((evo) => (
                     <option key={evo.pokedexId} value={String(evo.pokedexId)} style={{ background: '#1a1a2e', color: '#fff' }}>
@@ -562,7 +562,7 @@ function ExpandedForm({
                 />
               </Field>
               <Field label="Ganhar XP">
-                <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center' }}>
+                <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center', flexWrap: 'wrap' }}>
                   <input
                     type="number"
                     min={1}
@@ -570,7 +570,7 @@ function ExpandedForm({
                     onChange={(e) => setXpGanho(e.target.value)}
                     placeholder="Ex.: 15"
                     className="pokemon-edit-input pokemon-edit-input--num"
-                    style={{ width: 120 }}
+                    style={{ flex: '1 1 80px' }}
                   />
                   <button
                     type="button"
