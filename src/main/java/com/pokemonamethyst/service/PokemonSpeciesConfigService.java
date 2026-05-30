@@ -58,7 +58,7 @@ public class PokemonSpeciesConfigService {
     }
 
     @Transactional(readOnly = true)
-    public List<PokemonSpeciesResumoDto> listarSpecies(String nome, Integer pokedexId, Integer limit) {
+    public List<PokemonSpeciesResumoDto> listarSpecies(String nome, Integer pokedexId, Integer limit, boolean incluirFormas) {
         int limite = Math.max(1, Math.min(limit == null ? 50 : limit, LISTAGEM_MAX));
         if (pokedexId != null && pokedexId > 0) {
             return speciesRepository.findByPokedexId(pokedexId)
@@ -67,10 +67,25 @@ public class PokemonSpeciesConfigService {
                     .toList();
         }
         String filtro = nome == null ? "" : nome.trim();
-        List<PokemonSpecies> found = filtro.isBlank()
-                ? speciesRepository.findTop200ByOrderByPokedexIdAsc()
-                : speciesRepository.findTop200ByNomeContainingIgnoreCaseOrderByPokedexIdAsc(filtro);
+        List<PokemonSpecies> found;
+        if (incluirFormas) {
+            found = filtro.isBlank()
+                    ? speciesRepository.findTop200ByOrderByPokedexIdAsc()
+                    : speciesRepository.findTop200ByNomeContainingIgnoreCaseOrderByPokedexIdAsc(filtro);
+        } else {
+            found = filtro.isBlank()
+                    ? speciesRepository.findTop200ByEhFormaAlternativaFalseOrderByPokedexIdAsc()
+                    : speciesRepository.findTop200ByNomeContainingIgnoreCaseAndEhFormaAlternativaFalseOrderByPokedexIdAsc(filtro);
+        }
         return found.stream().limit(limite).map(PokemonSpeciesResumoDto::from).toList();
+    }
+
+    @Transactional(readOnly = true)
+    public List<PokemonSpeciesResumoDto> listarFormasDaSpecies(String speciesId) {
+        return speciesRepository.findByBaseSpeciesIdOrderByPokedexIdAsc(speciesId)
+                .stream()
+                .map(PokemonSpeciesResumoDto::from)
+                .toList();
     }
 
     @Transactional(readOnly = true)
@@ -235,6 +250,8 @@ public class PokemonSpeciesConfigService {
         dto.setPokedexId(species.getPokedexId());
         dto.setNome(species.getNome());
         dto.setImagemUrl(species.getImagemUrl());
+        dto.setImagemUrlFemea(species.getImagemUrlFemea());
+        dto.setHasGenderDifferences(species.isHasGenderDifferences());
         List<PokemonSpeciesHabilidade> habList = habilidades == null ? List.of() : habilidades;
         List<PokemonSpeciesMovimento> movList = learnset == null ? List.of() : learnset;
         dto.setHabilidades(

@@ -15,6 +15,13 @@ public interface PokemonSpeciesRepository extends JpaRepository<PokemonSpecies, 
     List<PokemonSpecies> findTop200ByOrderByPokedexIdAsc();
     List<PokemonSpecies> findTop200ByNomeContainingIgnoreCaseOrderByPokedexIdAsc(String nome);
 
+    // Apenas espécies base (não formas alternativas)
+    List<PokemonSpecies> findTop200ByEhFormaAlternativaFalseOrderByPokedexIdAsc();
+    List<PokemonSpecies> findTop200ByNomeContainingIgnoreCaseAndEhFormaAlternativaFalseOrderByPokedexIdAsc(String nome);
+
+    // Formas alternativas vinculadas a uma espécie base
+    List<PokemonSpecies> findByBaseSpeciesIdOrderByPokedexIdAsc(String baseSpeciesId);
+
     @Query("select s.pokedexId from PokemonSpecies s")
     List<Integer> findAllPokedexIds();
 

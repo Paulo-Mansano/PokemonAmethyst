@@ -674,6 +674,26 @@ export async function listarSpeciesMestre(params = {}) {
   return res.json()
 }
 
+export async function listarFormasDaSpeciesMestre(speciesId) {
+  const res = await request(`/mestre/species/${encodeURIComponent(speciesId)}/formas`)
+  if (!res.ok) {
+    const data = await res.json().catch(() => ({}))
+    throw new Error(data.mensagem || 'Erro ao listar formas da espécie')
+  }
+  return res.json()
+}
+
+export async function importarFormaAlternativaMestre(pokedexId) {
+  const res = await request(`/mestre/pokeapi/importar-species/${encodeURIComponent(pokedexId)}`, {
+    method: 'POST',
+  })
+  if (!res.ok) {
+    const data = await res.json().catch(() => ({}))
+    throw new Error(data.mensagem || 'Erro ao importar forma alternativa')
+  }
+  return res.json()
+}
+
 export async function getSpeciesConfigMestre(speciesId) {
   const res = await request(`/mestre/species/${encodeURIComponent(speciesId)}/config`)
   if (!res.ok) {

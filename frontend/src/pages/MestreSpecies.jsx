@@ -6,7 +6,9 @@ import {
   getSpeciesConfigMestre,
   importarTodasSpeciesPokeApiMestre,
   importarEvolucoesPokeApiMestre,
+  importarFormaAlternativaMestre,
   listarSpeciesMestre,
+  listarFormasDaSpeciesMestre,
   normalizarOrdemLearnsetMestre,
   resincronizarSpeciesPokeApiMestre,
   salvarSpeciesConfigMestre,
@@ -75,6 +77,9 @@ export default function MestreSpecies() {
   const [catalogoLoading, setCatalogoLoading] = useState(false)
   const [filtroHabilidades, setFiltroHabilidades] = useState('')
   const [filtroMovimentos, setFiltroMovimentos] = useState('')
+  const [formasAlternativas, setFormasAlternativas] = useState([])
+  const [importandoForma, setImportandoForma] = useState(false)
+  const [novoFormaPokedexId, setNovoFormaPokedexId] = useState('')
   const buscaInputRef = useRef(null)
   const catalogoPromiseRef = useRef(null)
 
@@ -242,35 +247,60 @@ export default function MestreSpecies() {
     }
   }
 
+  const carregarFormas = async (speciesId) => {
+    try {
+      const lista = await listarFormasDaSpeciesMestre(speciesId)
+      setFormasAlternativas(Array.isArray(lista) ? lista : [])
+    } catch {
+      setFormasAlternativas([])
+    }
+  }
+
+  const importarForma = async () => {
+    const id = parseInt(novoFormaPokedexId, 10)
+    if (!id || id < 10001) {
+      setErro('Formas alternativas têm pokedexId ≥ 10001')
+      return
+    }
+    setImportandoForma(true)
+    setErro('')
+    try {
+      await importarFormaAlternativaMestre(id)
+      setNovoFormaPokedexId('')
+      if (speciesSelecionada) await carregarFormas(speciesSelecionada.id)
+    } catch (e) {
+      setErro(e.message || 'Erro ao importar forma alternativa')
+    } finally {
+      setImportandoForma(false)
+    }
+  }
+
   const onSelecionarSpecies = async (sp) => {
     await ensureCatalogos()
     setSpeciesSelecionada(sp)
-    await carregarConfig(sp.id)
+    setFormasAlternativas([])
+    await Promise.all([carregarConfig(sp.id), carregarFormas(sp.id)])
   }
   const habilidadesFiltradas = useMemo(() => {
     const filtro = filtroHabilidades.trim().toLowerCase()
-    const base = !filtro
-      ? habilidades
-      : habilidades.filter((h) => {
-          const nome = String(h?.nome || '').toLowerCase()
-          const nomeEn = String(h?.nomeEn || '').toLowerCase()
-          const id = String(h?.id || '').toLowerCase()
-          return nome.includes(filtro) || nomeEn.includes(filtro) || id.includes(filtro)
-        })
-    return base.slice(0, 120)
+    if (!filtro) return habilidades.slice(0, 120)
+    return habilidades.filter((h) => {
+      const nome = String(h?.nome || '').toLowerCase()
+      const nomeEn = String(h?.nomeEn || '').toLowerCase()
+      const id = String(h?.id || '').toLowerCase()
+      return nome.includes(filtro) || nomeEn.includes(filtro) || id.includes(filtro)
+    })
   }, [habilidades, filtroHabilidades])
 
   const movimentosFiltrados = useMemo(() => {
     const filtro = filtroMovimentos.trim().toLowerCase()
-    const base = !filtro
-      ? movimentos
-      : movimentos.filter((m) => {
-          const nome = String(m?.nome || '').toLowerCase()
-          const nomeEn = String(m?.nomeEn || '').toLowerCase()
-          const id = String(m?.id || '').toLowerCase()
-          return nome.includes(filtro) || nomeEn.includes(filtro) || id.includes(filtro)
-        })
-    return base.slice(0, 120)
+    if (!filtro) return movimentos.slice(0, 120)
+    return movimentos.filter((m) => {
+      const nome = String(m?.nome || '').toLowerCase()
+      const nomeEn = String(m?.nomeEn || '').toLowerCase()
+      const id = String(m?.id || '').toLowerCase()
+      return nome.includes(filtro) || nomeEn.includes(filtro) || id.includes(filtro)
+    })
   }, [movimentos, filtroMovimentos])
 
 
@@ -389,6 +419,7 @@ export default function MestreSpecies() {
             defaultValue=""
             ref={buscaInputRef}
             placeholder="Buscar espécie por nome"
+            className="pokemon-edit-input"
             style={{ flex: 1, minWidth: 240 }}
             onKeyDown={(e) => e.key === 'Enter' && (e.preventDefault(), onBuscar())}
           />
@@ -445,10 +476,12 @@ export default function MestreSpecies() {
                 borderRadius: 0,
                 border: 'none',
                 borderBottom: '1px solid var(--border)',
+                borderLeft: speciesSelecionada?.id === sp.id ? '3px solid var(--accent)' : '3px solid transparent',
                 display: 'flex',
                 alignItems: 'center',
                 gap: '0.6rem',
-                background: speciesSelecionada?.id === sp.id ? 'rgba(255,255,255,0.08)' : 'transparent',
+                background: speciesSelecionada?.id === sp.id ? 'rgba(168,85,247,0.12)' : 'transparent',
+                transition: 'background 0.15s, border-left-color 0.15s',
               }}
             >
               <span style={{ width: 46, color: 'var(--text-muted)' }}>#{sp.pokedexId}</span>
@@ -476,6 +509,61 @@ export default function MestreSpecies() {
                 {saving ? 'Salvando...' : 'Salvar alterações'}
               </button>
             </div>
+
+            {/* Sprite feminino — apenas para espécies com diferença visual de gênero */}
+            {config.hasGenderDifferences && (
+              <div style={{ marginTop: '1rem', display: 'flex', alignItems: 'center', gap: '1rem', flexWrap: 'wrap' }}>
+                <div>
+                  <p style={{ margin: '0 0 0.25rem', color: 'var(--text-muted)', fontSize: '0.85rem' }}>Sprite feminino</p>
+                  {config.imagemUrlFemea
+                    ? <img src={config.imagemUrlFemea} alt="Sprite feminino" style={{ width: 64, height: 64, imageRendering: 'pixelated' }} />
+                    : <span style={{ color: 'var(--text-muted)', fontSize: '0.85rem' }}>Não disponível na PokéAPI</span>
+                  }
+                </div>
+                {config.imagemUrl && (
+                  <div>
+                    <p style={{ margin: '0 0 0.25rem', color: 'var(--text-muted)', fontSize: '0.85rem' }}>Sprite padrão</p>
+                    <img src={config.imagemUrl} alt="Sprite padrão" style={{ width: 64, height: 64, imageRendering: 'pixelated' }} />
+                  </div>
+                )}
+              </div>
+            )}
+
+            {/* Formas alternativas vinculadas */}
+            <div style={{ marginTop: '1rem' }}>
+              <p style={{ margin: '0 0 0.5rem', fontWeight: 600 }}>Formas alternativas</p>
+              {formasAlternativas.length > 0 ? (
+                <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.5rem', marginBottom: '0.75rem' }}>
+                  {formasAlternativas.map((f) => (
+                    <div key={f.id} style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', background: 'rgba(168,85,247,0.1)', border: '1px solid rgba(168,85,247,0.25)', borderRadius: 8, padding: '0.3rem 0.6rem' }}>
+                      {f.imagemUrl && <img src={f.imagemUrl} alt="" style={{ width: 32, height: 32, imageRendering: 'pixelated' }} />}
+                      <span style={{ fontSize: '0.85rem' }}>{f.nome} <span style={{ color: 'var(--text-muted)' }}>#{f.pokedexId}</span></span>
+                    </div>
+                  ))}
+                </div>
+              ) : (
+                <p style={{ color: 'var(--text-muted)', fontSize: '0.85rem', margin: '0 0 0.75rem' }}>Nenhuma forma importada.</p>
+              )}
+              <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center', flexWrap: 'wrap' }}>
+                <input
+                  className="pokemon-edit-input"
+                  type="number"
+                  min={10001}
+                  value={novoFormaPokedexId}
+                  onChange={(e) => setNovoFormaPokedexId(e.target.value)}
+                  placeholder="PokedexId da forma (≥ 10001)"
+                  style={{ flex: '1 1 200px' }}
+                />
+                <button
+                  type="button"
+                  className="btn btn-secondary"
+                  onClick={importarForma}
+                  disabled={importandoForma || !novoFormaPokedexId}
+                >
+                  {importandoForma ? 'Importando...' : 'Importar forma'}
+                </button>
+              </div>
+            </div>
           </div>
 
           <div className="card" style={{ marginBottom: '1rem' }}>
@@ -488,12 +576,14 @@ export default function MestreSpecies() {
               value={filtroHabilidades}
               onChange={(e) => setFiltroHabilidades(e.target.value)}
               placeholder="Filtrar habilidades (nome, EN ou id)"
-              style={{ width: '100%', marginBottom: '0.6rem' }}
+              className="pokemon-edit-input"
+              style={{ marginBottom: '0.6rem' }}
             />
             {catalogoLoading && <p style={{ color: 'var(--text-muted)', marginTop: 0 }}>Carregando catálogo de habilidades/movimentos...</p>}
             {(config.habilidades || []).map((h, idx) => (
-              <div key={`${idx}-${h.habilidadeId || 'novo'}`} style={{ display: 'grid', gridTemplateColumns: '1fr 100px 110px auto', gap: '0.5rem', marginBottom: '0.4rem' }}>
+              <div key={`${idx}-${h.habilidadeId || 'novo'}`} style={{ display: 'grid', gridTemplateColumns: '1fr 100px 110px auto', gap: '0.5rem', marginBottom: '0.4rem', alignItems: 'center' }}>
                 <select
+                  className="pokemon-edit-input"
                   value={h.habilidadeId || ''}
                   onChange={(e) => {
                     const v = e.target.value
@@ -514,6 +604,7 @@ export default function MestreSpecies() {
                   ))}
                 </select>
                 <input
+                  className="pokemon-edit-input"
                   type="number"
                   min={1}
                   value={h.slot ?? 1}
@@ -568,11 +659,13 @@ export default function MestreSpecies() {
               value={filtroMovimentos}
               onChange={(e) => setFiltroMovimentos(e.target.value)}
               placeholder="Filtrar movimentos (nome, EN ou id)"
-              style={{ width: '100%', marginBottom: '0.6rem' }}
+              className="pokemon-edit-input"
+              style={{ marginBottom: '0.6rem' }}
             />
             {(config.learnset || []).map((m, idx) => (
-              <div key={`${idx}-${m.movimentoId || 'novo'}`} style={{ display: 'grid', gridTemplateColumns: '1.4fr 150px 90px 90px auto', gap: '0.5rem', marginBottom: '0.4rem' }}>
+              <div key={`${idx}-${m.movimentoId || 'novo'}`} style={{ display: 'grid', gridTemplateColumns: '1.4fr 150px 90px auto', gap: '0.5rem', marginBottom: '0.4rem', alignItems: 'center' }}>
                 <select
+                  className="pokemon-edit-input"
                   value={m.movimentoId || ''}
                   onChange={(e) => {
                     const v = e.target.value
@@ -593,6 +686,7 @@ export default function MestreSpecies() {
                   ))}
                 </select>
                 <select
+                  className="pokemon-edit-input"
                   value={m.learnMethod || 'LEVEL_UP'}
                   onChange={(e) => {
                     const method = e.target.value
@@ -609,6 +703,7 @@ export default function MestreSpecies() {
                   ))}
                 </select>
                 <input
+                  className="pokemon-edit-input"
                   type="number"
                   min={1}
                   value={m.level ?? ''}
@@ -623,20 +718,6 @@ export default function MestreSpecies() {
                     })
                   }}
                   placeholder="Nível"
-                />
-                <input
-                  type="number"
-                  value={m.ordem ?? idx}
-                  onChange={(e) => {
-                    const v = parseInt(e.target.value, 10)
-                    setConfig((prev) => {
-                      if (!prev) return prev
-                      const arr = [...prev.learnset]
-                      arr[idx] = { ...arr[idx], ordem: Number.isFinite(v) ? v : idx }
-                      return { ...prev, learnset: arr }
-                    })
-                  }}
-                  placeholder="Ordem"
                 />
                 <button
                   type="button"

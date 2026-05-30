@@ -226,16 +226,25 @@ public class PokeApiService {
     public PokemonSpecies importarSpeciesDaPokeApi(int pokedexId) {
         try {
             Map<String, Object> pokemonData = restTemplate.getForObject(BASE_URL + "/pokemon/" + pokedexId, Map.class);
-            Map<String, Object> speciesData = restTemplate.getForObject(BASE_URL + "/pokemon-species/" + pokedexId, Map.class);
-            if (pokemonData == null || speciesData == null) {
+            if (pokemonData == null) {
                 throw new RecursoNaoEncontradoException("Não foi possível carregar dados da espécie na PokéAPI: " + pokedexId);
             }
+            // Formas alternativas (pokedexId >= 10001) têm a species em uma URL diferente;
+            // para formas normais o caminho padrão /pokemon-species/{id} é suficiente.
+            String speciesUrl = resolverSpeciesUrl(pokemonData, pokedexId);
+            Map<String, Object> speciesData = restTemplate.getForObject(speciesUrl, Map.class);
+            if (speciesData == null) {
+                throw new RecursoNaoEncontradoException("Não foi possível carregar dados da espécie na PokéAPI: " + pokedexId);
+            }
+
+            boolean isFormaAlternativa = pokedexId >= 10001;
 
             PokemonSpecies species = pokemonSpeciesRepository.findByPokedexId(pokedexId).orElseGet(PokemonSpecies::new);
             species.setPokedexId(pokedexId);
             species.setNome(capitalizarNomeMove((String) pokemonData.getOrDefault("name", "unknown")));
             species.setImagemUrl(extrairImageUrl(pokemonData));
             species.setSpriteShinyUrl(extrairShinyUrl(pokemonData));
+            species.setImagemUrlFemea(extrairFemaleUrl(pokemonData));
             species.setTipoPrimario(extrairTipoPorSlot(pokemonData, 1));
             species.setTipoSecundario(extrairTipoPorSlot(pokemonData, 2));
             species.setBaseHp(extrairStat(pokemonData, "hp"));
@@ -257,11 +266,21 @@ public class PokeApiService {
             species.setGenderRate(genderRate != null ? genderRate.intValue() : null);
             species.setHasGenderDifferences(Boolean.TRUE.equals(speciesData.get("has_gender_differences")));
             species.setForms(extrairFormsJson(pokemonData));
+            species.setEhFormaAlternativa(isFormaAlternativa);
+            if (isFormaAlternativa) {
+                Integer basePokedexId = resolverBaseSpeciesPokedexId(pokemonData);
+                if (basePokedexId != null) {
+                    pokemonSpeciesRepository.findByPokedexId(basePokedexId).ifPresent(species::setBaseSpecies);
+                }
+            }
 
             PokemonSpecies saved = pokemonSpeciesRepository.save(species);
             sincronizarAbilitiesDaSpecies(saved, pokemonData);
             sincronizarLearnsetDaSpecies(saved, pokemonData);
-            sincronizarEvolucoesDaSpecies(speciesData, pokedexId);
+            // Evoluções pertencem à espécie base; formas alternativas não as reimportam.
+            if (!isFormaAlternativa) {
+                sincronizarEvolucoesDaSpecies(speciesData, pokedexId);
+            }
             String speciesId = saved.getId();
             pokemonAbilityService.invalidarCacheSpecies(speciesId);
             pokemonLearnsetService.invalidarCacheSpecies(speciesId);
@@ -968,6 +987,41 @@ public class PokeApiService {
                 return Integer.MIN_VALUE;
             }
         });
+    }
+
+    @SuppressWarnings("unchecked")
+    private String resolverSpeciesUrl(Map<String, Object> pokemonData, int pokedexId) {
+        Object speciesRef = pokemonData != null ? pokemonData.get("species") : null;
+        if (speciesRef instanceof Map) {
+            String url = (String) ((Map<String, Object>) speciesRef).get("url");
+            if (url != null && !url.isBlank()) return url;
+        }
+        return BASE_URL + "/pokemon-species/" + pokedexId;
+    }
+
+    @SuppressWarnings("unchecked")
+    private Integer resolverBaseSpeciesPokedexId(Map<String, Object> pokemonData) {
+        Object speciesRef = pokemonData != null ? pokemonData.get("species") : null;
+        if (speciesRef instanceof Map) {
+            String url = (String) ((Map<String, Object>) speciesRef).get("url");
+            if (url != null) {
+                String trimmed = url.endsWith("/") ? url.substring(0, url.length() - 1) : url;
+                String lastSegment = trimmed.substring(trimmed.lastIndexOf('/') + 1);
+                try { return Integer.parseInt(lastSegment); } catch (NumberFormatException ignored) {}
+            }
+        }
+        return null;
+    }
+
+    @SuppressWarnings("unchecked")
+    private String extrairFemaleUrl(Map<String, Object> data) {
+        Object sprites = data.get("sprites");
+        if (sprites instanceof Map) {
+            Map<String, Object> sp = (Map<String, Object>) sprites;
+            String female = (String) sp.get("front_female");
+            if (female != null && !female.isEmpty()) return female;
+        }
+        return null;
     }
 
     @SuppressWarnings("unchecked")

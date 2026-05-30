@@ -8,6 +8,8 @@ public class PokemonSpeciesConfigResponseDto {
     private int pokedexId;
     private String nome;
     private String imagemUrl;
+    private String imagemUrlFemea;
+    private boolean hasGenderDifferences;
     private List<HabilidadeVinculoDto> habilidades;
     private List<LearnsetVinculoDto> learnset;
 
@@ -42,6 +44,12 @@ public class PokemonSpeciesConfigResponseDto {
     public void setImagemUrl(String imagemUrl) {
         this.imagemUrl = imagemUrl;
     }
+
+    public String getImagemUrlFemea() { return imagemUrlFemea; }
+    public void setImagemUrlFemea(String imagemUrlFemea) { this.imagemUrlFemea = imagemUrlFemea; }
+
+    public boolean isHasGenderDifferences() { return hasGenderDifferences; }
+    public void setHasGenderDifferences(boolean hasGenderDifferences) { this.hasGenderDifferences = hasGenderDifferences; }
 
     public List<HabilidadeVinculoDto> getHabilidades() {
         return habilidades;

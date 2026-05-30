@@ -1,4 +1,5 @@
 import { useState, useEffect, useCallback } from 'react'
+import SearchableSelect from '../components/SearchableSelect'
 import { Link } from 'react-router-dom'
 import { getMeuPerfil, getUsuario, criarPokemon, getPokemon, atualizarPokemon, colocarNoTime, removerDoTime, excluirPokemon, getSpeciesCatalogLocal, getSpeciesCatalogLocalVersion, getMovimentos, getMovimentosDisponiveisPokemon, getPersonalidades, getItens, getHabilidades, previewGanhoXpPokemon, mestreDefinirTiposPokemon, alocarAtributosPokemon, desalocarAtributosPokemon, previewXpNivelPokemon, listarEvolucoesPossiveisPokemon, evoluirPokemon, aceitarMovimentoAprendido } from '../api'
 import { usePlayerTarget } from '../context/PlayerTargetContext'
@@ -707,16 +708,12 @@ function ExpandedForm({
           <div className="pokemon-edit-section pokemon-edit-section--glass">
             <h4>Status e itens</h4>
             <Field label="Habilidade ativa">
-              <select
+              <SearchableSelect
                 value={expandedEdit.habilidadeId || ''}
-                onChange={(e) => set('habilidadeId', e.target.value)}
-                className="pokemon-edit-input"
-              >
-                <option value="">Sortear automaticamente</option>
-                {listaHabilidades.map((hab) => (
-                  <option key={hab.id} value={hab.id}>{hab.nome || hab.nomeEn || hab.id}</option>
-                ))}
-              </select>
+                onChange={(v) => set('habilidadeId', v)}
+                options={listaHabilidades.map((hab) => ({ value: hab.id, label: hab.nome || hab.nomeEn || hab.id }))}
+                placeholder="Sortear automaticamente"
+              />
               <div className="pokemon-habilidade-preview">
                 {habilidadeSelecionada ? (
                   <>
@@ -735,16 +732,11 @@ function ExpandedForm({
               </div>
             </Field>
             <Field label="Item segurado">
-              <select
+              <SearchableSelect
                 value={expandedEdit.itemSeguradoId}
-                onChange={(e) => set('itemSeguradoId', e.target.value)}
-                className="pokemon-edit-input"
-              >
-                <option value="">—</option>
-                {listaItens.map((item) => (
-                  <option key={item.id} value={item.id}>{item.nome || item.id}</option>
-                ))}
-              </select>
+                onChange={(v) => set('itemSeguradoId', v)}
+                options={listaItens.map((item) => ({ value: item.id, label: item.nome || item.id }))}
+              />
             </Field>
             <div className="pokemon-edit-field">
               <label>Condições de status</label>
@@ -819,7 +811,7 @@ function ExpandedForm({
               {movimentosFiltrados.length === 0 ? (
                 <p className="pokemon-movimento-empty">{movimentoBusca.trim() ? 'Nenhum movimento encontrado.' : 'Digite para filtrar os movimentos disponíveis.'}</p>
               ) : (
-                movimentosFiltrados.slice(0, 12).map((m) => (
+                movimentosFiltrados.map((m) => (
                   <div
                     key={m.id}
                     className="pokemon-movimento-disponivel"
@@ -833,7 +825,6 @@ function ExpandedForm({
                   </div>
                 ))
               )}
-              {movimentosFiltrados.length > 12 && <p className="pokemon-movimento-more">Digite mais para refinar. Mostrando 12 de {movimentosFiltrados.length}.</p>}
             </div>
           </div>
         )}

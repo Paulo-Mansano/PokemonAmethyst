@@ -158,9 +158,16 @@ public class MestreController {
     public ResponseEntity<List<PokemonSpeciesResumoDto>> listarSpecies(
             @RequestParam(value = "nome", required = false) String nome,
             @RequestParam(value = "pokedexId", required = false) Integer pokedexId,
-            @RequestParam(value = "limit", required = false) Integer limit
+            @RequestParam(value = "limit", required = false) Integer limit,
+            @RequestParam(value = "incluirFormas", required = false, defaultValue = "false") boolean incluirFormas
     ) {
-        return ResponseEntity.ok(speciesConfigService.listarSpecies(nome, pokedexId, limit));
+        return ResponseEntity.ok(speciesConfigService.listarSpecies(nome, pokedexId, limit, incluirFormas));
+    }
+
+    @GetMapping("/species/{speciesId}/formas")
+    @Transactional(readOnly = true)
+    public ResponseEntity<List<PokemonSpeciesResumoDto>> listarFormasDaSpecies(@PathVariable String speciesId) {
+        return ResponseEntity.ok(speciesConfigService.listarFormasDaSpecies(speciesId));
     }
 
     @GetMapping("/species/catalog-version")

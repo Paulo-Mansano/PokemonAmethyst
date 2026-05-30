@@ -238,10 +238,10 @@ export default function Captura() {
   const pokebolasDisponiveis = useMemo(() => {
     const ballComoPalavra = /\bball\b/i
     const temBallIsolado = (txt) => ballComoPalavra.test(String(txt || ''))
+    const EXCLUIDOS = /^(iron ball|light ball|smoke ball)$/i
+    const excluido = (item) => EXCLUIDOS.test((item.nome || '').trim()) || EXCLUIDOS.test((item.nomeEn || '').trim())
     return itensCatalogo
-      .filter((item) => {
-        return temBallIsolado(item.nome) || temBallIsolado(item.nomeEn)
-      })
+      .filter((item) => (temBallIsolado(item.nome) || temBallIsolado(item.nomeEn)) && !excluido(item))
       .sort((a, b) => String(a.nome || '').localeCompare(String(b.nome || ''), 'pt-BR'))
   }, [itensCatalogo])
 

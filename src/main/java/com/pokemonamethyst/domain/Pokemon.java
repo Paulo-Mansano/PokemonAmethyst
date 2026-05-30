@@ -186,6 +186,12 @@ public class Pokemon {
                 return shinyUrl;
             }
         }
+        if (Genero.FEMEA.equals(genero) && species.isHasGenderDifferences()) {
+            String femaleUrl = species.getImagemUrlFemea();
+            if (femaleUrl != null && !femaleUrl.isBlank()) {
+                return femaleUrl;
+            }
+        }
         return species.getImagemUrl();
     }
     public String getNotas() { return notas; }

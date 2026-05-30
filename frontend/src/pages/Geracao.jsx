@@ -1,4 +1,5 @@
-import { useState } from 'react'
+import { useState, useRef, useEffect } from 'react'
+import SearchableSelect from '../components/SearchableSelect'
 import { useNavigate } from 'react-router-dom'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
 import {
@@ -17,6 +18,7 @@ import {
   getHabilidades,
   getItens,
   getMeuPerfil,
+  listarSpeciesMestre,
 } from '../api'
 import { usePlayerTarget } from '../context/PlayerTargetContext'
 import { queryKeys } from '../query/queryKeys'
@@ -191,6 +193,43 @@ export default function Geracao() {
   const [pendingAlocacoes, setPendingAlocacoes] = useState({})
   const [movimentosDisponiveis, setMovimentosDisponiveis] = useState([])
   const [movimentoAdicionarId, setMovimentoAdicionarId] = useState('')
+  const [sugestoesEspecie, setSugestoesEspecie] = useState([])
+  const [mostrarSugestoes, setMostrarSugestoes] = useState(false)
+  const sugestoesTimer = useRef(null)
+  const sugestoesRef = useRef(null)
+
+  useEffect(() => {
+    const handler = (e) => {
+      if (sugestoesRef.current && !sugestoesRef.current.contains(e.target)) {
+        setMostrarSugestoes(false)
+      }
+    }
+    document.addEventListener('mousedown', handler)
+    return () => document.removeEventListener('mousedown', handler)
+  }, [])
+
+  const buscarSugestoes = (valor) => {
+    clearTimeout(sugestoesTimer.current)
+    const v = valor.trim()
+    if (!v) { setSugestoesEspecie([]); setMostrarSugestoes(false); return }
+    sugestoesTimer.current = setTimeout(async () => {
+      try {
+        const isNumero = /^\d+$/.test(v)
+        const params = isNumero ? { pokedexId: parseInt(v, 10), limit: 1 } : { nome: v, limit: 8 }
+        const lista = await listarSpeciesMestre(params)
+        setSugestoesEspecie(Array.isArray(lista) ? lista : [])
+        setMostrarSugestoes(Array.isArray(lista) && lista.length > 0)
+      } catch {
+        setSugestoesEspecie([]); setMostrarSugestoes(false)
+      }
+    }, 220)
+  }
+
+  const selecionarSugestao = (sp) => {
+    setSpeciesBusca(String(sp.pokedexId))
+    setSugestoesEspecie([])
+    setMostrarSugestoes(false)
+  }
 
   const usuarioQuery = useQuery({
     queryKey: queryKeys.auth.usuario,
@@ -200,7 +239,7 @@ export default function Geracao() {
   const usuarioMestre = !!usuarioQuery.data?.mestre
 
   const perfilDonoQuery = useQuery({
-    queryKey: queryKeys.perfil('owner'),
+    queryKey: queryKeys.perfil('mestre-self'),
     queryFn: () => getMeuPerfil(),
     enabled: readyForPlayerApi,
     staleTime: 15 * 60 * 1000,
@@ -621,12 +660,11 @@ export default function Geracao() {
             </div>
             <div className="pokemon-edit-field">
               <label>Habilidade ativa</label>
-              <select className="pokemon-edit-input" value={expandedEdit.habilidadeId} onChange={(evt) => setExpandedField('habilidadeId', evt.target.value)}>
-                <option value="">—</option>
-                {listaHabilidades.map((h) => (
-                  <option key={h.id} value={h.id}>{h.nome || h.id}</option>
-                ))}
-              </select>
+              <SearchableSelect
+                value={expandedEdit.habilidadeId}
+                onChange={(v) => setExpandedField('habilidadeId', v)}
+                options={listaHabilidades.map((h) => ({ value: h.id, label: h.nome || h.id }))}
+              />
             </div>
             <div className="pokemon-habilidade-preview">
               <p className="pokemon-habilidade-preview-title">
@@ -637,12 +675,11 @@ export default function Geracao() {
             </div>
             <div className="pokemon-edit-field">
               <label>Item segurado</label>
-              <select className="pokemon-edit-input" value={expandedEdit.itemSeguradoId} onChange={(evt) => setExpandedField('itemSeguradoId', evt.target.value)}>
-                <option value="">—</option>
-                {listaItens.map((i) => (
-                  <option key={i.id} value={i.id}>{i.nome || i.id}</option>
-                ))}
-              </select>
+              <SearchableSelect
+                value={expandedEdit.itemSeguradoId}
+                onChange={(v) => setExpandedField('itemSeguradoId', v)}
+                options={listaItens.map((i) => ({ value: i.id, label: i.nome || i.id }))}
+              />
             </div>
             <div className="pokemon-edit-field">
               <label>Pokébola de captura</label>
@@ -782,13 +819,15 @@ export default function Geracao() {
           </div>
 
           {(expandedEdit.movimentoIds || []).length < MAX_ATAQUES_POR_POKEMON && (
-            <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap', alignItems: 'center' }}>
-              <select className="pokemon-edit-input" value={movimentoAdicionarId} onChange={(evt) => setMovimentoAdicionarId(evt.target.value)}>
-                <option value="">Selecione um golpe para adicionar</option>
-                {movimentosParaAdicionar.map((mov) => (
-                  <option key={mov.id} value={mov.id}>{formatMovimentoNomeExibicao(mov)}</option>
-                ))}
-              </select>
+            <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap', alignItems: 'flex-end' }}>
+              <div style={{ flex: '1 1 200px' }}>
+                <SearchableSelect
+                  value={movimentoAdicionarId}
+                  onChange={(v) => setMovimentoAdicionarId(v)}
+                  options={movimentosParaAdicionar.map((mov) => ({ value: mov.id, label: formatMovimentoNomeExibicao(mov) }))}
+                  placeholder="Selecione um golpe para adicionar"
+                />
+              </div>
               <button type="button" className="btn btn-primary" onClick={addMovimento} disabled={!movimentoAdicionarId}>
                 Adicionar golpe
               </button>
@@ -875,9 +914,52 @@ export default function Geracao() {
       <h1>Geração de Pokémon</h1>
       <div className="card">
         <div className="grid-2">
-          <div className="form-group">
+          <div className="form-group" ref={sugestoesRef} style={{ position: 'relative' }}>
             <label>Nome ou Pokédex ID (opcional)</label>
-            <input type="text" value={speciesBusca} onChange={(evt) => setSpeciesBusca(evt.target.value)} placeholder="Ex.: Pikachu ou 25" />
+            <input
+              type="text"
+              value={speciesBusca}
+              onChange={(evt) => { setSpeciesBusca(evt.target.value); buscarSugestoes(evt.target.value) }}
+              onFocus={() => { if (speciesBusca.trim()) buscarSugestoes(speciesBusca) }}
+              placeholder="Ex.: Pikachu ou 25"
+              autoComplete="off"
+            />
+            {mostrarSugestoes && sugestoesEspecie.length > 0 && (
+              <div style={{
+                position: 'absolute',
+                top: '100%',
+                left: 0,
+                right: 0,
+                zIndex: 200,
+                background: 'var(--surface)',
+                border: '1px solid rgba(168,85,247,0.35)',
+                borderRadius: 'var(--radius)',
+                marginTop: 2,
+                boxShadow: '0 8px 32px rgba(0,0,0,0.6)',
+                overflow: 'hidden',
+              }}>
+                {sugestoesEspecie.map((sp) => (
+                  <div
+                    key={sp.id}
+                    onMouseDown={() => selecionarSugestao(sp)}
+                    style={{
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: '0.6rem',
+                      padding: '0.45rem 0.75rem',
+                      cursor: 'pointer',
+                      fontSize: '0.9rem',
+                    }}
+                    onMouseEnter={(e) => { e.currentTarget.style.background = 'rgba(168,85,247,0.12)' }}
+                    onMouseLeave={(e) => { e.currentTarget.style.background = 'transparent' }}
+                  >
+                    {sp.imagemUrl && <img src={sp.imagemUrl} alt="" style={{ width: 28, height: 28, imageRendering: 'pixelated', flexShrink: 0 }} />}
+                    <span style={{ color: 'var(--text-muted)', minWidth: '2.5rem' }}>#{String(sp.pokedexId).padStart(3, '0')}</span>
+                    <span>{sp.nome}</span>
+                  </div>
+                ))}
+              </div>
+            )}
           </div>
           <div className="form-group">
             <label>Nível</label>

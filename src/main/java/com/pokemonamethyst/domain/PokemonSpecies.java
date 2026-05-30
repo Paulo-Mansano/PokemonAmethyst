@@ -88,6 +88,16 @@ public class PokemonSpecies {
     @Column(name = "forms", columnDefinition = "jsonb")
     private String forms;
 
+    @Column(name = "imagem_url_femea", length = 512)
+    private String imagemUrlFemea;
+
+    @Column(name = "eh_forma_alternativa", nullable = false)
+    private boolean ehFormaAlternativa = false;
+
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "base_species_id")
+    private PokemonSpecies baseSpecies;
+
     @OneToMany(mappedBy = "species", cascade = CascadeType.ALL, orphanRemoval = true)
     private List<PokemonSpeciesHabilidade> habilidades = new ArrayList<>();
 
@@ -143,6 +153,12 @@ public class PokemonSpecies {
     public void setHasGenderDifferences(boolean hasGenderDifferences) { this.hasGenderDifferences = hasGenderDifferences; }
     public String getForms() { return forms; }
     public void setForms(String forms) { this.forms = forms; }
+    public String getImagemUrlFemea() { return imagemUrlFemea; }
+    public void setImagemUrlFemea(String imagemUrlFemea) { this.imagemUrlFemea = imagemUrlFemea; }
+    public boolean isEhFormaAlternativa() { return ehFormaAlternativa; }
+    public void setEhFormaAlternativa(boolean ehFormaAlternativa) { this.ehFormaAlternativa = ehFormaAlternativa; }
+    public PokemonSpecies getBaseSpecies() { return baseSpecies; }
+    public void setBaseSpecies(PokemonSpecies baseSpecies) { this.baseSpecies = baseSpecies; }
     public List<PokemonSpeciesHabilidade> getHabilidades() { return habilidades; }
     public void setHabilidades(List<PokemonSpeciesHabilidade> habilidades) { this.habilidades = habilidades; }
     public List<PokemonSpeciesMovimento> getLearnset() { return learnset; }
