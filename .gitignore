@@ -15,10 +15,12 @@ target/
 .classpath
 
 # Node / Frontend
-frontend/node_modules/
+node_modules/
 frontend/dist/
 npm-debug.log*
+yarn-error.log
 .yarn-integrity
+.pnp.*
 
 # OS
 .DS_Store
