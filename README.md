@@ -283,9 +283,9 @@ http://localhost:5173
 Você verá a tela de login. Clique em **"Registrar"** para criar uma conta.
 
 **Fluxo inicial:**
-1. **Registrar** — Crie um email e senha. Se usar a flag "Mestre", você terá acesso adicional.
+1. **Registrar** — Crie um usuário e senha.
 2. **Ficha** — Crie seu personagem (nome, classe, atributos).
-3. **Pokémon** — Adicione Pokémon ao seu time (até 6 ativos, o resto em box).
+3. **Pokémon** — Peça para que um dos Mestres adicione seu Pokémon inicial, após isso você vai capturar outros Pokémon durante s sessões.
 4. **Mochila** — Gerencie itens.
 
 ---
@@ -302,7 +302,7 @@ Você verá a tela de login. Clique em **"Registrar"** para criar uma conta.
 
 ### Usuário Mestre (Game Master)
 
-1. Cria conta com flag **"Mestre"** durante o registro.
+1. Caso você já seja player há um tempo e a academia de mestres esteja aberta, você pode pedir para se tornar um e depois de um tempo os mestres lhe darão uma conta.
 2. Acesso adicional:
    - **Aba Geração:** gera Pokémon selvagens aleatórios ou customizados.
    - **Aba Mestre Species:** cria novas espécies de Pokémon ou edita existentes.
@@ -577,7 +577,7 @@ DB_SSLMODE=require
 
 **Solução:**
 1. Clique em **"Registrar"** na tela de login.
-2. Preencha email e senha.
+2. Preencha usuário e senha.
 3. Clique em **"Registrar"** (cria usuário).
 4. Agora tente **"Entrar"** com as mesmas credenciais.
 
