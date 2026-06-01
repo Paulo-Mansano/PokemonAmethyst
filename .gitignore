@@ -22,6 +22,12 @@ yarn-error.log
 .yarn-integrity
 .pnp.*
 
+# Rascunhos e arquivos temporários na raiz
+rascunho*.md
+rascunho*.jsx
+rascunho*.js
+TODO.md
+
 # OS
 .DS_Store
 Thumbs.db
